@@ -127,6 +127,9 @@ function SignInPanel({
       <h2 id="auth-title" className="text-center text-[1.625rem] leading-tight font-light text-ink">
         Welcome to <span className="font-normal text-accent">QuizPractice</span>
       </h2>
+      <p className="mt-2 text-center text-meta font-light tracking-wide text-ink-faint">
+        A product by <span className="font-normal text-ink-muted">Unknown IITians</span>
+      </p>
       <button
         type="button"
         onClick={onClose}
