@@ -147,7 +147,7 @@ function SignInPanel({
           <div className="mt-8">
             <GoogleButton onError={setError} onDone={completeSignIn} />
           </div>
-          <p className="mt-3 text-meta font-light text-ink-faint">New here? Signing in creates your account.</p>
+          <p className="mt-3 text-center text-meta font-light text-ink-faint">New here? Signing in creates your account.</p>
 
           {shownError ? (
             <p className="mt-4 flex items-start gap-2 text-meta text-incorrect">
