@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f6f6f4;
+      color: #101114;
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: -0.006em;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #2440c4; text-decoration: none; }
+    a:hover { color: #1a32a6; }
+    .label {
+      font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: #878b93;
+    }
+    .data {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-variant-numeric: tabular-nums; font-size: 12px;
+    }
+    .tile {
+      display: flex; flex-direction: column;
+      background: #fffffe; border: 1px solid #dcddd8; padding: 12px 14px;
+    }
+    .tile-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      border-bottom: 1px solid #dcddd8; padding-bottom: 6px; margin-bottom: 10px;
+    }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; width: 1440px; height: 920px; background: #f6f6f4;">
+
+  <header style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 20px; background: #fffffe; border-bottom: 1px solid #dcddd8; flex-shrink: 0;">
+    <span style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
+      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1.5px solid #101114; border-radius: 999px;">
+        <span style="width: 9px; height: 9px; border-radius: 999px; background: #2440c4;"></span>
+      </span>
+      <span style="font-size: 13px; font-weight: 600; letter-spacing: -0.017em;">QuizPractice</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 3px; background: #e5e8fa; color: #2440c4; font-size: 13px; font-weight: 500;">Dashboard</span>
+    <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; font-size: 13px; color: #55585f;">Papers</span>
+    <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; font-size: 13px; color: #55585f;">Search</span>
+    <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; font-size: 13px; color: #55585f;">Admin</span>
+    <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+      <span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #dcddd8; border-radius: 3px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55585f" stroke-width="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>
+      </span>
+      <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #dcddd8; border-radius: 3px; font-size: 12.5px; color: #55585f;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg>
+        Demo Admin
+      </span>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 18px 20px;">
+
+    <!-- Continue: the first thing a returning student needs -->
+    <div class="tile" style="grid-column: span 2;">
+      <div class="tile-head">
+        <span class="label" style="color: #101114;">Continue</span>
+        <span class="data" style="color: #878b93;">14s ago</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 15px; font-weight: 600;">Database Management Systems</div>
+          <div class="data" style="margin-top: 3px; color: #878b93;">Quiz 1 · set 1563 · 5 questions · 50 marks</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="data" style="font-size: 24px; font-weight: 500;">1<span style="font-size: 14px; color: #878b93;">/10</span></div>
+          <div class="data" style="color: #c2410c;">10%</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 6px; margin-top: 12px;">
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 3px; background: #2440c4; color: #ffffff; font-size: 13px; font-weight: 500;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>
+          Re-attempt
+        </span>
+        <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid #bcbeb8; border-radius: 3px; font-size: 13px; font-weight: 500;">Full analysis</span>
+      </div>
+    </div>
+
+    <!-- Score trend -->
+    <div class="tile" style="grid-column: span 2;">
+      <div class="tile-head">
+        <span class="label" style="color: #101114;">Score trend</span>
+        <span class="data" style="color: #c2410c;">sample data</span>
+      </div>
+      <svg width="100%" height="112" viewBox="0 0 560 112" preserveAspectRatio="none" role="img" aria-label="Score trend across six attempts, rising from 34% to 71%. Sample data.">
+        <line x1="34" y1="8" x2="552" y2="8" stroke="#dcddd8" stroke-width="1"/>
+        <line x1="34" y1="52" x2="552" y2="52" stroke="#dcddd8" stroke-width="1"/>
+        <line x1="34" y1="96" x2="552" y2="96" stroke="#bcbeb8" stroke-width="1"/>
+        <text x="26" y="11" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#878b93">100</text>
+        <text x="26" y="55" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#878b93">50</text>
+        <text x="26" y="99" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#878b93">0</text>
+        <polyline points="70,67 166,60 262,55 358,44 454,38 540,33" fill="none" stroke="#2440c4" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="70" cy="67" r="3" fill="#2440c4"/>
+        <circle cx="166" cy="60" r="3" fill="#2440c4"/>
+        <circle cx="262" cy="55" r="3" fill="#2440c4"/>
+        <circle cx="358" cy="44" r="3" fill="#2440c4"/>
+        <circle cx="454" cy="38" r="3" fill="#2440c4"/>
+        <circle cx="540" cy="33" r="4.5" fill="#2440c4" stroke="#fffffe" stroke-width="2"/>
+        <text x="540" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="#101114">71%</text>
+      </svg>
+    </div>
+
+    <!-- Weak topics: real data from the DBMS attempt -->
+    <div class="tile" style="grid-column: span 2; grid-row: span 2;">
+      <div class="tile-head">
+        <span class="label" style="color: #101114;">Weakest topics</span>
+        <span class="data" style="color: #878b93;">from 1 attempt</span>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">aggregation</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">sql-semantics</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">er-model</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">weak-entities</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">normalization</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">buffer-management</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 2px; height: 4px; background: #b1271d; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">0%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #dcddd8;">
+          <span style="flex-grow: 1; font-size: 13px;">dbms-architecture</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 90px; height: 4px; background: #146b52; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">100%</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 5px 0;">
+          <span style="flex-grow: 1; font-size: 13px;">query-processing</span>
+          <span style="width: 90px; height: 4px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 90px; height: 4px; background: #146b52; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 46px; text-align: right; color: #55585f;">100%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Where the time went -->
+    <div class="tile">
+      <div class="tile-head"><span class="label" style="color: #101114;">Where time went</span></div>
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 8px; height: 8px; background: #146b52; border-radius: 1px;"></span>
+          <span style="flex-grow: 1; font-size: 12.5px;">Correct, good pace</span>
+          <span class="data">1</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 8px; height: 8px; background: #b1271d; border-radius: 1px;"></span>
+          <span style="flex-grow: 1; font-size: 12.5px;">Wrong</span>
+          <span class="data">2</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 8px; height: 8px; background: #878b93; border-radius: 1px;"></span>
+          <span style="flex-grow: 1; font-size: 12.5px;">Skipped</span>
+          <span class="data">1</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 8px; height: 8px; background: #878b93; border-radius: 1px;"></span>
+          <span style="flex-grow: 1; font-size: 12.5px;">Not auto-marked</span>
+          <span class="data">1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="tile">
+      <div class="tile-head"><span class="label" style="color: #101114;">Your totals</span></div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+        <div>
+          <div class="label">Attempts</div>
+          <div class="data" style="font-size: 20px; font-weight: 500;">1</div>
+        </div>
+        <div>
+          <div class="label">Papers</div>
+          <div class="data" style="font-size: 20px; font-weight: 500;">1</div>
+        </div>
+        <div>
+          <div class="label">Average</div>
+          <div class="data" style="font-size: 20px; font-weight: 500;">10%</div>
+        </div>
+        <div>
+          <div class="label">Accuracy</div>
+          <div class="data" style="font-size: 20px; font-weight: 500;">33%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Latest papers -->
+    <div class="tile" style="grid-column: span 2;">
+      <div class="tile-head">
+        <span class="label" style="color: #101114;">Latest papers</span>
+        <span class="data" style="color: #878b93;">1</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 4px 0;">
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 500;">Database Management Systems</div>
+          <div class="data" style="color: #878b93;">Quiz 1 · 16 Jul 2026 · 5 questions</div>
+        </div>
+        <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid #bcbeb8; border-radius: 3px; font-size: 12.5px; font-weight: 500;">Open</span>
+      </div>
+    </div>
+
+    <!-- Catalogue coverage -->
+    <div class="tile" style="grid-column: span 2;">
+      <div class="tile-head">
+        <span class="label" style="color: #101114;">Catalogue coverage</span>
+        <span class="data" style="color: #878b93;">76 subjects</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 128px; font-size: 12.5px;">Data Science</span>
+          <span style="flex-grow: 1; height: 5px; background: #edeeeb; border-radius: 999px;"><span style="display: block; width: 4px; height: 5px; background: #2440c4; border-radius: 999px;"></span></span>
+          <span class="data" style="width: 54px; text-align: right; color: #55585f;">1/54</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 128px; font-size: 12.5px;">Electronic Systems</span>
+          <span style="flex-grow: 1; height: 5px; background: #edeeeb; border-radius: 999px;"></span>
+          <span class="data" style="width: 54px; text-align: right; color: #55585f;">0/22</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 128px; font-size: 12.5px;">Management</span>
+          <span style="flex-grow: 1; height: 5px; background: #edeeeb; border-radius: 999px;"></span>
+          <span class="data" style="width: 54px; text-align: right; color: #878b93;">no subjects</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 128px; font-size: 12.5px;">Aeronautics</span>
+          <span style="flex-grow: 1; height: 5px; background: #edeeeb; border-radius: 999px;"></span>
+          <span class="data" style="width: 54px; text-align: right; color: #878b93;">no subjects</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

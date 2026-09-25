@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "subject": "dbms",
+  "exam_type": "quiz-1",
+  "session_date": "2026-07-16",
+  "set_code": "1563",
+  "title": "Database Management Systems - Quiz 1",
+  "duration_minutes": 120,
+  "total_marks": 50,
+  "source": {
+    "image": {
+      "provider": "cloudinary",
+      "public_id": "qp/ds/dbms/quiz-1/2026-07-16/set-1563/page-01",
+      "version": 1774521600,
+      "format": "png",
+      "width": 1654,
+      "height": 2339
+    },
+    "extracted_by": "vision-extract-v1",
+    "confidence": 0.94,
+    "reviewed": true
+  },
+
+  "questions": [
+    {
+      "number": 1,
+      "type": "mcq",
+      "marks": 1,
+      "body": [
+        {
+          "type": "text",
+          "md": "Which of the following components of the Database Management System (DBMS) is primarily responsible for generating and selecting the most cost-effective execution plan for a given SQL query?"
+        }
+      ],
+      "options": [
+        { "label": "A", "content": [{ "type": "text", "md": "Parser and Translator" }] },
+        { "label": "B", "content": [{ "type": "text", "md": "Query Optimizer" }], "is_correct": true },
+        { "label": "C", "content": [{ "type": "text", "md": "Evaluation Engine" }] },
+        { "label": "D", "content": [{ "type": "text", "md": "Buffer Manager" }] }
+      ],
+      "solution": {
+        "kind": "authored",
+        "body": [
+          {
+            "type": "text",
+            "md": "The **query optimizer** enumerates candidate execution plans and picks the one with the lowest estimated cost. The parser only checks syntax and produces a parse tree, the evaluation engine *runs* the chosen plan, and the buffer manager handles page caching between disk and memory."
+          }
+        ],
+        "video_url": "https://www.youtube.com/watch?v=REPLACE_ME"
+      },
+      "topics": ["dbms-architecture", "query-processing"],
+      "difficulty": "easy"
+    },
+
+    {
+      "number": 2,
+      "type": "numerical",
+      "marks": 3,
+      "body": [
+        { "type": "text", "md": "Consider the relation `Delivery_Fee` shown below." },
+        {
+          "type": "relation",
+          "name": "Delivery_Fee",
+          "columns": [
+            { "name": "order_id", "data_type": "INTEGER", "primary_key": true, "nullable": false },
+            { "name": "city", "data_type": "VARCHAR(30)", "nullable": false },
+            { "name": "distance_km", "data_type": "DECIMAL(5,2)", "nullable": false },
+            { "name": "fee", "data_type": "DECIMAL(6,2)", "nullable": false }
+          ],
+          "rows": [
+            [101, "Chennai", 4.2, 60.0],
+            [102, "Chennai", 11.5, 145.0],
+            [103, "Bengaluru", 2.0, 35.0],
+            [104, "Bengaluru", 9.8, 120.0],
+            [105, "Chennai", 6.4, 85.0]
+          ]
+        },
+        {
+          "type": "text",
+          "md": "What is the average `fee` (in rupees) across all orders placed in Chennai? Report your answer correct to one decimal place."
+        }
+      ],
+      "correct_answer": 96.7,
+      "answer_tolerance": 0.5,
+      "solution": {
+        "kind": "authored",
+        "body": [
+          { "type": "text", "md": "Chennai rows are orders 101, 102 and 105." },
+          { "type": "math", "latex": "\\frac{60.0 + 145.0 + 85.0}{3} = \\frac{290.0}{3} = 96.67" },
+          { "type": "text", "md": "Rounded to one decimal place: **96.7**" }
+        ]
+      },
+      "topics": ["aggregation", "sql-semantics"],
+      "difficulty": "medium"
+    },
+
+    {
+      "number": 3,
+      "type": "msq",
+      "marks": 4,
+      "body": [
+        { "type": "text", "md": "Consider the ER diagram below for a university enrolment system." },
+        {
+          "type": "er",
+          "caption": "University enrolment",
+          "entities": [
+            {
+              "name": "Student",
+              "attributes": [
+                { "name": "roll_no", "key": "primary" },
+                { "name": "name" },
+                { "name": "phone", "multivalued": true }
+              ]
+            },
+            {
+              "name": "Course",
+              "attributes": [
+                { "name": "course_id", "key": "primary" },
+                { "name": "title" },
+                { "name": "credits" }
+              ]
+            },
+            {
+              "name": "Section",
+              "weak": true,
+              "attributes": [
+                { "name": "sec_no", "key": "partial" },
+                { "name": "room" }
+              ]
+            }
+          ],
+          "relationships": [
+            { "name": "Enrolls", "from": "Student", "to": "Section", "cardinality": "M:N", "total_participation": true },
+            { "name": "HasSection", "from": "Course", "to": "Section", "cardinality": "1:N", "total_participation": true }
+          ]
+        },
+        { "type": "text", "md": "Which of the following statements are correct? Select all that apply." }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [{ "type": "text", "md": "`Section` is a weak entity and requires `Course` for its identity." }],
+          "is_correct": true
+        },
+        {
+          "label": "B",
+          "content": [{ "type": "text", "md": "The `Enrolls` relationship requires a separate relation when mapped to the relational model." }],
+          "is_correct": true
+        },
+        {
+          "label": "C",
+          "content": [{ "type": "text", "md": "`phone` can be stored as a single column in the `Student` relation without violating 1NF." }]
+        },
+        {
+          "label": "D",
+          "content": [{ "type": "text", "md": "Every `Student` must be enrolled in at least one `Section`." }],
+          "is_correct": true
+        }
+      ],
+      "solution": {
+        "kind": "authored",
+        "body": [
+          { "type": "text", "md": "A is true because `Section` has only a partial key (`sec_no`) and depends on `Course`. B follows from the M:N cardinality. C is false - a multivalued attribute violates 1NF and needs its own relation. D is true because `Student` has total participation in `Enrolls` (the double line)." }
+        ],
+        "video_url": "https://www.youtube.com/watch?v=REPLACE_ME"
+      },
+      "topics": ["er-model", "weak-entities", "normalization"],
+      "difficulty": "hard"
+    },
+
+    {
+      "number": 4,
+      "type": "programming",
+      "marks": 5,
+      "body": [
+        { "type": "text", "md": "Given the schema below, write a SQL query returning the three highest delivery fees per city, ordered by city and then by fee descending." },
+        {
+          "type": "code",
+          "language": "sql",
+          "filename": "schema.sql",
+          "source": "CREATE TABLE Delivery_Fee (\n  order_id     INTEGER PRIMARY KEY,\n  city         VARCHAR(30) NOT NULL,\n  distance_km  DECIMAL(5,2) NOT NULL,\n  fee          DECIMAL(6,2) NOT NULL\n);"
+        }
+      ],
+      "correct_answer": "SELECT city, order_id, fee FROM (SELECT city, order_id, fee, RANK() OVER (PARTITION BY city ORDER BY fee DESC) AS rnk FROM Delivery_Fee) t WHERE rnk <= 3 ORDER BY city, fee DESC;",
+      "solution": {
+        "kind": "authored",
+        "body": [
+          { "type": "text", "md": "A window function is the cleanest approach - `RANK()` partitioned by city:" },
+          {
+            "type": "code",
+            "language": "sql",
+            "source": "SELECT city, order_id, fee\nFROM (\n  SELECT city, order_id, fee,\n         RANK() OVER (PARTITION BY city ORDER BY fee DESC) AS rnk\n  FROM Delivery_Fee\n) t\nWHERE rnk <= 3\nORDER BY city, fee DESC;"
+          },
+          { "type": "text", "md": "Note that `RANK()` keeps ties, so a city with two orders sharing the third-highest fee returns four rows. Use `ROW_NUMBER()` if you need exactly three." }
+        ],
+        "video_url": "https://www.youtube.com/watch?v=REPLACE_ME"
+      },
+      "topics": ["sql", "window-functions"],
+      "difficulty": "hard"
+    },
+
+    {
+      "number": 5,
+      "type": "mcq",
+      "marks": 2,
+      "body": [
+        { "type": "text", "md": "The figure shows the physical storage layout used by the buffer manager during a sequential scan. Which access pattern does it depict?" },
+        {
+          "type": "image",
+          "image": {
+            "provider": "cloudinary",
+            "public_id": "qp/ds/dbms/quiz-1/2026-07-16/set-1563/q05-fig1",
+            "version": 1774521600,
+            "format": "png",
+            "width": 1240,
+            "height": 620
+          },
+          "alt": "Disk blocks numbered 1 to 8 read left to right into four buffer frames, with frames evicted in first-in-first-out order",
+          "caption": "Figure 1: buffer frame occupancy over time"
+        }
+      ],
+      "options": [
+        { "label": "A", "content": [{ "type": "text", "md": "LRU replacement" }] },
+        { "label": "B", "content": [{ "type": "text", "md": "FIFO replacement" }], "is_correct": true },
+        { "label": "C", "content": [{ "type": "text", "md": "Clock replacement" }] },
+        { "label": "D", "content": [{ "type": "text", "md": "Random replacement" }] }
+      ],
+      "topics": ["buffer-management"],
+      "difficulty": "medium",
+      "source": {
+        "image": {
+          "provider": "cloudinary",
+          "public_id": "qp/ds/dbms/quiz-1/2026-07-16/set-1563/q05-original",
+          "version": 1774521600,
+          "format": "png",
+          "width": 1654,
+          "height": 900
+        },
+        "extracted_by": "vision-extract-v1",
+        "confidence": 0.71,
+        "reviewed": true
+      }
+    }
+  ]
+}

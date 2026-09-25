@@ -1,0 +1,45 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 920, "title": "Option A — Left sidebar shell" },
+    { "file": "SplitPane.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 920, "title": "Option B — Split pane" },
+    { "file": "WidgetGrid.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 920, "title": "Option C — Widget dashboard" }
+  ],
+  "annotations": [
+    {
+      "id": "how-to-read",
+      "x": 0,
+      "y": -190,
+      "w": 460,
+      "text": "Three shells for the same app, same tokens and real content.\n\nPick one and I'll build it across every screen. You can also drag things around here — nothing is locked."
+    },
+    {
+      "id": "note-a",
+      "x": 0,
+      "y": 980,
+      "w": 420,
+      "text": "OPTION A — LEFT SIDEBAR SHELL\n\nNav lives in a fixed rail, so Admin, Catalogue and Dashboard are always one click away and queue counts (Review 2) are visible without navigating.\n\nGood: scales as you add sections. Familiar enterprise shape.\nCost: 220px gone permanently, and the catalogue is the whole work area — fine now, cramped once a subject has 30 papers."
+    },
+    {
+      "id": "note-b",
+      "x": 1560,
+      "y": 980,
+      "w": 420,
+      "text": "OPTION B — SPLIT PANE\n\nSubjects pinned left, that subject's papers on the right. Browsing 76 subjects never reloads the page — closest to an email client or IDE.\n\nGood: fastest for the actual job, comparing papers across subjects.\nCost: no room for progress or admin — those become separate pages. Weakest on a phone; the two panes have to stack."
+    },
+    {
+      "id": "note-c",
+      "x": 3120,
+      "y": 980,
+      "w": 420,
+      "text": "OPTION C — WIDGET DASHBOARD\n\nHome answers \"how am I doing and what next\", and the catalogue moves to its own page.\n\nGood: the analysis work already built gets a front door. Best story for a returning student.\nCost: useless on day one — with one attempt most tiles are empty or near-empty, which is exactly what you see here. Needs volume before it earns the space."
+    },
+    {
+      "id": "note-sample",
+      "x": 3600,
+      "y": 980,
+      "w": 300,
+      "text": "Everything here is your real data except the score-trend sparkline, which is marked sample — you only have one attempt, so a trend line would be invented."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

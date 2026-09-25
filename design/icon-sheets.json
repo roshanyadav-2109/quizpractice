@@ -1,0 +1,158 @@
+{
+  "note": "Which icon is where on each generated sheet, in reading order. Used by npm run icons:cut. Prompts: docs/artwork-needed.md.",
+  "reuse": {
+    "subjects/es-python": "subjects/python",
+    "subjects/es-english-1": "subjects/english-1",
+    "subjects/es-computer-system-design": "subjects/computer-system-design"
+  },
+  "sheets": [
+    {
+      "sheet": 1,
+      "files": [
+        "programs/ds",
+        "programs/es",
+        "exams/quiz-1",
+        "exams/quiz-2",
+        "exams/end-term",
+        "subjects/maths-1",
+        "subjects/statistics-1",
+        "subjects/computational-thinking",
+        "subjects/maths-2"
+      ]
+    },
+    {
+      "sheet": 2,
+      "files": [
+        "subjects/statistics-2",
+        "subjects/python",
+        "subjects/dbms",
+        "subjects/pdsa",
+        "subjects/java",
+        "subjects/mad-2",
+        "subjects/mlf",
+        "subjects/mlp",
+        "subjects/business-analytics"
+      ]
+    },
+    {
+      "sheet": 3,
+      "files": [
+        "subjects/software-engineering",
+        "subjects/software-testing",
+        "subjects/ai-search",
+        "subjects/deep-learning",
+        "subjects/spg",
+        "subjects/programming-in-c",
+        "subjects/algorithmic-thinking-bio",
+        "subjects/market-research",
+        "subjects/industry-4"
+      ]
+    },
+    {
+      "sheet": 4,
+      "files": [
+        "subjects/rl",
+        "subjects/dl-cv",
+        "subjects/dlp",
+        "subjects/dl-genai",
+        "subjects/estc",
+        "subjects/digital-systems",
+        "subjects/eec",
+        "subjects/es-math-2"
+      ]
+    },
+    {
+      "sheet": 5,
+      "files": [
+        "programs/mds",
+        "programs/ast",
+        "exams/oppe",
+        "exams/gaa",
+        "exams/qualifier",
+        "exams/project",
+        "subjects/english-1",
+        "subjects/english-2",
+        "subjects/mad-1"
+      ]
+    },
+    {
+      "sheet": 6,
+      "files": [
+        "subjects/system-commands",
+        "subjects/bdm",
+        "subjects/mlt",
+        "subjects/tds",
+        "subjects/statistical-computing",
+        "subjects/mathematical-thinking",
+        "subjects/lsm",
+        "subjects/advanced-algorithms",
+        "subjects/operating-systems"
+      ]
+    },
+    {
+      "sheet": 7,
+      "files": [
+        "subjects/computer-system-design",
+        "subjects/bbn",
+        "subjects/discrete-mathematics",
+        "subjects/managerial-economics",
+        "subjects/corporate-finance",
+        "subjects/financial-forensics",
+        "subjects/psosm",
+        "subjects/game-theory",
+        "subjects/speech-technology"
+      ]
+    },
+    {
+      "sheet": 8,
+      "files": [
+        "subjects/inlp",
+        "subjects/llm",
+        "subjects/genai-math",
+        "subjects/dvd",
+        "subjects/compiler-design",
+        "subjects/computer-networks",
+        "subjects/psm",
+        "subjects/es-math-1",
+        "subjects/es-linux"
+      ]
+    },
+    {
+      "sheet": 9,
+      "files": [
+        "subjects/embedded-c",
+        "subjects/signals-systems",
+        "subjects/dsd",
+        "subjects/sensors",
+        "subjects/control-engineering",
+        "subjects/dsp",
+        "subjects/aes",
+        "subjects/epd",
+        "subjects/computer-organization"
+      ]
+    },
+    {
+      "sheet": 10,
+      "files": [
+        "subjects/etm",
+        "subjects/eftl",
+        "subjects/sdvl",
+        "subjects/fpga",
+        "site/logo"
+      ]
+    },
+    {
+      "sheet": 11,
+      "files": [
+        "levels/qualifier",
+        "levels/foundation",
+        "levels/diploma-programming",
+        "levels/diploma-data-science",
+        "levels/diploma",
+        "levels/bsc",
+        "levels/bs",
+        "exams/diploma-qualifier"
+      ]
+    }
+  ]
+}

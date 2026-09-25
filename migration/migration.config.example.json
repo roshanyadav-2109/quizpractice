@@ -1,0 +1,72 @@
+{
+  "_comment": "Rename the right-hand values to match your export's column names. Anything you cannot export, leave out — the migrator tolerates missing columns and tells you what it could not fill.",
+
+  "papers": {
+    "file": "migration/papers.csv",
+    "map": {
+      "id": "id",
+      "subject": "subject_name",
+      "exam_type": "exam_name",
+      "session_date": "exam_date",
+      "set_code": "qp_code",
+      "title": "title",
+      "total_marks": "total_marks",
+      "duration_minutes": "duration"
+    }
+  },
+
+  "questions": {
+    "file": "migration/questions.csv",
+    "map": {
+      "id": "id",
+      "paper_id": "question_paper_id",
+      "number": "question_no",
+      "type": "question_type",
+      "marks": "mark",
+      "text": "question_text",
+      "image": "question_image",
+      "correct_answer": "answer"
+    }
+  },
+
+  "options": {
+    "file": "migration/options.csv",
+    "map": {
+      "id": "id",
+      "question_id": "question_id",
+      "label": "option_label",
+      "text": "option_text",
+      "image": "option_image",
+      "is_correct": "is_correct"
+    }
+  },
+
+  "_images": "Run with --manifest first to list every image the export references, convert those, then point imageBlocks at the result. imageBaseUrl is only needed if the export stores filenames rather than full URLs; it also takes a single string when both kinds share a folder. questionImageId/optionImageId default to {image} and only need setting if your images:convert manifest is keyed some other way ({id} is the question or option id).",
+
+  "imageBlocks": "migration/image-blocks.json",
+  "imageBaseUrl": {
+    "question": "https://your-bucket.example.com/question_images/",
+    "option": "https://your-bucket.example.com/option_images/"
+  },
+
+  "subjects": {
+    "DBMS": "dbms",
+    "PDSA": "pdsa",
+    "Maths1": "maths-1",
+    "Statistics1": "statistics-1"
+  },
+
+  "examTypes": {
+    "Quiz 1": "quiz-1",
+    "Quiz 2": "quiz-2",
+    "End Term": "end-term",
+    "OPPE": "oppe"
+  },
+
+  "questionTypes": {
+    "MCQ": "mcq",
+    "MSQ": "msq",
+    "NAT": "numerical",
+    "SA": "subjective"
+  }
+}

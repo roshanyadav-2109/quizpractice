@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quizpractice.local/schema/question-paper.schema.json",
+  "title": "Question Paper Import",
+  "description": "One question paper (a single set/variant of one sitting) as imported into the platform. Question and option bodies are ordered arrays of typed content blocks, so that anything that was originally an image of a table, equation, ER diagram or code listing is stored as structured data rather than as a picture.",
+  "type": "object",
+  "required": ["schema_version", "subject", "exam_type", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bumped whenever the block format changes, so old rows stay renderable."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject slug as it exists in the subjects table, e.g. 'dbms'."
+    },
+    "exam_type": {
+      "type": "string",
+      "description": "Exam type slug, e.g. 'quiz-1', 'quiz-2', 'end-term', 'oppe'."
+    },
+    "session_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the sitting, e.g. '2026-07-16'."
+    },
+    "set_code": {
+      "type": "string",
+      "description": "Variant identifier within the sitting. IITM randomises papers per student."
+    },
+    "title": { "type": "string" },
+    "duration_minutes": { "type": "integer", "minimum": 1 },
+    "total_marks": { "type": "number", "minimum": 0 },
+    "source": { "$ref": "#/$defs/provenance" },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/question" }
+    }
+  },
+
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["number", "type", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "number": { "type": "integer", "minimum": 1 },
+        "type": {
+          "enum": ["mcq", "msq", "numerical", "subjective", "programming"],
+          "description": "mcq = one correct option; msq = multiple; numerical = typed value; programming = code answer."
+        },
+        "marks": { "type": "number", "minimum": 0, "default": 1 },
+        "negative_marks": { "type": "number", "minimum": 0, "default": 0 },
+        "body": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/block" },
+          "description": "The question stem, as ordered content blocks."
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" },
+          "description": "Required for mcq and msq."
+        },
+        "correct_answer": {
+          "description": "For numerical questions: the expected value. For programming: a reference answer.",
+          "type": ["string", "number"]
+        },
+        "answer_tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Absolute tolerance for numerical answers."
+        },
+        "solution": { "$ref": "#/$defs/solution" },
+        "topics": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Free-form topic tags used for practice-by-topic later."
+        },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "source": { "$ref": "#/$defs/provenance" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["mcq", "msq"] } }, "required": ["type"] },
+          "then": { "required": ["options"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "numerical" } }, "required": ["type"] },
+          "then": { "required": ["correct_answer"] }
+        }
+      ]
+    },
+
+    "option": {
+      "type": "object",
+      "required": ["label", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "description": "A, B, C, D ..." },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/block" },
+          "description": "Options are blocks too - an option can legitimately be a table, an equation or a diagram."
+        },
+        "is_correct": { "type": "boolean", "default": false }
+      }
+    },
+
+    "solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/block" },
+          "description": "Worked explanation, as blocks."
+        },
+        "video_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "External video host (YouTube unlisted, Bunny, Cloudflare Stream). Not Cloudinary."
+        },
+        "kind": { "enum": ["official", "authored", "community", "ai"], "default": "authored" }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "Where this content came from, so a reviewer can always see the original next to the extracted JSON.",
+      "additionalProperties": false,
+      "properties": {
+        "image": { "$ref": "#/$defs/cloudinaryRef" },
+        "extracted_by": { "type": "string", "description": "Model or tool that produced the JSON." },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reviewed": { "type": "boolean", "default": false }
+      }
+    },
+
+    "cloudinaryRef": {
+      "type": "object",
+      "required": ["public_id"],
+      "additionalProperties": false,
+      "description": "A reference to a Cloudinary asset. Store the public_id, never a full delivery URL - URLs are built at render time so transformations, cloud name and CDN can change without a data migration.",
+      "properties": {
+        "provider": { "const": "cloudinary", "default": "cloudinary" },
+        "public_id": {
+          "type": "string",
+          "description": "e.g. 'qp/ds/dbms/quiz-1/2026-07-16/q07-fig1'"
+        },
+        "version": { "type": "integer", "description": "Cloudinary version, pins the asset for cache-busting." },
+        "format": { "type": "string", "description": "png, jpg, webp ..." },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "delivery": {
+          "const": "original",
+          "description": "Serve the file exactly as uploaded, with no resizing or format conversion - for images optimised before upload. width and height are then its display size."
+        },
+        "cloud": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The Cloudinary cloud holding the asset, when it is not the site's own."
+        },
+        "region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height", "sheet_width", "sheet_height"],
+          "description": "Show only this part of the asset: a sheet holding many figures, in the sheet's pixels. width and height above are then the figure's display size.",
+          "properties": {
+            "x": { "type": "integer", "minimum": 0 },
+            "y": { "type": "integer", "minimum": 0 },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "sheet_width": { "type": "integer", "minimum": 1 },
+            "sheet_height": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "source_url": {
+          "type": "string",
+          "description": "Import-time only. An http(s) URL or local file path to upload to public_id when the asset is not in Cloudinary yet. The importer uploads it, fills in the dimensions and strips this field, so stored content never carries a foreign URL."
+        }
+      }
+    },
+
+    "block": {
+      "description": "One unit of question content. Every non-text block may carry a fallback_image so content can ship as a picture first and be upgraded to structure later without re-importing.",
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        { "$ref": "#/$defs/blockText" },
+        { "$ref": "#/$defs/blockMath" },
+        { "$ref": "#/$defs/blockTable" },
+        { "$ref": "#/$defs/blockRelation" },
+        { "$ref": "#/$defs/blockCode" },
+        { "$ref": "#/$defs/blockEr" },
+        { "$ref": "#/$defs/blockGraph" },
+        { "$ref": "#/$defs/blockChart" },
+        { "$ref": "#/$defs/blockImage" }
+      ]
+    },
+
+    "blockText": {
+      "type": "object",
+      "required": ["type", "md"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "text" },
+        "md": {
+          "type": "string",
+          "description": "Markdown. Inline maths in $...$ is rendered with KaTeX."
+        }
+      }
+    },
+
+    "blockMath": {
+      "type": "object",
+      "required": ["type", "latex"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "math" },
+        "latex": { "type": "string" },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockTable": {
+      "type": "object",
+      "required": ["type", "columns", "rows"],
+      "additionalProperties": false,
+      "description": "Generic tabular data: data sets, truth tables, K-maps, matrices, comparison tables.",
+      "properties": {
+        "type": { "const": "table" },
+        "caption": { "type": "string" },
+        "columns": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "rows": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": ["string", "number", "null"] } }
+        },
+        "align": {
+          "type": "array",
+          "items": { "enum": ["left", "center", "right"] },
+          "description": "Per-column alignment; numeric columns should be right-aligned."
+        },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockRelation": {
+      "type": "object",
+      "required": ["type", "name", "columns"],
+      "additionalProperties": false,
+      "description": "A database relation: schema and, optionally, its instance. Used heavily by DBMS questions.",
+      "properties": {
+        "type": { "const": "relation" },
+        "name": { "type": "string" },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "data_type": { "type": "string", "description": "e.g. INTEGER, VARCHAR(30), DATE" },
+              "primary_key": { "type": "boolean", "default": false },
+              "foreign_key": {
+                "type": "string",
+                "description": "Target as 'Relation.column', e.g. 'Student.roll_no'."
+              },
+              "nullable": { "type": "boolean", "default": true }
+            }
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": ["string", "number", "null"] } }
+        },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockCode": {
+      "type": "object",
+      "required": ["type", "language", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "code" },
+        "language": {
+          "type": "string",
+          "description": "python, sql, c, java, javascript, bash, verilog ..."
+        },
+        "source": { "type": "string" },
+        "filename": { "type": "string" },
+        "highlight_lines": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockEr": {
+      "type": "object",
+      "required": ["type", "entities"],
+      "additionalProperties": false,
+      "description": "Entity-relationship diagram, rendered natively rather than shipped as a picture.",
+      "properties": {
+        "type": { "const": "er" },
+        "caption": { "type": "string" },
+        "entities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": { "type": "string" },
+                    "key": { "enum": ["primary", "partial", "foreign", "none"], "default": "none" },
+                    "multivalued": { "type": "boolean", "default": false },
+                    "derived": { "type": "boolean", "default": false }
+                  }
+                }
+              },
+              "weak": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "cardinality": {
+                "enum": ["1:1", "1:N", "N:1", "M:N"],
+                "default": "1:N"
+              },
+              "total_participation": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockGraph": {
+      "type": "object",
+      "required": ["type", "nodes"],
+      "additionalProperties": false,
+      "description": "Graphs, trees, heaps, state machines and flowcharts - anything that is nodes and edges. Covers most of PDSA and Algorithmic Thinking.",
+      "properties": {
+        "type": { "const": "graph" },
+        "caption": { "type": "string" },
+        "directed": { "type": "boolean", "default": false },
+        "layout": { "enum": ["tree", "force", "flow", "circular"], "default": "force" },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "shape": { "enum": ["circle", "box", "diamond", "rounded"], "default": "circle" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "weight": { "type": ["number", "string"] },
+              "label": { "type": "string" }
+            }
+          }
+        },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockChart": {
+      "type": "object",
+      "required": ["type", "kind", "series"],
+      "additionalProperties": false,
+      "description": "Plots for Statistics, BDM and Business Analytics questions.",
+      "properties": {
+        "type": { "const": "chart" },
+        "kind": { "enum": ["bar", "line", "scatter", "histogram", "pie", "box"] },
+        "caption": { "type": "string" },
+        "x_label": { "type": "string" },
+        "y_label": { "type": "string" },
+        "categories": { "type": "array", "items": { "type": ["string", "number"] } },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["values"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "values": { "type": "array", "items": { "type": ["number", "null"] } }
+            }
+          }
+        },
+        "fallback_image": { "$ref": "#/$defs/cloudinaryRef" }
+      }
+    },
+
+    "blockImage": {
+      "type": "object",
+      "required": ["type", "image", "alt"],
+      "additionalProperties": false,
+      "description": "The deliberate escape hatch, for content whose meaning is spatial or analog: circuit diagrams, waveforms, geometry figures, tool screenshots, scanned handwriting. alt is required so the question stays searchable and accessible.",
+      "properties": {
+        "type": { "const": "image" },
+        "image": { "$ref": "#/$defs/cloudinaryRef" },
+        "alt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A real description of what the figure shows, not 'figure 1'."
+        },
+        "caption": { "type": "string" }
+      }
+    }
+  }
+}

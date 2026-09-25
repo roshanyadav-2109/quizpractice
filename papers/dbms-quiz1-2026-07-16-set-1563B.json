@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "subject": "dbms",
+  "exam_type": "quiz-1",
+  "session_date": "2026-07-16",
+  "set_code": "1563B",
+  "title": "Database Management Systems — Quiz 1",
+  "duration_minutes": 120,
+  "total_marks": 7,
+  "questions": [
+    {
+      "number": 1,
+      "type": "mcq",
+      "marks": 3,
+      "topics": ["sql", "aggregate-functions", "null-semantics"],
+      "difficulty": "medium",
+      "body": [
+        { "type": "text", "md": "Consider the relation `Delivery_Fee`:" },
+        {
+          "type": "relation",
+          "name": "Delivery_Fee",
+          "columns": [
+            { "name": "OrderID", "data_type": "VARCHAR(4)", "primary_key": true, "nullable": false },
+            { "name": "Item", "data_type": "VARCHAR(20)" },
+            { "name": "Fee", "data_type": "INTEGER" }
+          ],
+          "rows": [
+            ["O1", "Laptop", 70],
+            ["O2", "Phone", 65],
+            ["O3", "Headset", 20],
+            ["O4", "Mouse", 45],
+            ["O5", "Cable", null],
+            ["O6", "Cover", 0],
+            ["O7", "Screen", null]
+          ]
+        },
+        { "type": "text", "md": "Identify the output for the following SQL statement:" },
+        {
+          "type": "code",
+          "language": "sql",
+          "source": "SELECT AVG(Fee) FROM Delivery_Fee;"
+        }
+      ],
+      "options": [
+        { "label": "A", "content": [{ "type": "text", "md": "30.00" }] },
+        { "label": "B", "content": [{ "type": "text", "md": "35.00" }] },
+        {
+          "label": "C",
+          "content": [{ "type": "text", "md": "40.00" }],
+          "is_correct": true
+        },
+        { "label": "D", "content": [{ "type": "text", "md": "42.00" }] }
+      ],
+      "solution": {
+        "kind": "authored",
+        "body": [
+          {
+            "type": "text",
+            "md": "`AVG` ignores NULLs entirely — it does not treat them as zero, and it does not count them in the divisor. Two of the seven rows have a NULL fee, so only five rows take part."
+          },
+          {
+            "type": "math",
+            "latex": "\\frac{70 + 65 + 20 + 45 + 0}{5} = \\frac{200}{5} = 40.00"
+          },
+          {
+            "type": "text",
+            "md": "Note that `O6` has a fee of **0**, which is a value and therefore counted. Treating NULL as 0 would give 200/7 ≈ 28.57; dividing by 7 is the mistake this question is testing for."
+          }
+        ]
+      }
+    },
+    {
+      "number": 2,
+      "type": "mcq",
+      "marks": 4,
+      "topics": ["sql", "dml", "update-semantics"],
+      "difficulty": "medium",
+      "body": [
+        { "type": "text", "md": "Consider the following sequence of SQL statements:" },
+        {
+          "type": "code",
+          "language": "sql",
+          "source": "CREATE TABLE Shipment (\n    Ship_ID INT PRIMARY KEY,\n    Status VARCHAR(20),\n    Weight INT\n);\n\nINSERT INTO Shipment VALUES (101, 'In Transit', 15);\nINSERT INTO Shipment VALUES (102, 'Pending', 5);\nINSERT INTO Shipment VALUES (103, 'Delivered', 8);\n\nUPDATE Shipment\nSET Weight = Weight + 5\nWHERE Weight < 10;\n\nDELETE FROM Shipment\nWHERE Status = 'Delivered';\n\nINSERT INTO Shipment VALUES (104, 'Delivered', 12);"
+        },
+        {
+          "type": "text",
+          "md": "What will be the content of the **Shipment** table after execution?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "is_correct": true,
+          "content": [
+            {
+              "type": "relation",
+              "name": "Shipment",
+              "columns": [
+                { "name": "Ship_ID" },
+                { "name": "Status" },
+                { "name": "Weight" }
+              ],
+              "rows": [
+                [101, "In Transit", 15],
+                [102, "Pending", 10],
+                [104, "Delivered", 12]
+              ]
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "type": "relation",
+              "name": "Shipment",
+              "columns": [
+                { "name": "Ship_ID" },
+                { "name": "Status" },
+                { "name": "Weight" }
+              ],
+              "rows": [
+                [101, "In Transit", 15],
+                [102, "Pending", 5],
+                [104, "Delivered", 12]
+              ]
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "type": "relation",
+              "name": "Shipment",
+              "columns": [
+                { "name": "Ship_ID" },
+                { "name": "Status" },
+                { "name": "Weight" }
+              ],
+              "rows": [
+                [101, "In Transit", 15],
+                [102, "Pending", 10],
+                [103, "Delivered", 13],
+                [104, "Delivered", 12]
+              ]
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "type": "relation",
+              "name": "Shipment",
+              "columns": [
+                { "name": "Ship_ID" },
+                { "name": "Status" },
+                { "name": "Weight" }
+              ],
+              "rows": [
+                [101, "In Transit", 15],
+                [102, "Pending", 10]
+              ]
+            }
+          ]
+        }
+      ],
+      "solution": {
+        "kind": "authored",
+        "body": [
+          { "type": "text", "md": "Trace it one statement at a time." },
+          {
+            "type": "table",
+            "caption": "State after each statement",
+            "columns": ["Statement", "101", "102", "103", "104"],
+            "rows": [
+              ["After the three INSERTs", "15", "5", "8", "—"],
+              ["UPDATE … WHERE Weight < 10", "15", "10", "13", "—"],
+              ["DELETE … WHERE Status = 'Delivered'", "15", "10", "gone", "—"],
+              ["INSERT 104", "15", "10", "gone", "12"]
+            ]
+          },
+          {
+            "type": "text",
+            "md": "Two traps. The `UPDATE` fires **before** the `DELETE`, so row 103 is bumped to 13 and then removed anyway — option C keeps it. And 101 is not touched by the update because 15 is not less than 10 — option B misses that 102 was updated at all. The final `INSERT` adds a *new* Delivered row, which the earlier `DELETE` cannot retroactively remove — option D drops it."
+          }
+        ]
+      }
+    }
+  ]
+}

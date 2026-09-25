@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# The template must be committed; real env files must not be.
+!.env.example
+.cache/
+
+# local debug artifacts (Playwright MCP screenshots / console logs, ad-hoc captures)
+.playwright-mcp/
+/endterm-*.png

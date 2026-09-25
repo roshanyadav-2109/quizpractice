@@ -1,0 +1,258 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f6f6f4;
+      color: #101114;
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: -0.006em;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #2440c4; text-decoration: none; }
+    a:hover { color: #1a32a6; }
+    .label {
+      font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: #878b93;
+    }
+    .data {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-variant-numeric: tabular-nums; font-size: 12px;
+    }
+  </style>
+</helmet>
+
+<div style="display: flex; width: 1440px; height: 920px; background: #f6f6f4;">
+
+  <!-- Nav rail -->
+  <aside style="display: flex; flex-direction: column; width: 220px; flex-shrink: 0; background: #fffffe; border-right: 1px solid #dcddd8;">
+
+    <div style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; border-bottom: 1px solid #dcddd8;">
+      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1.5px solid #101114; border-radius: 999px;">
+        <span style="width: 9px; height: 9px; border-radius: 999px; background: #2440c4;"></span>
+      </span>
+      <span style="font-size: 13px; font-weight: 600; letter-spacing: -0.017em;">QuizPractice</span>
+    </div>
+
+    <nav style="display: flex; flex-direction: column; gap: 18px; padding: 16px 10px;">
+
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="label" style="padding: 0 6px 4px;">Dashboard</span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; background: #e5e8fa; color: #2440c4; font-size: 13px; font-weight: 500;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          Overview
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+          My attempts
+          <span class="data" style="margin-left: auto; color: #878b93;">1</span>
+        </span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="label" style="padding: 0 6px 4px;">Catalogue</span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h9l4 4v12H6z"/><path d="M15 4v4h4"/></svg>
+          Papers
+          <span class="data" style="margin-left: auto; color: #878b93;">1</span>
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          Subjects
+          <span class="data" style="margin-left: auto; color: #878b93;">76</span>
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+          Search
+        </span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="label" style="padding: 0 6px 4px;">Admin</span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 8h14M7 14h10"/></svg>
+          Taxonomy
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3h16v-3"/></svg>
+          Import
+        </span>
+        <span style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 6px; border-radius: 3px; color: #55585f; font-size: 13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M4 10h16"/></svg>
+          Review queue
+          <span class="data" style="margin-left: auto; padding: 1px 5px; border-radius: 3px; background: #ffeadb; color: #c2410c;">2</span>
+        </span>
+      </div>
+
+    </nav>
+
+    <div style="margin-top: auto; padding: 12px 16px; border-top: 1px solid #dcddd8;">
+      <span class="data" style="color: #878b93;">1 paper · 5 questions</span>
+    </div>
+  </aside>
+
+  <!-- Work area -->
+  <div style="display: flex; flex-direction: column; flex-grow: 1; min-width: 0;">
+
+    <header style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px; background: #fffffe; border-bottom: 1px solid #dcddd8;">
+      <div style="display: flex; align-items: center; gap: 8px; width: 380px; height: 30px; padding: 0 10px; border: 1px solid #dcddd8; border-radius: 3px; background: #f6f6f4;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#878b93" stroke-width="1.8"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <span style="font-size: 13px; color: #878b93;">Find a subject, paper or question</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #dcddd8; border-radius: 3px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55585f" stroke-width="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>
+        </span>
+        <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #dcddd8; border-radius: 3px; font-size: 12.5px; color: #55585f;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg>
+          Demo Admin
+        </span>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow: hidden;">
+
+      <!-- Metrics -->
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: #dcddd8; border: 1px solid #dcddd8;">
+        <div style="background: #fffffe; padding: 10px 14px;">
+          <div class="label">Papers attempted</div>
+          <div class="data" style="font-size: 22px; font-weight: 500; margin-top: 3px;">1</div>
+        </div>
+        <div style="background: #fffffe; padding: 10px 14px;">
+          <div class="label">Attempts</div>
+          <div class="data" style="font-size: 22px; font-weight: 500; margin-top: 3px;">1</div>
+        </div>
+        <div style="background: #fffffe; padding: 10px 14px;">
+          <div class="label">Average</div>
+          <div class="data" style="font-size: 22px; font-weight: 500; margin-top: 3px;">10%</div>
+        </div>
+        <div style="background: #fffffe; padding: 10px 14px;">
+          <div class="label">Accuracy</div>
+          <div class="data" style="font-size: 22px; font-weight: 500; margin-top: 3px;">33%</div>
+          <div style="font-size: 11px; color: #878b93; margin-top: 3px;">1 of 3 attempted</div>
+        </div>
+      </div>
+
+      <!-- Continue -->
+      <div style="display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #fffffe; border: 1px solid #dcddd8;">
+        <span class="label">Continue</span>
+        <span style="font-size: 13px; font-weight: 500;">Database Management Systems</span>
+        <span style="font-size: 13px; color: #55585f;">Quiz 1 · set 1563</span>
+        <span class="data" style="color: #55585f;">1/10 · 10%</span>
+        <div style="display: flex; gap: 6px; margin-left: auto;">
+          <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid #bcbeb8; border-radius: 3px; font-size: 13px; font-weight: 500;">Analysis</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 3px; background: #2440c4; color: #ffffff; font-size: 13px; font-weight: 500;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>
+            Re-attempt
+          </span>
+        </div>
+      </div>
+
+      <!-- Catalogue -->
+      <div>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 3px; background: #101114; color: #f6f6f4; font-size: 12.5px; font-weight: 500;">Data Science</span>
+          <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid #dcddd8; border-radius: 3px; color: #55585f; font-size: 12.5px;">Electronic Systems</span>
+          <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid #dcddd8; border-radius: 3px; color: #55585f; font-size: 12.5px;">Management</span>
+          <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid #dcddd8; border-radius: 3px; color: #55585f; font-size: 12.5px;">Aeronautics</span>
+        </div>
+
+        <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #dcddd8; padding-bottom: 5px;">
+          <span class="label" style="color: #101114;">Diploma in Programming</span>
+          <span class="data" style="color: #878b93;">6</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; font-weight: 500;">Database Management Systems</span>
+            <span class="data" style="font-size: 10.5px; color: #2440c4;">1p · 5q</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Programming, Data Structures…</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Modern Application Development I</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Programming Concepts using Java</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Modern Application Development II</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">System Commands</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #dcddd8; padding-bottom: 5px; margin-top: 18px;">
+          <span class="label" style="color: #101114;">Diploma in Data Science</span>
+          <span class="data" style="color: #878b93;">6</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Machine Learning Foundations</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Business Data Management</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Machine Learning Techniques</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Machine Learning Practice</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Business Analytics</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Tools in Data Science</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #dcddd8; padding-bottom: 5px; margin-top: 18px;">
+          <span class="label" style="color: #101114;">Foundation Level</span>
+          <span class="data" style="color: #878b93;">8</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Mathematics for Data Science I</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Statistics for Data Science I</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #dcddd8;">
+            <span style="flex-grow: 1; font-size: 13px; color: #55585f;">Computational Thinking</span>
+            <span class="data" style="font-size: 10.5px; color: #878b93;">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
