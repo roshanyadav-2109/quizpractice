@@ -15,7 +15,16 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { DEMO_ACCOUNTS, demoLoginsEnabled } from '@/lib/demo-accounts'
 import { buttonClass } from '@/components/ui/primitives'
-import { ArrowRight, CheckCircle, Gauge, User, WarningCircle, X } from '@/components/ui/icons'
+import {
+  ArrowRight,
+  CheckCircle,
+  EnvelopeSimple,
+  Gauge,
+  LockSimple,
+  User,
+  WarningCircle,
+  X,
+} from '@/components/ui/icons'
 
 interface AuthContext {
   /** Open the sign-in dialog; after signing in, go to `next` (or stay put). */
@@ -67,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <dialog
         ref={dialog}
         aria-labelledby="auth-title"
-        className="m-auto w-[min(860px,calc(100vw-1.5rem))] rounded-card border border-rule bg-surface p-0 text-ink backdrop:bg-ink/40"
+        className="m-auto w-[min(900px,calc(100vw-1.5rem))] rounded-[18px] border border-rule bg-surface p-0 text-ink backdrop:bg-ink/40"
       >
         <SignInPanel
           next={next}
@@ -158,27 +167,31 @@ function SignInPanel({
   }
 
   const field =
-    'h-11 w-full rounded-control border border-rule-strong bg-surface px-3.5 text-ui text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-ink'
+    'h-12 w-full rounded-control border border-rule-strong bg-surface-2 px-3.5 text-ui text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:bg-surface'
 
   return (
-    <div>
-      <div className="relative border-b border-rule px-6 py-5 text-center">
-        <h2 id="auth-title" className="text-[1.375rem] leading-tight font-medium text-ink">
-          Welcome to QuizPractice
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink"
-        >
-          <X size={20} />
-        </button>
-      </div>
+    <div className="relative px-2 pt-6 pb-7">
+      <h2 id="auth-title" className="text-center text-[1.5rem] leading-tight font-medium text-ink">
+        Welcome to <span className="font-semibold text-accent">QuizPractice</span>
+      </h2>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-control text-ink-muted hover:bg-surface-2 hover:text-ink"
+      >
+        <X size={20} />
+      </button>
 
-      <div className={`grid ${demoLoginsEnabled ? 'md:grid-cols-2' : ''}`}>
-        <section className="p-6 sm:p-7">
-          <h3 className="text-card font-medium text-ink">Sign in</h3>
+      <div className="mt-2 grid md:grid-cols-[1fr_1px_1fr]">
+        <Showcase />
+        <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
+
+        <section className="px-5 pt-4 sm:px-8">
+          <h3 className="text-[1.375rem] font-semibold text-ink">Sign in</h3>
+          <p className="mt-1 text-ui text-ink-muted">
+            {mode === 'password' ? 'Enter your email and password to continue.' : 'We’ll email you a one-time sign-in link.'}
+          </p>
 
           {sent ? (
             <div className="mt-5 flex items-start gap-3 rounded-control bg-correct-soft px-4 py-3.5">
@@ -190,17 +203,16 @@ function SignInPanel({
             </div>
           ) : (
             <>
-              <GoogleBlock onError={setError} onDone={completeSignIn} />
               <form
               onSubmit={(event) => {
                 event.preventDefault()
                 if (mode === 'password') void signInWithPassword(email, password)
                 else void sendMagicLink()
               }}
-              className="mt-5 flex flex-col gap-4"
+              className="mt-6 flex flex-col gap-4"
             >
               <label className="flex flex-col gap-1.5">
-                <span className="text-meta text-ink-muted">Email</span>
+                <span className="text-meta font-medium text-ink-muted">Email</span>
                 <input
                   type="email"
                   required
@@ -215,7 +227,7 @@ function SignInPanel({
 
               {mode === 'password' ? (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-meta text-ink-muted">Password</span>
+                  <span className="text-meta font-medium text-ink-muted">Password</span>
                   <input
                     type="password"
                     required
@@ -234,58 +246,140 @@ function SignInPanel({
                 </p>
               ) : null}
 
-              <button type="submit" disabled={busy} className={buttonClass('primary', 'lg', 'w-full')}>
+              <button type="submit" disabled={busy} className={buttonClass('primary', 'lg', 'h-12 w-full')}>
                 {busy ? 'Working…' : mode === 'password' ? 'Continue' : 'Email me a sign-in link'}
                 {busy ? null : <ArrowRight size={16} aria-hidden="true" />}
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'password' ? 'link' : 'password')
-                  setError(null)
-                }}
-                className="text-meta text-accent hover:underline"
-              >
-                {mode === 'password' ? 'Use a sign-in link instead' : 'Use a password instead'}
-              </button>
               </form>
+
+              <div className="my-5 flex items-center gap-3 text-meta text-ink-faint">
+                <span className="h-px flex-1 bg-rule" />
+                Or continue with
+                <span className="h-px flex-1 bg-rule" />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <GoogleButton onError={setError} onDone={completeSignIn} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'password' ? 'link' : 'password')
+                    setError(null)
+                  }}
+                  className="inline-flex h-10 items-center gap-2 rounded-[4px] border border-[#dadce0] bg-surface px-4 text-[0.875rem] font-medium text-ink transition-colors hover:bg-surface-2"
+                >
+                  {mode === 'password' ? <EnvelopeSimple size={18} className="text-accent" /> : <LockSimple size={18} className="text-accent" />}
+                  {mode === 'password' ? 'Email link' : 'Password'}
+                </button>
+              </div>
             </>
           )}
-        </section>
 
-        {demoLoginsEnabled ? (
-          <section className="border-t border-rule p-6 sm:p-7 md:border-t-0 md:border-l">
-            <h3 className="text-card font-medium text-ink">Demo accounts</h3>
-            <ul className="mt-4 flex flex-col gap-2">
-              {DEMO_ACCOUNTS.map((account) => (
-                <li key={account.email}>
+          {demoLoginsEnabled ? (
+            <div className="mt-6 border-t border-rule pt-4">
+              <p className="text-meta text-ink-faint">Demo accounts — remove before launch</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
                   <button
+                    key={account.email}
                     type="button"
                     disabled={busy}
                     onClick={() => void signInWithPassword(account.email, account.password)}
-                    className="flex w-full items-center gap-3 rounded-control border border-rule px-3.5 py-3 text-left transition-colors hover:border-rule-strong disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-control border border-rule px-3 py-1.5 text-meta text-ink-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-60"
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-muted">
-                      {account.role === 'admin' ? <Gauge size={18} /> : <User size={18} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-ui text-ink">{account.displayName}</span>
-                      <span className="block truncate text-meta text-ink-faint">{account.email}</span>
-                    </span>
-                    <ArrowRight size={16} aria-hidden="true" className="shrink-0 text-ink-faint" />
+                    {account.role === 'admin' ? <Gauge size={15} /> : <User size={15} />}
+                    {account.displayName}
                   </button>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 text-meta text-ink-faint">
-              Remove before launch: delete the accounts and set{' '}
-              <code className="font-mono text-[0.8125rem]">NEXT_PUBLIC_DEMO_LOGINS=false</code>.
-            </p>
-          </section>
-        ) : null}
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <p className="mt-6 text-center text-meta text-ink-faint">
+            By continuing you agree to use QuizPractice for your own practice.
+          </p>
+        </section>
       </div>
     </div>
+  )
+}
+
+/**
+ * The left half: an illustration on a soft blob, a one-line pitch, and dots.
+ * Slides rotate on their own (not under reduced motion) and the dots jump.
+ * Each image lives in public/art/login/ — until one is added, the blob stands
+ * alone rather than showing a broken image.
+ */
+const SLIDES = [
+  {
+    art: '/art/login/slide-1.png',
+    lead: 'Sit the',
+    accent: 'real papers',
+    body: 'Quiz 1, Quiz 2, End Term and OPPE from every term, under exam conditions.',
+  },
+  {
+    art: '/art/login/slide-2.png',
+    lead: 'Know your',
+    accent: 'score instantly',
+    body: 'A real CBT timer and palette, marked the moment you submit.',
+  },
+  {
+    art: '/art/login/slide-3.png',
+    lead: 'Learn from every',
+    accent: 'mistake',
+    body: 'Worked solutions and your attempt history, question by question.',
+  },
+] as const
+
+function Showcase() {
+  const [index, setIndex] = useState(0)
+  const [missing, setMissing] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => setIndex((current) => (current + 1) % SLIDES.length), 4500)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const slide = SLIDES[index]
+  return (
+    <section aria-label="Why sign in" className="hidden flex-col items-center px-8 pt-4 text-center md:flex">
+      <div className="relative grid aspect-[1/0.82] w-full max-w-[340px] place-items-center">
+        <div
+          aria-hidden="true"
+          className="absolute inset-[6%_4%_8%] rounded-[46%_54%_52%_48%/55%_48%_52%_45%] bg-surface-2"
+        />
+        {missing[slide.art] ? null : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={slide.art}
+            src={slide.art}
+            alt=""
+            onError={() => setMissing((current) => ({ ...current, [slide.art]: true }))}
+            className="relative w-[82%] max-w-full object-contain"
+          />
+        )}
+      </div>
+
+      <p className="mt-4 text-[1.5rem] leading-tight font-medium text-ink text-balance">
+        {slide.lead} <span className="text-accent">{slide.accent}</span>
+      </p>
+      <p className="mt-3 max-w-[32ch] text-ui text-ink-faint">{slide.body}</p>
+
+      <div className="mt-6 flex gap-2" role="tablist" aria-label="Slides">
+        {SLIDES.map((item, dot) => (
+          <button
+            key={item.art}
+            type="button"
+            role="tab"
+            aria-selected={dot === index}
+            aria-label={`Slide ${dot + 1}`}
+            onClick={() => setIndex(dot)}
+            className={`h-2 rounded-full transition-all ${dot === index ? 'w-5 bg-accent' : 'w-2 bg-rule-strong'}`}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -343,16 +437,18 @@ async function makeNonce() {
   return { raw, hashed }
 }
 
-/** The Google button, and the "or" that sets it apart from email. Renders
- *  nothing when no client id is configured, so email sign-in still stands alone. */
-function GoogleBlock({ onError, onDone }: { onError: (message: string) => void; onDone: () => void }) {
+/** Google's own button, rendered by GIS into a slot. Renders nothing when no
+ *  client id is configured, so the other ways in still stand alone. */
+function GoogleButton({ onError, onDone }: { onError: (message: string) => void; onDone: () => void }) {
   const slot = useRef<HTMLDivElement>(null)
   // The callbacks change every render; refs keep the one-time init from tearing
   // down and re-rendering Google's button on each keystroke in the form.
   const onErrorRef = useRef(onError)
   const onDoneRef = useRef(onDone)
-  onErrorRef.current = onError
-  onDoneRef.current = onDone
+  useEffect(() => {
+    onErrorRef.current = onError
+    onDoneRef.current = onDone
+  })
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return
@@ -381,10 +477,10 @@ function GoogleBlock({ onError, onDone }: { onError: (message: string) => void; 
           type: 'standard',
           theme: 'outline',
           size: 'large',
-          text: 'continue_with',
+          text: 'signin_with',
           shape: 'rectangular',
-          logo_alignment: 'center',
-          width: 336,
+          logo_alignment: 'left',
+          width: 220,
         })
       } catch (loadError) {
         if (!cancelled) onErrorRef.current(loadError instanceof Error ? loadError.message : 'Google sign-in is unavailable.')
@@ -396,16 +492,7 @@ function GoogleBlock({ onError, onDone }: { onError: (message: string) => void; 
   }, [])
 
   if (!GOOGLE_CLIENT_ID) return null
-  return (
-    <div className="mt-5">
-      <div ref={slot} className="flex min-h-11 justify-center [color-scheme:light]" />
-      <div className="mt-5 flex items-center gap-3 text-meta text-ink-faint" aria-hidden="true">
-        <span className="h-px flex-1 bg-rule" />
-        or
-        <span className="h-px flex-1 bg-rule" />
-      </div>
-    </div>
-  )
+  return <div ref={slot} className="flex h-10 min-w-[220px] justify-center [color-scheme:light]" />
 }
 
 /** A "Sign in" button anywhere on the site. */

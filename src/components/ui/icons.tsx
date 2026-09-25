@@ -30,6 +30,8 @@ export {
   SquaresFour,
   ArrowUpRight,
   Keyboard,
+  EnvelopeSimple,
+  LockSimple,
 
   // theme
   Sun,
