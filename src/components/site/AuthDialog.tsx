@@ -14,7 +14,13 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buttonClass } from '@/components/ui/primitives'
-import { WarningCircle, X } from '@/components/ui/icons'
+import { Check, WarningCircle, X } from '@/components/ui/icons'
+
+const PERKS = [
+  'Save every attempt and score',
+  'Get a full analysis after each paper',
+  'Track your progress on your dashboard',
+] as const
 
 interface AuthContext {
   /** Open the sign-in dialog; after signing in, go to `next` (or stay put). */
@@ -66,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <dialog
         ref={dialog}
         aria-labelledby="auth-title"
-        className="m-auto w-[min(900px,calc(100vw-1.5rem))] rounded-[18px] border border-rule bg-surface p-0 text-ink backdrop:bg-ink/40"
+        className="m-auto w-[min(1040px,calc(100vw-1.5rem))] rounded-[10px] border border-rule bg-surface p-0 text-ink backdrop:bg-ink/40"
       >
         <SignInPanel
           next={next}
@@ -117,7 +123,7 @@ function SignInPanel({
   }
 
   return (
-    <div className="relative px-2 pt-6 pb-8">
+    <div className="relative px-3 pt-8 pb-10">
       <h2 id="auth-title" className="text-center text-[1.625rem] leading-tight font-light text-ink">
         Welcome to <span className="font-normal text-accent">QuizPractice</span>
       </h2>
@@ -130,30 +136,39 @@ function SignInPanel({
         <X size={20} />
       </button>
 
-      <div className="mt-2 grid md:grid-cols-[1fr_1px_1fr]">
+      <div className="mt-4 grid md:min-h-[480px] md:grid-cols-[1fr_1px_1fr]">
         <Showcase />
         <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
 
-        <section className="flex flex-col justify-center px-5 pt-6 sm:px-10">
-          <h3 className="text-[1.375rem] font-normal text-ink">Sign in</h3>
-          <p className="mt-1.5 text-ui font-light text-ink-faint">
-            Use your Google account to continue. New here? The same button creates your account.
-          </p>
+        <section className="flex flex-col justify-center px-6 pt-6 pb-2 sm:px-12">
+          <h3 className="text-[1.5rem] leading-tight font-normal text-ink">Sign in</h3>
+          <p className="mt-2 text-ui text-ink-muted">Continue with your Google account.</p>
 
-          <div className="mt-8 flex justify-center">
+          <div className="mt-7">
             <GoogleButton onError={setError} onDone={completeSignIn} />
           </div>
+          <p className="mt-3 text-meta font-light text-ink-faint">New here? Signing in creates your account.</p>
 
           {shownError ? (
-            <p className="mt-5 flex items-start justify-center gap-2 text-meta text-incorrect">
+            <p className="mt-4 flex items-start gap-2 text-meta text-incorrect">
               <WarningCircle size={16} className="mt-0.5 shrink-0" />
               {shownError}
             </p>
           ) : null}
 
-          <p className="mt-8 text-center text-meta font-light text-ink-faint">
-            Your attempts, scores and history are saved to your account.
-          </p>
+          <div className="mt-8 border-t border-rule pt-6">
+            <p className="text-meta text-ink-muted">With an account you can</p>
+            <ul className="mt-3 flex flex-col gap-3">
+              {PERKS.map((perk) => (
+                <li key={perk} className="flex items-center gap-3 text-ui font-light text-ink">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <Check size={13} weight="bold" />
+                  </span>
+                  {perk}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       </div>
     </div>
@@ -200,7 +215,7 @@ function Showcase() {
   const slide = SLIDES[index]
   return (
     <section aria-label="Why sign in" className="hidden flex-col items-center px-8 pt-4 text-center md:flex">
-      <div className="relative grid aspect-[1/0.82] w-full max-w-[340px] place-items-center">
+      <div className="relative grid aspect-[1/0.82] w-full max-w-[420px] place-items-center">
         <div
           aria-hidden="true"
           className="absolute inset-[6%_4%_8%] rounded-[46%_54%_52%_48%/55%_48%_52%_45%] bg-surface-2"
@@ -309,6 +324,7 @@ function GoogleButton({ onError, onDone }: { onError: (message: string) => void;
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return
     let cancelled = false
+    let observer: ResizeObserver | null = null
     void (async () => {
       try {
         const { raw, hashed } = await makeNonce()
@@ -328,27 +344,41 @@ function GoogleButton({ onError, onDone }: { onError: (message: string) => void;
             else onDoneRef.current()
           },
         })
-        slot.current.replaceChildren()
-        id.renderButton(slot.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'rectangular',
-          logo_alignment: 'left',
-          width: 220,
-        })
+        // The dialog is closed (0px wide) when this first runs, so the button is
+        // drawn — and redrawn — whenever the slot actually has a width, filling
+        // the column within Google's 200–400px range.
+        const target = slot.current
+        let drawn = 0
+        const draw = () => {
+          const width = Math.round(Math.min(400, Math.max(200, target.clientWidth)))
+          if (!target.clientWidth || Math.abs(width - drawn) < 4) return
+          drawn = width
+          target.replaceChildren()
+          id.renderButton(target, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'center',
+            width,
+          })
+        }
+        observer = new ResizeObserver(draw)
+        observer.observe(target)
+        draw()
       } catch (loadError) {
         if (!cancelled) onErrorRef.current(loadError instanceof Error ? loadError.message : 'Google sign-in is unavailable.')
       }
     })()
     return () => {
       cancelled = true
+      observer?.disconnect()
     }
   }, [])
 
   if (!GOOGLE_CLIENT_ID) return null
-  return <div ref={slot} className="flex h-10 min-w-[220px] justify-center [color-scheme:light]" />
+  return <div ref={slot} className="flex h-10 w-full [color-scheme:light]" />
 }
 
 /** A "Sign in" button anywhere on the site. */
