@@ -432,7 +432,12 @@ export function ExamRunner(props: ExamRunnerProps) {
   )
 
   return (
-    <div className="flex h-dvh flex-col bg-surface">
+    // Fixed to the visual viewport rather than sized with h-dvh: the root
+    // layout's body is min-h-screen (100vh), and where the browser's 100vh and
+    // 100dvh disagree (Windows display scaling with a browser zoom, mobile
+    // toolbars) an h-dvh runner would sit shorter than the body and leave a gap
+    // with a page scrollbar. Fixed inset-0 always fills the real viewport.
+    <div className="fixed inset-0 flex flex-col bg-surface">
       {/* Header: the paper, the mode, and the clock. */}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-3 sm:px-5">
         <Link
