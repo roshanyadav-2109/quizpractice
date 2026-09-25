@@ -171,8 +171,8 @@ function SignInPanel({
 
   return (
     <div className="relative px-2 pt-6 pb-7">
-      <h2 id="auth-title" className="text-center text-[1.5rem] leading-tight font-medium text-ink">
-        Welcome to <span className="font-semibold text-accent">QuizPractice</span>
+      <h2 id="auth-title" className="text-center text-[1.625rem] leading-tight font-light text-ink">
+        Welcome to <span className="font-normal text-accent">QuizPractice</span>
       </h2>
       <button
         type="button"
@@ -188,8 +188,8 @@ function SignInPanel({
         <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
 
         <section className="px-5 pt-4 sm:px-8">
-          <h3 className="text-[1.375rem] font-semibold text-ink">Sign in</h3>
-          <p className="mt-1 text-ui text-ink-muted">
+          <h3 className="text-[1.375rem] font-normal text-ink">Sign in</h3>
+          <p className="mt-1.5 text-ui font-light text-ink-faint">
             {mode === 'password' ? 'Enter your email and password to continue.' : 'We’ll email you a one-time sign-in link.'}
           </p>
 
@@ -212,7 +212,7 @@ function SignInPanel({
               className="mt-6 flex flex-col gap-4"
             >
               <label className="flex flex-col gap-1.5">
-                <span className="text-meta font-medium text-ink-muted">Email</span>
+                <span className="text-meta text-ink-muted">Email</span>
                 <input
                   type="email"
                   required
@@ -227,7 +227,7 @@ function SignInPanel({
 
               {mode === 'password' ? (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-meta font-medium text-ink-muted">Password</span>
+                  <span className="text-meta text-ink-muted">Password</span>
                   <input
                     type="password"
                     required
@@ -266,7 +266,7 @@ function SignInPanel({
                     setMode(mode === 'password' ? 'link' : 'password')
                     setError(null)
                   }}
-                  className="inline-flex h-10 items-center gap-2 rounded-[4px] border border-[#dadce0] bg-surface px-4 text-[0.875rem] font-medium text-ink transition-colors hover:bg-surface-2"
+                  className="inline-flex h-10 items-center gap-2 rounded-[4px] border border-[#dadce0] bg-surface px-4 text-[0.875rem] font-normal text-ink transition-colors hover:bg-surface-2"
                 >
                   {mode === 'password' ? <EnvelopeSimple size={18} className="text-accent" /> : <LockSimple size={18} className="text-accent" />}
                   {mode === 'password' ? 'Email link' : 'Password'}
@@ -295,9 +295,6 @@ function SignInPanel({
             </div>
           ) : null}
 
-          <p className="mt-6 text-center text-meta text-ink-faint">
-            By continuing you agree to use QuizPractice for your own practice.
-          </p>
         </section>
       </div>
     </div>
@@ -313,21 +310,21 @@ function SignInPanel({
 const SLIDES = [
   {
     art: '/art/login/slide-1.png',
-    lead: 'Sit the',
-    accent: 'real papers',
-    body: 'Quiz 1, Quiz 2, End Term and OPPE from every term, under exam conditions.',
+    accent: 'Every Paper',
+    rest: 'in One Place',
+    body: '1,400+ Previous Year Papers, Quiz 1, Quiz 2, End Term, OPPE',
   },
   {
     art: '/art/login/slide-2.png',
-    lead: 'Know your',
-    accent: 'score instantly',
-    body: 'A real CBT timer and palette, marked the moment you submit.',
+    accent: 'Real Exam',
+    rest: 'Experience',
+    body: 'Timed CBT Mode, Question Palette, Mark for Review',
   },
   {
     art: '/art/login/slide-3.png',
-    lead: 'Learn from every',
-    accent: 'mistake',
-    body: 'Worked solutions and your attempt history, question by question.',
+    accent: 'Learn',
+    rest: 'from Every Attempt',
+    body: 'Worked Solutions, Score Analysis, Attempt History',
   },
 ] as const
 
@@ -361,10 +358,10 @@ function Showcase() {
         )}
       </div>
 
-      <p className="mt-4 text-[1.5rem] leading-tight font-medium text-ink text-balance">
-        {slide.lead} <span className="text-accent">{slide.accent}</span>
+      <p className="mt-4 text-[1.625rem] leading-tight font-light text-ink text-balance">
+        <span className="font-normal text-accent">{slide.accent}</span> {slide.rest}
       </p>
-      <p className="mt-3 max-w-[32ch] text-ui text-ink-faint">{slide.body}</p>
+      <p className="mt-4 max-w-[34ch] text-ui font-light text-ink-faint">{slide.body}</p>
 
       <div className="mt-6 flex gap-2" role="tablist" aria-label="Slides">
         {SLIDES.map((item, dot) => (

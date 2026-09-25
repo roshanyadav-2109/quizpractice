@@ -7,13 +7,14 @@ import { AuthProvider } from '@/components/site/AuthDialog'
 import { publicEnv } from '@/lib/env'
 
 /**
- * Everything that is words or numbers: regular for text, medium for headings.
- * Nothing heavier is ever used, so nothing heavier is loaded.
+ * Everything that is words or numbers: regular for text, medium for headings,
+ * light for large display lines and quiet secondary copy. Nothing heavier is
+ * ever used, so nothing heavier is loaded.
  */
 const lexend = Lexend({
   variable: '--font-lexend',
   subsets: ['latin'],
-  weight: ['400', '500'],
+  weight: ['300', '400', '500'],
   display: 'swap',
 })
 
