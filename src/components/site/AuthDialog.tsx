@@ -141,10 +141,10 @@ function SignInPanel({
         <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
 
         <section className="mx-auto flex w-full max-w-[496px] flex-col justify-center px-6 pt-6 pb-2 sm:px-12">
-          <h3 className="text-[1.5rem] leading-tight font-normal text-ink">Sign in</h3>
-          <p className="mt-2 text-ui text-ink-muted">Continue with your Google account.</p>
+          <h3 className="text-[1.5rem] leading-snug font-normal text-ink">Sign in</h3>
+          <p className="mt-3.5 text-ui text-ink-muted">Continue with your Google account.</p>
 
-          <div className="mt-7">
+          <div className="mt-8">
             <GoogleButton onError={setError} onDone={completeSignIn} />
           </div>
           <p className="mt-3 text-meta font-light text-ink-faint">New here? Signing in creates your account.</p>
