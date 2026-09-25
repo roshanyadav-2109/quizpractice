@@ -163,6 +163,34 @@ export default async function SubjectPage({
     }))
     .filter((group) => group.cards.length > 0)
 
+  // Narrowing to a year or a term is a signal that the student wants to see how
+  // that slice breaks down, so it splits into a labelled section per term. With
+  // neither set the whole exam is one mixed grid, newest first, uncluttered by
+  // headers no one asked for.
+  const narrowed = filter.year !== null || filter.season !== null
+  const flatCards = groups.flatMap((group) => group.cards)
+
+  const paperCard = ({ paper, set, best }: (typeof flatCards)[number]) => {
+    const duration = paper.duration_minutes ?? examType.default_duration_minutes
+    return (
+      <li key={set.id}>
+        <PaperCard
+          setId={set.id}
+          // Named by the day it was sat; in the mixed grid the date carries the
+          // term and year, so no section header is needed to tell them apart.
+          title={formatSession(paper.session_date)}
+          tags={[]}
+          date={paper.sets.length > 1 ? `Set ${set.set_code}` : ''}
+          facts={[
+            paper.total_marks ? `${Number(paper.total_marks)} marks` : '',
+            duration ? `${duration} min` : '',
+          ].filter(Boolean)}
+          best={best}
+        />
+      </li>
+    )
+  }
+
   return (
     <div className={`${SHELL} py-6`}>
       <Breadcrumb crumbs={crumbs} />
@@ -212,41 +240,23 @@ export default async function SubjectPage({
         ) : null}
       </FilterRow>
 
-      {groups.length > 0 ? (
+      {groups.length === 0 ? (
+        <p className="mt-5 rounded-card border border-rule bg-surface py-10 text-center text-ui text-ink-muted">
+          No papers match these filters.
+        </p>
+      ) : narrowed ? (
         <div className="mt-6 flex flex-col gap-8">
           {groups.map(({ term, cards }) => (
             <section key={term.key} aria-labelledby={`term-${term.key}`}>
               <h2 id={`term-${term.key}`} className="mb-3 text-card font-medium text-ink">
                 {term.label}
               </h2>
-              <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {cards.map(({ paper, set, best }) => {
-                  const duration = paper.duration_minutes ?? examType.default_duration_minutes
-                  return (
-                    <li key={set.id}>
-                      <PaperCard
-                        setId={set.id}
-                        // Inside its term a card is named by the day it was sat.
-                        title={formatSession(paper.session_date)}
-                        tags={[]}
-                        date={paper.sets.length > 1 ? `Set ${set.set_code}` : ''}
-                        facts={[
-                          paper.total_marks ? `${Number(paper.total_marks)} marks` : '',
-                          duration ? `${duration} min` : '',
-                        ].filter(Boolean)}
-                        best={best}
-                      />
-                    </li>
-                  )
-                })}
-              </ul>
+              <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{cards.map(paperCard)}</ul>
             </section>
           ))}
         </div>
       ) : (
-        <p className="mt-5 rounded-card border border-rule bg-surface py-10 text-center text-ui text-ink-muted">
-          No papers match these filters.
-        </p>
+        <ul className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{flatCards.map(paperCard)}</ul>
       )}
     </div>
   )
