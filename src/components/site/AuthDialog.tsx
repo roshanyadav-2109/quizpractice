@@ -13,18 +13,8 @@ import {
 } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { DEMO_ACCOUNTS, demoLoginsEnabled } from '@/lib/demo-accounts'
 import { buttonClass } from '@/components/ui/primitives'
-import {
-  ArrowRight,
-  CheckCircle,
-  EnvelopeSimple,
-  Gauge,
-  LockSimple,
-  User,
-  WarningCircle,
-  X,
-} from '@/components/ui/icons'
+import { WarningCircle, X } from '@/components/ui/icons'
 
 interface AuthContext {
   /** Open the sign-in dialog; after signing in, go to `next` (or stay put). */
@@ -107,8 +97,6 @@ function OpenFromUrl({ onOpen }: { onOpen: (next?: string, message?: string) => 
   return null
 }
 
-type Mode = 'password' | 'link'
-
 function SignInPanel({
   next,
   notice,
@@ -119,46 +107,8 @@ function SignInPanel({
   onClose: () => void
 }) {
   const router = useRouter()
-  const [mode, setMode] = useState<Mode>('password')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const shownError = error ?? notice
-
-  async function signInWithPassword(withEmail: string, withPassword: string) {
-    setBusy(true)
-    setError(null)
-    const { error: signInError } = await createClient().auth.signInWithPassword({
-      email: withEmail.trim(),
-      password: withPassword,
-    })
-    setBusy(false)
-    if (signInError) {
-      setError(signInError.message)
-      return
-    }
-    onClose()
-    if (next) router.push(next)
-    router.refresh()
-  }
-
-  async function sendMagicLink() {
-    setBusy(true)
-    setError(null)
-    const destination = next ?? window.location.pathname
-    const { error: linkError } = await createClient().auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
-      },
-    })
-    setBusy(false)
-    if (linkError) setError(linkError.message)
-    else setSent(true)
-  }
 
   function completeSignIn() {
     onClose()
@@ -166,11 +116,8 @@ function SignInPanel({
     router.refresh()
   }
 
-  const field =
-    'h-12 w-full rounded-control border border-rule-strong bg-surface-2 px-3.5 text-ui text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:bg-surface'
-
   return (
-    <div className="relative px-2 pt-6 pb-7">
+    <div className="relative px-2 pt-6 pb-8">
       <h2 id="auth-title" className="text-center text-[1.625rem] leading-tight font-light text-ink">
         Welcome to <span className="font-normal text-accent">QuizPractice</span>
       </h2>
@@ -187,114 +134,26 @@ function SignInPanel({
         <Showcase />
         <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
 
-        <section className="px-5 pt-4 sm:px-8">
+        <section className="flex flex-col justify-center px-5 pt-6 sm:px-10">
           <h3 className="text-[1.375rem] font-normal text-ink">Sign in</h3>
           <p className="mt-1.5 text-ui font-light text-ink-faint">
-            {mode === 'password' ? 'Enter your email and password to continue.' : 'We’ll email you a one-time sign-in link.'}
+            Use your Google account to continue. New here? The same button creates your account.
           </p>
 
-          {sent ? (
-            <div className="mt-5 flex items-start gap-3 rounded-control bg-correct-soft px-4 py-3.5">
-              <CheckCircle size={20} className="mt-0.5 shrink-0 text-correct" />
-              <p className="text-ui text-ink">
-                A sign-in link is on its way to <span className="text-ink">{email}</span>. It expires in an
-                hour.
-              </p>
-            </div>
-          ) : (
-            <>
-              <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                if (mode === 'password') void signInWithPassword(email, password)
-                else void sendMagicLink()
-              }}
-              className="mt-6 flex flex-col gap-4"
-            >
-              <label className="flex flex-col gap-1.5">
-                <span className="text-meta text-ink-muted">Email</span>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  spellCheck={false}
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  className={field}
-                />
-              </label>
+          <div className="mt-8 flex justify-center">
+            <GoogleButton onError={setError} onDone={completeSignIn} />
+          </div>
 
-              {mode === 'password' ? (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-meta text-ink-muted">Password</span>
-                  <input
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className={field}
-                  />
-                </label>
-              ) : null}
-
-              {shownError ? (
-                <p className="flex items-start gap-2 text-meta text-incorrect">
-                  <WarningCircle size={16} className="mt-0.5 shrink-0" />
-                  {shownError}
-                </p>
-              ) : null}
-
-              <button type="submit" disabled={busy} className={buttonClass('primary', 'lg', 'h-12 w-full')}>
-                {busy ? 'Working…' : mode === 'password' ? 'Continue' : 'Email me a sign-in link'}
-                {busy ? null : <ArrowRight size={16} aria-hidden="true" />}
-              </button>
-              </form>
-
-              <div className="my-5 flex items-center gap-3 text-meta text-ink-faint">
-                <span className="h-px flex-1 bg-rule" />
-                Or continue with
-                <span className="h-px flex-1 bg-rule" />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <GoogleButton onError={setError} onDone={completeSignIn} />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode(mode === 'password' ? 'link' : 'password')
-                    setError(null)
-                  }}
-                  className="inline-flex h-10 items-center gap-2 rounded-[4px] border border-[#dadce0] bg-surface px-4 text-[0.875rem] font-normal text-ink transition-colors hover:bg-surface-2"
-                >
-                  {mode === 'password' ? <EnvelopeSimple size={18} className="text-accent" /> : <LockSimple size={18} className="text-accent" />}
-                  {mode === 'password' ? 'Email link' : 'Password'}
-                </button>
-              </div>
-            </>
-          )}
-
-          {demoLoginsEnabled ? (
-            <div className="mt-6 border-t border-rule pt-4">
-              <p className="text-meta text-ink-faint">Demo accounts — remove before launch</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {DEMO_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void signInWithPassword(account.email, account.password)}
-                    className="inline-flex items-center gap-2 rounded-control border border-rule px-3 py-1.5 text-meta text-ink-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-60"
-                  >
-                    {account.role === 'admin' ? <Gauge size={15} /> : <User size={15} />}
-                    {account.displayName}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {shownError ? (
+            <p className="mt-5 flex items-start justify-center gap-2 text-meta text-incorrect">
+              <WarningCircle size={16} className="mt-0.5 shrink-0" />
+              {shownError}
+            </p>
           ) : null}
 
+          <p className="mt-8 text-center text-meta font-light text-ink-faint">
+            Your attempts, scores and history are saved to your account.
+          </p>
         </section>
       </div>
     </div>
