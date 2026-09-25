@@ -123,7 +123,7 @@ function SignInPanel({
   }
 
   return (
-    <div className="relative px-3 pt-8 pb-10">
+    <div className="relative px-3 pt-12 pb-12">
       <h2 id="auth-title" className="text-center text-[1.625rem] leading-tight font-light text-ink">
         Welcome to <span className="font-normal text-accent">QuizPractice</span>
       </h2>
@@ -136,11 +136,11 @@ function SignInPanel({
         <X size={20} />
       </button>
 
-      <div className="mt-4 grid md:min-h-[480px] md:grid-cols-[1fr_1px_1fr]">
+      <div className="mt-8 grid md:min-h-[520px] md:grid-cols-[1fr_1px_1fr]">
         <Showcase />
         <div aria-hidden="true" className="my-3 hidden bg-rule md:block" />
 
-        <section className="flex flex-col justify-center px-6 pt-6 pb-2 sm:px-12">
+        <section className="mx-auto flex w-full max-w-[496px] flex-col justify-center px-6 pt-6 pb-2 sm:px-12">
           <h3 className="text-[1.5rem] leading-tight font-normal text-ink">Sign in</h3>
           <p className="mt-2 text-ui text-ink-muted">Continue with your Google account.</p>
 
