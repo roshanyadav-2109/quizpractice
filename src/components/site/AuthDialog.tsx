@@ -183,19 +183,19 @@ function SignInPanel({
  */
 const SLIDES = [
   {
-    art: '/art/login/slide-1.png',
+    art: '/art/login/slide-1.webp',
     accent: 'Every Paper',
     rest: 'in One Place',
     body: '1,400+ Previous Year Papers, Quiz 1, Quiz 2, End Term, OPPE',
   },
   {
-    art: '/art/login/slide-2.png',
+    art: '/art/login/slide-2.webp',
     accent: 'Real Exam',
     rest: 'Experience',
     body: 'Timed CBT Mode, Question Palette, Mark for Review',
   },
   {
-    art: '/art/login/slide-3.png',
+    art: '/art/login/slide-3.webp',
     accent: 'Learn',
     rest: 'from Every Attempt',
     body: 'Worked Solutions, Score Analysis, Attempt History',
