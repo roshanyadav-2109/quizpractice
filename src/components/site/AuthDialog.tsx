@@ -151,6 +151,12 @@ function SignInPanel({
     else setSent(true)
   }
 
+  function completeSignIn() {
+    onClose()
+    if (next) router.push(next)
+    router.refresh()
+  }
+
   const field =
     'h-11 w-full rounded-control border border-rule-strong bg-surface px-3.5 text-ui text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-ink'
 
@@ -183,7 +189,9 @@ function SignInPanel({
               </p>
             </div>
           ) : (
-            <form
+            <>
+              <GoogleBlock onError={setError} onDone={completeSignIn} />
+              <form
               onSubmit={(event) => {
                 event.preventDefault()
                 if (mode === 'password') void signInWithPassword(email, password)
@@ -241,7 +249,8 @@ function SignInPanel({
               >
                 {mode === 'password' ? 'Use a sign-in link instead' : 'Use a password instead'}
               </button>
-            </form>
+              </form>
+            </>
           )}
         </section>
 
@@ -275,6 +284,125 @@ function SignInPanel({
             </p>
           </section>
         ) : null}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Google, on our own domain
+// ---------------------------------------------------------------------------
+//
+// The handshake is Google Identity Services running here, on our origin — the
+// prompt says "continue to <our site>", never a Supabase URL. We hand the
+// resulting Google ID token to Supabase with signInWithIdToken; Supabase only
+// verifies it and mints the session. So the client id is all the browser needs
+// (it is public by design); the client secret never touches this flow.
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
+interface GoogleIdApi {
+  initialize(config: {
+    client_id: string
+    nonce?: string
+    callback: (response: { credential: string }) => void
+  }): void
+  renderButton(parent: HTMLElement, options: Record<string, unknown>): void
+}
+
+function googleId(): GoogleIdApi | undefined {
+  return (window as unknown as { google?: { accounts?: { id?: GoogleIdApi } } }).google?.accounts?.id
+}
+
+let gisScript: Promise<void> | null = null
+function loadGis(): Promise<void> {
+  if (googleId()) return Promise.resolve()
+  gisScript ??= new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    script.onerror = () => {
+      gisScript = null
+      reject(new Error('Could not reach Google sign-in.'))
+    }
+    document.head.appendChild(script)
+  })
+  return gisScript
+}
+
+/** A raw nonce for Supabase, and its SHA-256 for Google — a token minted for
+ *  one prompt cannot be replayed into another. */
+async function makeNonce() {
+  const raw = crypto.randomUUID() + crypto.randomUUID()
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hashed = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+  return { raw, hashed }
+}
+
+/** The Google button, and the "or" that sets it apart from email. Renders
+ *  nothing when no client id is configured, so email sign-in still stands alone. */
+function GoogleBlock({ onError, onDone }: { onError: (message: string) => void; onDone: () => void }) {
+  const slot = useRef<HTMLDivElement>(null)
+  // The callbacks change every render; refs keep the one-time init from tearing
+  // down and re-rendering Google's button on each keystroke in the form.
+  const onErrorRef = useRef(onError)
+  const onDoneRef = useRef(onDone)
+  onErrorRef.current = onError
+  onDoneRef.current = onDone
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { raw, hashed } = await makeNonce()
+        await loadGis()
+        const id = googleId()
+        if (cancelled || !id || !slot.current) return
+        id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          nonce: hashed,
+          callback: async (response) => {
+            const { error } = await createClient().auth.signInWithIdToken({
+              provider: 'google',
+              token: response.credential,
+              nonce: raw,
+            })
+            if (error) onErrorRef.current(error.message)
+            else onDoneRef.current()
+          },
+        })
+        slot.current.replaceChildren()
+        id.renderButton(slot.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'center',
+          width: 336,
+        })
+      } catch (loadError) {
+        if (!cancelled) onErrorRef.current(loadError instanceof Error ? loadError.message : 'Google sign-in is unavailable.')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!GOOGLE_CLIENT_ID) return null
+  return (
+    <div className="mt-5">
+      <div ref={slot} className="flex min-h-11 justify-center [color-scheme:light]" />
+      <div className="mt-5 flex items-center gap-3 text-meta text-ink-faint" aria-hidden="true">
+        <span className="h-px flex-1 bg-rule" />
+        or
+        <span className="h-px flex-1 bg-rule" />
       </div>
     </div>
   )
