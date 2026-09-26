@@ -4,6 +4,7 @@ import { resolveReport } from '@/app/admin/actions'
 import { ActionButton } from '@/components/admin/ActionButton'
 import { blocksToText, parseBlocks } from '@/lib/blocks/schema'
 import type { ReportKind, ReportStatus } from '@/types/db'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,9 +79,9 @@ export default async function AdminReportsPage({
       </div>
 
       {reports.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-rule px-4 py-12 text-center text-sm text-ink-muted">
-          Nothing in this queue.
-        </p>
+        <EmptyState size="sm" art="all-clear" title="Nothing in this queue">
+          All caught up.
+        </EmptyState>
       ) : (
         <ul className="flex flex-col gap-3">
           {reports.map((report) => (

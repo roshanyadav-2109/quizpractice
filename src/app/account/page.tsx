@@ -8,6 +8,7 @@ import { SignOutButton } from '@/components/site/SignOutButton'
 import { SHELL, TitleCard } from '@/components/site/Page'
 import { ArrowRight } from '@/components/ui/icons'
 import { formatSession } from '@/lib/format'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,12 +66,20 @@ export default async function AccountPage() {
       <section className="mt-5 overflow-hidden rounded-card border border-rule bg-surface">
         <h2 className="px-5 pt-5 pb-3 text-[1.25rem] leading-tight font-medium text-ink">Attempt history</h2>
         {attempts.length === 0 ? (
-          <p className="border-t border-rule px-5 py-10 text-center text-ui text-ink-muted">
-            Nothing yet.{' '}
-            <Link href="/subjects" className="text-accent hover:underline">
-              Choose a subject
-            </Link>
-          </p>
+          <div className="border-t border-rule">
+            <EmptyState
+              framed={false}
+              art="welcome"
+              title="No papers sat yet"
+              actions={
+                <Link href="/subjects" className="text-ui text-accent hover:underline">
+                  Choose a subject
+                </Link>
+              }
+            >
+              Every paper you finish is listed here with its score.
+            </EmptyState>
+          </div>
         ) : (
           <ul>
             {attempts.map((attempt) => {

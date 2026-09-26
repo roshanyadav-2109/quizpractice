@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { LeaderboardRow } from '@/lib/queries'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export interface Board {
   key: string
@@ -62,9 +63,9 @@ export function Leaderboard({ boards }: { boards: Board[] }) {
       </div>
 
       {top.length === 0 ? (
-        <p className="mt-4 rounded-control bg-surface-2 px-4 py-8 text-center text-ui font-light text-ink-muted">
-          No one has sat a paper here yet.
-        </p>
+        <EmptyState className="mt-4" framed={false} size="sm" art="waiting-for-others" title="No one has sat a paper here yet">
+          Rankings appear as students finish papers.
+        </EmptyState>
       ) : (
         <ol className="mt-3 flex flex-col">
           <li className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_7.5rem] items-center gap-3 border-b border-rule px-3 pb-2 text-meta text-ink-faint">

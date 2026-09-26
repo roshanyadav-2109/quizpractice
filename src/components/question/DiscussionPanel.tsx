@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { SignInLink, useSignIn } from '@/components/site/AuthDialog'
 import { X } from '@/components/ui/icons'
 import type { DiscussionRow } from '@/types/db'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * How many comments a question has, replies included, without loading them —
@@ -246,7 +247,9 @@ export function DiscussionThread({
         {comments === null ? <p className="text-ui text-ink-muted">Loading…</p> : null}
 
         {comments && comments.length === 0 ? (
-          <p className="text-ui text-ink-muted">No comments yet. Be the first to explain your approach.</p>
+          <EmptyState framed={false} size="sm" art="no-discussion" title="No comments yet">
+            Be the first to explain your approach.
+          </EmptyState>
         ) : null}
 
         {roots.length > 0 ? (

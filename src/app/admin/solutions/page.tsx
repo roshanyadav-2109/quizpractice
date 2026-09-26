@@ -5,6 +5,7 @@ import { ActionButton } from '@/components/admin/ActionButton'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { blocksToText, parseBlocks } from '@/lib/blocks/schema'
 import type { ModerationStatus, SolutionKind } from '@/types/db'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,9 +68,9 @@ export default async function AdminSolutionsPage({
       </div>
 
       {solutions.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-rule px-4 py-12 text-center text-sm text-ink-muted">
-          Nothing in this queue.
-        </p>
+        <EmptyState size="sm" art="all-clear" title="Nothing in this queue">
+          All caught up.
+        </EmptyState>
       ) : (
         <ul className="flex flex-col gap-3">
           {solutions.map((solution) => (

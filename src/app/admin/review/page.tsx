@@ -4,6 +4,7 @@ import { setExtractionStatus } from '@/app/admin/actions'
 import { ActionButton } from '@/components/admin/ActionButton'
 import { cloudinaryUrl } from '@/lib/cloudinary'
 import type { ExtractionStatus } from '@/types/db'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,7 +82,7 @@ export default async function AdminReviewPage({
 
       {extractions.length === 0 ? (
         <div className="rounded-lg border border-dashed border-rule px-4 py-12 text-center">
-          <p className="text-sm text-ink-muted">Nothing in this queue.</p>
+          <EmptyState framed={false} size="sm" art="all-clear" title="Nothing in this queue" />
           <p className="mt-2 text-xs text-ink-faint">
             Extractions land here when you run{' '}
             <code className="font-mono">npm run paper:extract</code> and import the result.

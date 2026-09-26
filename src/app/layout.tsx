@@ -4,6 +4,7 @@ import './globals.css'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteChrome } from '@/components/site/SiteChrome'
 import { AuthProvider } from '@/components/site/AuthDialog'
+import { OfflineBanner } from '@/components/site/OfflineBanner'
 import { publicEnv } from '@/lib/env'
 
 /**
@@ -54,6 +55,7 @@ export default function RootLayout({
 
           <main className="flex-1">{children}</main>
         </AuthProvider>
+        <OfflineBanner />
       </body>
     </html>
   )

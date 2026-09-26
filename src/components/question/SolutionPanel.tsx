@@ -1,5 +1,6 @@
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import type { SolutionRow } from '@/types/db'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * The worked solution for one question, as the Solution sheet in the exam
@@ -11,9 +12,9 @@ import type { SolutionRow } from '@/types/db'
 export function SolutionPanel({ solutions }: { solutions: SolutionRow[] }) {
   if (!solutions.length) {
     return (
-      <p className="text-ui text-ink-muted">
-        No explanation has been written for this question yet.
-      </p>
+      <EmptyState framed={false} size="sm" art="no-solution" title="No explanation yet">
+        No worked solution has been written for this question yet.
+      </EmptyState>
     )
   }
 

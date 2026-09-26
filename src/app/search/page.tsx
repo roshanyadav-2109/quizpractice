@@ -10,6 +10,7 @@ import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
 import { Badge, buttonClass } from '@/components/ui/primitives'
 import { ArrowRight, MagnifyingGlass } from '@/components/ui/icons'
 import { formatSession } from '@/lib/format'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -165,7 +166,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                 ))}
               </p>
             ) : (
-              <p className="text-ui text-ink-muted">No results matched there.</p>
+              <EmptyState art="no-results" title="No questions found">
+                Try fewer or different words, or change where to look.
+              </EmptyState>
             )}
           </div>
         </>

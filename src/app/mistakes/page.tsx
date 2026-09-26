@@ -8,6 +8,7 @@ import { SetupNotice } from '@/components/site/SetupNotice'
 import { buttonClass } from '@/components/ui/primitives'
 import { ArrowRight } from '@/components/ui/icons'
 import { formatSession, formatShortDate } from '@/lib/format'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Mistake bank', robots: { index: false } }
@@ -74,13 +75,18 @@ export default async function MistakesPage({ searchParams }: { searchParams: Sea
         </header>
 
         {all.length === 0 ? (
-          <section className="mt-8 rounded-[10px] border border-rule bg-surface p-10 text-center">
-            <p className="text-card text-ink">Nothing here yet</p>
-            <p className="mt-2 text-ui font-light text-ink-muted">Questions you get wrong in a paper collect here automatically.</p>
-            <Link href="/subjects" className={buttonClass('primary', 'md', 'mt-6')}>
-              Sit a paper
-            </Link>
-          </section>
+          <EmptyState
+            className="mt-8"
+            art="welcome"
+            title="Nothing here yet"
+            actions={
+              <Link href="/subjects" className={buttonClass('primary', 'md')}>
+                Sit a paper
+              </Link>
+            }
+          >
+            Questions you get wrong in a paper collect here automatically.
+          </EmptyState>
         ) : (
           <>
             <div className="mt-7 grid gap-4 sm:grid-cols-3">
@@ -106,6 +112,12 @@ export default async function MistakesPage({ searchParams }: { searchParams: Sea
               })}
             </div>
 
+            {due === 0 ? (
+              <EmptyState className="mt-5" size="sm" art="all-clear" title="All caught up">
+                Every mistake {subject ? 'in this subject ' : ''}is fixed for now. Recaps come back here when they are due.
+              </EmptyState>
+            ) : null}
+
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
                 href={href({ subject: null })}
@@ -130,7 +142,9 @@ export default async function MistakesPage({ searchParams }: { searchParams: Sea
 
             <section className="mt-5 overflow-hidden rounded-[10px] border border-rule bg-surface">
               {shown.length === 0 ? (
-                <p className="px-6 py-10 text-center text-ui font-light text-ink-muted">Nothing in this view.</p>
+                <EmptyState framed={false} size="sm" art="no-results" title="Nothing in this view">
+                  Pick another status or subject.
+                </EmptyState>
               ) : (
                 <ul>
                   {shown.slice(0, SHOWN).map((m) => {

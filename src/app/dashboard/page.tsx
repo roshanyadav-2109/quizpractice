@@ -28,6 +28,7 @@ import { Leaderboard, type Board } from '@/components/dashboard/Leaderboard'
 import { SpeedMap, type SubjectQuality } from '@/components/dashboard/SpeedMap'
 import { artFor } from '@/lib/art'
 import { ActivityCalendar, AnswerSplit, Gauge, Panel, SubjectBars, type SubjectScore } from '@/components/dashboard/panels'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -151,7 +152,7 @@ export default async function StudentDashboard() {
         {header}
         <section className="mt-8 grid items-center gap-8 rounded-[10px] border border-rule bg-surface p-8 md:grid-cols-[320px_1fr]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/art/login/slide-2.webp" alt="" className="mx-auto w-full max-w-[300px]" />
+          <img src="/art/states/welcome.webp" alt="" className="mx-auto w-full max-w-[300px]" />
           <div>
             <h2 className="text-[1.5rem] font-light text-ink">
               Sit your <span className="font-normal text-accent">first paper</span>
@@ -476,13 +477,10 @@ export default async function StudentDashboard() {
                 ))}
               </ul>
             ) : (
-              <div className="rounded-control bg-surface-2 px-5 py-8 text-center">
-                <p className="text-ui text-ink">Waiting for more students</p>
-                <p className="mx-auto mt-1.5 max-w-[52ch] text-meta font-light text-ink-faint">
-                  This compares each question you missed with how other students did on it. It appears once at least three
-                  other students have answered the same questions.
-                </p>
-              </div>
+              <EmptyState framed={false} size="sm" art="waiting-for-others" title="Waiting for more students">
+                This compares each question you missed with how other students did on it. It appears once at least three
+                other students have answered the same questions.
+              </EmptyState>
             )}
           </Panel>
 

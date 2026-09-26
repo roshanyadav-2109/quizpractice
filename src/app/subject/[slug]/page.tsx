@@ -19,6 +19,7 @@ import { seasonName, termOf, yearTermFilter } from '@/lib/terms'
 import { artFor } from '@/lib/art'
 import { Art } from '@/components/ui/Art'
 import { CaretRight } from '@/components/ui/icons'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -135,9 +136,9 @@ export default async function SubjectPage({
             ))}
           </ul>
         ) : (
-          <p className="mt-6 rounded-card border border-rule bg-surface py-10 text-center text-ui text-ink-muted">
-            No papers for this subject yet.
-          </p>
+          <EmptyState className="mt-6" art="coming-soon" title="No papers for this subject yet">
+            Past papers appear here as soon as they are added.
+          </EmptyState>
         )}
       </div>
     )
@@ -241,9 +242,18 @@ export default async function SubjectPage({
       </FilterRow>
 
       {groups.length === 0 ? (
-        <p className="mt-5 rounded-card border border-rule bg-surface py-10 text-center text-ui text-ink-muted">
-          No papers match these filters.
-        </p>
+        <EmptyState
+          className="mt-5"
+          art="no-results"
+          title="No papers match these filters"
+          actions={
+            <Link href={`${subjectHref}?exam=${examType.slug}`} className="text-ui text-accent hover:underline">
+              Clear filters
+            </Link>
+          }
+        >
+          Loosen a filter or two to see more.
+        </EmptyState>
       ) : narrowed ? (
         <div className="mt-6 flex flex-col gap-8">
           {groups.map(({ term, cards }) => (

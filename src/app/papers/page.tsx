@@ -16,6 +16,7 @@ import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
 import { formatSession } from '@/lib/format'
 import { seasonName, yearTermFilter } from '@/lib/terms'
 import Link from 'next/link'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,9 +165,18 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
           })}
         </ul>
       ) : (
-        <p className="mt-5 rounded-card border border-rule bg-surface py-10 text-center text-ui text-ink-muted">
-          No papers match these filters.
-        </p>
+        <EmptyState
+          className="mt-5"
+          art="no-results"
+          title="No papers match these filters"
+          actions={
+            <Link href="/papers" className="text-ui text-accent hover:underline">
+              Clear all filters
+            </Link>
+          }
+        >
+          Loosen a filter or two to see more.
+        </EmptyState>
       )}
 
       {pages > 1 ? (

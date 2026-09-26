@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/primitives'
 import { SelectBox } from '@/components/site/FilterSelect'
 import { NavList, Panel, TitleCard, TwoPane } from '@/components/site/Page'
 import { artFor } from '@/lib/art'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export interface FinderSubject {
   id: string
@@ -234,9 +235,9 @@ export function SubjectFinder({
             </Panel>
           ) : (
             <Panel>
-              <p className="py-10 text-center text-ui text-ink-muted">
-                No papers in {program?.name ?? 'this programme'} yet.
-              </p>
+              <EmptyState framed={false} art="coming-soon" title={`No papers in ${program?.name ?? 'this programme'} yet`}>
+                Past papers appear here as soon as they are added.
+              </EmptyState>
             </Panel>
           )}
         </TwoPane>

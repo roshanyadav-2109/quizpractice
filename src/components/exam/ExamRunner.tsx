@@ -27,6 +27,7 @@ import { PALETTE_LEGEND, PALETTE_ORDER, legendClasses, paletteStateFor, type Pal
 import { useQuestionTiming } from './useQuestionTiming'
 import { SignInLink } from '@/components/site/AuthDialog'
 import { Trail } from '@/components/site/Page'
+import { EmptyState } from '@/components/ui/EmptyState'
 import {
   ArrowLeft,
   ArrowRight,
@@ -378,8 +379,10 @@ export function ExamRunner(props: ExamRunnerProps) {
 
   if (!question) {
     return (
-      <div className="flex h-dvh items-center justify-center p-6 text-ui text-ink-muted">
-        This paper has no questions yet.
+      <div className="flex h-dvh items-center justify-center p-6">
+        <EmptyState framed={false} art="coming-soon" title="This paper has no questions yet">
+          It is still being prepared. Try another paper from the same subject.
+        </EmptyState>
       </div>
     )
   }
