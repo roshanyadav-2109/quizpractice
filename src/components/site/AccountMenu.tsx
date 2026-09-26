@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Gauge, ShieldCheck, SignOut, User } from '@/components/ui/icons'
+import { Gauge, ShieldCheck, SignOut } from '@/components/ui/icons'
 
 /** "Roshan Singh" → "RS"; an email falls back to its first letter. */
 function initials(name: string): string {
@@ -59,8 +59,7 @@ function Avatar({ name, src, size }: { name: string; src: string | null; size: n
 
 /**
  * The student's photo in the bar, and behind it who they are signed in as and
- * the places that belong to their account: dashboard, account, admin for
- * staff, and sign out.
+ * their dashboard, admin for staff, and sign out.
  */
 export function AccountMenu({
   name,
@@ -151,10 +150,6 @@ export function AccountMenu({
           <Link role="menuitem" href="/dashboard" className={item} onClick={() => setOpen(false)}>
             <Gauge size={18} aria-hidden="true" className={icon} />
             Dashboard
-          </Link>
-          <Link role="menuitem" href="/account" className={item} onClick={() => setOpen(false)}>
-            <User size={18} aria-hidden="true" className={icon} />
-            Account
           </Link>
           {staff ? (
             <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
