@@ -14,6 +14,8 @@ import { buttonClass } from '@/components/ui/primitives'
 import { PaperCard } from '@/components/site/PaperCard'
 import { SHELL, TitleCard } from '@/components/site/Page'
 import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
+import { SubjectFilter, type SubjectGroup } from '@/components/site/SubjectFilter'
+import { artFor } from '@/lib/art'
 import { formatSession } from '@/lib/format'
 import { seasonName, yearTermFilter } from '@/lib/terms'
 import Link from 'next/link'
@@ -26,7 +28,14 @@ export const metadata: Metadata = {
   description: 'Every published IIT Madras BS degree question paper, newest sitting first.',
 }
 
-type SearchParams = Promise<{ exam?: string; year?: string; term?: string; program?: string; page?: string }>
+type SearchParams = Promise<{
+  exam?: string
+  year?: string
+  term?: string
+  program?: string
+  subject?: string
+  page?: string
+}>
 
 const PAGE_SIZE = 24
 
@@ -77,11 +86,45 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
       (!selectedExam || paper.exam_type_id === selectedExam.id) &&
       (!selectedProgram || programOf.get(paper.subject_id) === selectedProgram.slug),
   )
+  // The subject panel: every subject of the branch in force that has papers,
+  // by level, each with how many papers it has under the other filters.
+  const counting = yearTermFilter(scoped, query)
+  const countBySubject = new Map<string, number>()
+  for (const paper of scoped) {
+    if (counting.matches(paper.session_date)) {
+      countBySubject.set(paper.subject_id, (countBySubject.get(paper.subject_id) ?? 0) + paper.sets.length)
+    }
+  }
+  const withPapers = new Set(papers.map((paper) => paper.subject_id))
+  const subjectGroups: SubjectGroup[] = (selectedProgram ? [selectedProgram] : programs).flatMap((program) =>
+    program.levels
+      .map((level) => ({
+        key: `${program.slug}-${level.slug}`,
+        title: selectedProgram ? level.name : `${program.short_name ?? program.name} · ${level.name}`,
+        subjects: level.subjects
+          .filter((subject) => withPapers.has(subject.id))
+          .map((subject) => ({
+            slug: subject.slug,
+            name: subject.name,
+            code: subject.code,
+            count: countBySubject.get(subject.id) ?? 0,
+            icon: artFor('subjects', subject.slug),
+          })),
+      }))
+      .filter((group) => group.subjects.length > 0),
+  )
+  const selectedSubject = query.subject
+    ? (selectedProgram ? [selectedProgram] : programs)
+        .flatMap((program) => program.levels.flatMap((level) => level.subjects))
+        .find((subject) => subject.slug === query.subject && withPapers.has(subject.id))
+    : undefined
+  const inSubject = selectedSubject ? scoped.filter((paper) => paper.subject_id === selectedSubject.id) : scoped
+
   // Terms — January, May, September — rather than years: a year holds three
   // terms, each with its own Quiz 1, Quiz 2 and End Term.
-  const filter = yearTermFilter(scoped, query)
+  const filter = yearTermFilter(inSubject, query)
 
-  const cards = scoped
+  const cards = inSubject
     .filter((paper) => filter.matches(paper.session_date))
     .flatMap((paper) => paper.sets.map((set) => ({ paper, set })))
 
@@ -93,6 +136,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
     const search = new URLSearchParams()
     if (query.exam) search.set('exam', query.exam)
     if (query.program) search.set('program', query.program)
+    if (selectedSubject) search.set('subject', selectedSubject.slug)
     if (query.year) search.set('year', query.year)
     if (query.term) search.set('term', query.term)
     if (target > 1) search.set('page', String(target))
@@ -123,7 +167,12 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
             value: program.slug,
             label: program.short_name ?? program.name,
           }))}
-          resets={['year', 'term']}
+          resets={['year', 'term', 'subject']}
+        />
+        <SubjectFilter
+          groups={subjectGroups}
+          value={selectedSubject?.slug ?? null}
+          scope={selectedProgram ? (selectedProgram.short_name ?? selectedProgram.name) : 'Every branch'}
         />
         {filter.years.length > 1 ? (
           <FilterSelect
