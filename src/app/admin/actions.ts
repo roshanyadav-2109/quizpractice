@@ -404,3 +404,108 @@ export async function setExtractionStatus(
   revalidatePath('/admin/review')
   return { ok: true }
 }
+
+// ---------------------------------------------------------------------------
+// Spotlight: exam dates and announcement banners
+// ---------------------------------------------------------------------------
+
+const optionalId = z
+  .string()
+  .optional()
+  .transform((value) => value || null)
+  .pipe(z.string().uuid().nullable())
+const optionalDay = z
+  .string()
+  .optional()
+  .transform((value) => value || null)
+  .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a full date.').nullable())
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Keep it under ${max} characters.`)
+    .optional()
+    .transform((value) => value || null)
+
+const examDateInput = z.object({
+  exam_type_id: z.string().uuid('Pick an exam.'),
+  program_id: optionalId,
+  exam_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick the date of the exam.'),
+  note: optionalText(80),
+})
+
+export async function createExamDate(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireStaff()
+  } catch {
+    return fail('You need a contributor or admin account.')
+  }
+  const parsed = examDateInput.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return fail(parsed.error.issues[0].message)
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('exam_calendar').insert(parsed.data)
+  if (error) return fail(error.message)
+  revalidatePath('/admin/spotlight')
+  return { ok: true }
+}
+
+const bannerInput = z
+  .object({
+    kind: z.enum(['announcement', 'feature', 'release']),
+    eyebrow: optionalText(40),
+    title: z.string().trim().min(4, 'Give it a title.').max(90, 'Keep the title under 90 characters.'),
+    body: optionalText(240),
+    cta_label: optionalText(30),
+    cta_href: optionalText(300).pipe(
+      z.string().regex(/^(\/|https:\/\/)/, 'Links start with / or https://').nullable(),
+    ),
+    placements: z.array(z.enum(['home', 'dashboard', 'papers', 'subject'])).min(1, 'Pick at least one page.'),
+    program_id: optionalId,
+    starts_on: optionalDay,
+    ends_on: optionalDay,
+  })
+  .refine((banner) => Boolean(banner.cta_label) === Boolean(banner.cta_href), 'A button needs both a label and a link.')
+  .refine((banner) => !banner.starts_on || !banner.ends_on || banner.starts_on <= banner.ends_on, 'It ends before it starts.')
+
+export async function createBanner(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireStaff()
+  } catch {
+    return fail('You need a contributor or admin account.')
+  }
+  const parsed = bannerInput.safeParse({ ...Object.fromEntries(formData), placements: formData.getAll('placements') })
+  if (!parsed.success) return fail(parsed.error.issues[0].message)
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('banners').insert(parsed.data)
+  if (error) return fail(error.message)
+  revalidatePath('/admin/spotlight')
+  return { ok: true }
+}
+
+export async function setBannerActive(id: string, isActive: boolean): Promise<ActionState> {
+  try {
+    await requireStaff()
+  } catch {
+    return fail('You need a contributor or admin account.')
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.from('banners').update({ is_active: isActive }).eq('id', id)
+  if (error) return fail(error.message)
+  revalidatePath('/admin/spotlight')
+  return { ok: true }
+}
+
+export async function deleteSpotlightRow(table: 'banners' | 'exam_calendar', id: string): Promise<ActionState> {
+  try {
+    await requireStaff()
+  } catch {
+    return fail('You need a contributor or admin account.')
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.from(table).delete().eq('id', id)
+  if (error) return fail(error.message)
+  revalidatePath('/admin/spotlight')
+  return { ok: true }
+}

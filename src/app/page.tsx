@@ -14,6 +14,7 @@ import { artFor } from '@/lib/art'
 import { formatSession } from '@/lib/format'
 import { termOf } from '@/lib/terms'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { Spotlight } from '@/components/site/Spotlight'
 import { SHELL, Trail } from '@/components/site/Page'
 import { SignInButton } from '@/components/site/AuthDialog'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
@@ -145,6 +146,9 @@ export default async function HomePage() {
           </button>
         </form>
       </section>
+
+      {/* -------------------------------------------------------- Highlights */}
+      <Spotlight placement="home" className={`${SHELL} pb-14`} />
 
       {/* ------------------------------------------------------------- Exams */}
       <Section title="Exams" link={{ href: '/papers', label: 'All papers' }}>

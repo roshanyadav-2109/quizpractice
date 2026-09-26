@@ -136,3 +136,30 @@ export function CheckboxField({
     </label>
   )
 }
+
+export function TextAreaField({
+  label,
+  name,
+  placeholder,
+  hint,
+  rows = 3,
+}: {
+  label: string
+  name: string
+  placeholder?: string
+  hint?: string
+  rows?: number
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="label">{label}</span>
+      <textarea
+        name={name}
+        rows={rows}
+        placeholder={placeholder}
+        className="rounded-[3px] border border-rule bg-surface px-2.5 py-1.5 text-[0.8125rem] text-ink outline-none focus:border-accent"
+      />
+      {hint ? <span className="text-[0.71875rem] text-ink-faint">{hint}</span> : null}
+    </label>
+  )
+}

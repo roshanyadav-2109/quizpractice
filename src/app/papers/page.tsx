@@ -9,6 +9,7 @@ import {
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { Spotlight } from '@/components/site/Spotlight'
 import { buttonClass } from '@/components/ui/primitives'
 import { PaperCard } from '@/components/site/PaperCard'
 import { SHELL, TitleCard } from '@/components/site/Page'
@@ -102,6 +103,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
   return (
     <div className={`${SHELL} py-6`}>
       <TitleCard title="All papers" />
+      <Spotlight placement="papers" programSlug={query.program ?? null} className="mt-6 mb-2" />
 
       <FilterRow>
         <FilterSelect

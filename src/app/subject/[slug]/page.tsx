@@ -11,6 +11,7 @@ import {
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { Spotlight } from '@/components/site/Spotlight'
 import { PaperCard } from '@/components/site/PaperCard'
 import { Breadcrumb, SHELL, TitleCard, Trail } from '@/components/site/Page'
 import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
@@ -114,6 +115,12 @@ export default async function SubjectPage({
           back={levelHref}
           icon={art ? <Art src={art} size={48} /> : undefined}
           title={subject.name}
+        />
+
+        <Spotlight
+          placement="subject"
+          subject={{ id: subject.id, slug: subject.slug, name: subject.name, programId: program.id }}
+          className="mt-6"
         />
 
         {exams.length > 0 ? (

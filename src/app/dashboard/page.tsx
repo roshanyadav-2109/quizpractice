@@ -19,6 +19,7 @@ import {
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { Spotlight } from '@/components/site/Spotlight'
 import { buttonClass } from '@/components/ui/primitives'
 import { ArrowRight, Lightning } from '@/components/ui/icons'
 import { formatCount, formatDuration, formatSession, formatShortDate, istDayKey } from '@/lib/format'
@@ -150,6 +151,7 @@ export default async function StudentDashboard() {
       <div className="min-h-[calc(100dvh-4rem)] bg-canvas">
       <div className={`${WIDE} py-8`}>
         {header}
+        <Spotlight placement="dashboard" className="mt-6" />
         <section className="mt-8 grid items-center gap-8 rounded-[10px] border border-rule bg-surface p-8 md:grid-cols-[320px_1fr]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/art/states/welcome.webp" alt="" className="mx-auto w-full max-w-[300px]" />
@@ -376,6 +378,12 @@ export default async function StudentDashboard() {
     <div className="min-h-[calc(100dvh-4rem)] bg-canvas">
       <div className={`${WIDE} py-8`}>
         {header}
+        <Spotlight
+          placement="dashboard"
+          focus={topSubject ? { id: topSubject.subject.id, slug: topSubject.subject.slug, name: topSubject.subject.name } : null}
+          programSlug={topSubject?.program.slug ?? null}
+          className="mt-6"
+        />
 
         {/* Performance, with a dial for recent form */}
         <div className="mt-7 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
