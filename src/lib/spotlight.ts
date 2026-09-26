@@ -226,9 +226,12 @@ function releaseSpotlight(
   }
 }
 
-/** Mistakes waiting for a retry. The dashboard shows these itself, so not there. */
+/**
+ * Mistakes waiting for a retry. Not on the home page, which has its own
+ * call to action for them, nor the dashboard, which shows them itself.
+ */
 async function mistakesSpotlight(context: SpotlightContext, today: string): Promise<Spotlight | null> {
-  if (context.placement === 'dashboard') return null
+  if (context.placement === 'dashboard' || context.placement === 'home') return null
   const bank = await getMistakeBank()
   const subject = context.subject
   const due = bank.filter((m) => m.state !== 'fixed' && (!subject || m.subjectSlug === subject.slug)).length
@@ -244,7 +247,6 @@ async function mistakesSpotlight(context: SpotlightContext, today: string): Prom
       label: 'Retry now',
       href: subject ? `/mistakes/practice?subject=${subject.slug}` : '/mistakes/practice',
     },
-    secondary: { label: 'Open the bank', href: subject ? `/mistakes?subject=${subject.slug}` : '/mistakes' },
     screens: SCREENS.insights,
   }
 }

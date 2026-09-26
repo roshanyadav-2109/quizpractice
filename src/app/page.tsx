@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import {
   getBrowseTree,
   getCatalogueCounts,
@@ -18,6 +18,7 @@ import { Spotlight } from '@/components/site/Spotlight'
 import { SHELL, Trail } from '@/components/site/Page'
 import { SignInButton } from '@/components/site/AuthDialog'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
+import { MistakesCta } from '@/components/home/MistakesCta'
 import { Art } from '@/components/ui/Art'
 import { buttonClass } from '@/components/ui/primitives'
 import { ArrowRight, MagnifyingGlass } from '@/components/ui/icons'
@@ -145,6 +146,12 @@ export default async function HomePage() {
             Search
           </button>
         </form>
+
+        {profile ? (
+          <Suspense fallback={null}>
+            <MistakesCta />
+          </Suspense>
+        ) : null}
       </section>
 
       {/* ------------------------------------------------------------- Exams */}

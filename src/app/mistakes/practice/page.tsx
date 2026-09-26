@@ -21,7 +21,8 @@ type SearchParams = Promise<{ subject?: string }>
 export default async function RetryMistakes({ searchParams }: { searchParams: SearchParams }) {
   if (!isSupabaseConfigured) return <SetupNotice />
   const [profile, { subject }] = await Promise.all([getCurrentProfile(), searchParams])
-  const back = subject ? `/mistakes?subject=${subject}` : '/mistakes'
+  // Back to where retrying starts: the home page, or the subject's page.
+  const back = subject ? `/subject/${subject}` : '/'
   const self = subject ? `/mistakes/practice?subject=${subject}` : '/mistakes/practice'
   if (!profile) redirect(`/?login=1&next=${encodeURIComponent(self)}`)
 
