@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BackLink } from '@/components/site/BackLink'
 import { Fragment, type ReactNode } from 'react'
 import { ArrowLeft, CaretRight } from '@/components/ui/icons'
 
@@ -228,13 +229,13 @@ export function TitleCard({
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 items-center gap-3">
           {back ? (
-            <Link
+            <BackLink
               href={back}
               aria-label="Back"
               className="-ml-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-2"
             >
               <ArrowLeft size={22} aria-hidden="true" />
-            </Link>
+            </BackLink>
           ) : null}
           {icon}
           <div className="min-w-0">

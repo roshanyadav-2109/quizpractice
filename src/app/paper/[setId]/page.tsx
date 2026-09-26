@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
@@ -11,6 +10,7 @@ import { StartControls } from '@/components/exam/StartControls'
 import { SignInLink } from '@/components/site/AuthDialog'
 import { legendClasses, type PaletteState } from '@/components/exam/palette-state'
 import { ArrowLeft, Check, Clock } from '@/components/ui/icons'
+import { BackLink } from '@/components/site/BackLink'
 import { formatSession } from '@/lib/format'
 import { termOf } from '@/lib/terms'
 
@@ -77,13 +77,13 @@ export default async function PaperIntroPage({ params }: { params: Params }) {
             {/* The paper and its figures. */}
             <section className="rounded-card bg-surface px-5 py-4 sm:px-6">
               <div className="flex items-start gap-2">
-                <Link
+                <BackLink
                   href={examHref}
-                  aria-label={`Back to ${subject.name} ${examType.name} papers`}
+                  aria-label="Back"
                   className="-ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-2"
                 >
                   <ArrowLeft size={18} aria-hidden="true" />
-                </Link>
+                </BackLink>
                 <div className="min-w-0">
                   <h1 className="text-card font-medium text-ink">
                     <Trail parts={[subject.name, examType.name]} />

@@ -16,6 +16,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { AnswerInput } from './AnswerInput'
 import { ExamTimer } from './ExamTimer'
 import { LazySolutionPanel } from '@/components/question/LazySolutionPanel'
+import { BackLink } from '@/components/site/BackLink'
 import { DiscussionThread, countDiscussion } from '@/components/question/DiscussionPanel'
 import { ReportButton } from '@/components/question/ReportButton'
 import { gradeQuestion, isAnswered } from '@/lib/scoring'
@@ -467,14 +468,14 @@ export function ExamRunner(props: ExamRunnerProps) {
     <div className="fixed inset-0 flex flex-col bg-surface">
       {/* Header: the paper, the mode, and the clock. */}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-3 sm:px-5">
-        <Link
+        <BackLink
           href={review?.backHref ?? `/paper/${setId}`}
           aria-label={review ? 'Back to the mistake bank' : 'Leave the paper'}
           title={review ? 'Back to the mistake bank' : 'Leave the paper — your answers stay saved on this device'}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink hover:bg-surface-2"
         >
           <ArrowLeft size={20} />
-        </Link>
+        </BackLink>
         <div className="min-w-0 flex-1">
           {review ? (
             <>
