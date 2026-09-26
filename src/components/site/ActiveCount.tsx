@@ -1,6 +1,6 @@
 /**
  * How many students practised a subject this week, with a small green dot.
- * Renders nothing without a count — the database only reports three or more.
+ * Renders nothing without a count — the database only reports 100 or more.
  */
 export function ActiveCount({ count, compact = false }: { count: number | undefined; compact?: boolean }) {
   if (!count) return null

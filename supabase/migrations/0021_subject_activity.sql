@@ -3,8 +3,8 @@
 --
 -- active_students_by_subject(): distinct students who submitted a paper or
 -- retried a mistake in each subject over the last N days. Counts only, and
--- only where at least three students were active, so a number never points at
--- one person and a quiet subject shows nothing rather than "1".
+-- only where at least 100 students were active: a number never points at a
+-- person, and a subject shows nothing until the count is worth showing.
 -- SECURITY DEFINER because it counts across everyone's attempts; it returns
 -- nothing but the subject and the count.
 -- =============================================================================
@@ -37,7 +37,7 @@ as $$
   from activity act
   join public.profiles pr on pr.id = act.user_id and pr.role = 'student'
   group by act.subject_id
-  having count(distinct act.user_id) >= 3;
+  having count(distinct act.user_id) >= 100;
 $$;
 
 grant execute on function public.active_students_by_subject(int) to anon, authenticated;

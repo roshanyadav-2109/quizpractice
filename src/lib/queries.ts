@@ -776,7 +776,7 @@ export const getPopularSearches = shared(
 
 /**
  * How many students practised each subject in the last week, by subject id —
- * only subjects where at least three did (the database leaves out the rest).
+ * only subjects where at least 100 did (the database leaves out the rest).
  * Shared, and refreshed every fifteen minutes.
  */
 export const getActiveStudents = shared(

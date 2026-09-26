@@ -11,7 +11,7 @@ export interface SubjectChoice {
   code: string | null
   /** Papers under the other filters in force. */
   count: number
-  /** Students who practised it this week, when three or more did. */
+  /** Students who practised it this week, when 100 or more did. */
   active?: number
   icon: string | null
 }
