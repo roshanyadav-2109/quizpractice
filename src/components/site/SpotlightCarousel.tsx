@@ -183,7 +183,7 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
  */
 function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
   return (
-    <div aria-hidden="true" className="hidden items-end self-end pr-4 pb-5 lg:flex">
+    <div aria-hidden="true" className="hidden items-end self-end pr-10 pb-5 lg:flex">
       <div className="w-[19rem]">
         <div className="rounded-t-[10px] bg-[#0d0d12] p-[6px] pb-[7px] ring-1 ring-white/15">
           <Image
