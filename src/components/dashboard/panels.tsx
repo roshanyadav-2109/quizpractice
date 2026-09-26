@@ -19,7 +19,7 @@ export function Panel({
   className?: string
 }) {
   return (
-    <section className={`min-w-0 rounded-[10px] border border-rule bg-surface p-5 sm:p-6 ${className}`}>
+    <section className={`relative min-w-0 rounded-[10px] border border-rule bg-surface p-5 sm:p-6 ${className}`}>
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-[1.0625rem] leading-snug font-normal text-ink">{title}</h2>
@@ -32,27 +32,38 @@ export function Panel({
   )
 }
 
-export function StatTile({
-  icon,
-  label,
-  value,
-  caption,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-  caption: string
-}) {
+/**
+ * A dial for one ratio against its limit: the arc fills to the value on a
+ * lighter track of the same blue, with a needle so the reading holds without
+ * colour.
+ */
+export function Gauge({ value, label }: { value: number; label: string }) {
+  const v = Math.min(100, Math.max(0, value))
+  const cx = 130
+  const cy = 128
+  const r = 100
+  const angle = Math.PI * (1 - v / 100)
+  const end = { x: cx + r * Math.cos(angle), y: cy - r * Math.sin(angle) }
+  const needle = { x: cx + 76 * Math.cos(angle), y: cy - 76 * Math.sin(angle) }
   return (
-    <div className="flex items-start gap-4 rounded-[10px] border border-rule bg-surface p-5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-meta text-ink-muted">{label}</p>
-        <p className="mt-1 text-[1.75rem] leading-none font-normal text-ink">{value}</p>
-        <p className="mt-2 truncate text-meta font-light text-ink-faint">{caption}</p>
-      </div>
+    <div className="flex flex-col items-center">
+      <svg viewBox="0 0 260 150" className="w-full max-w-[280px]" role="img" aria-label={`${label}: ${Math.round(v)}%`}>
+        <path d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`} fill="none" stroke="var(--color-accent-soft)" strokeWidth={16} strokeLinecap="round" />
+        {v > 0 ? (
+          <path
+            d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${end.x.toFixed(2)},${end.y.toFixed(2)}`}
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth={16}
+            strokeLinecap="round"
+          />
+        ) : null}
+        <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke="var(--color-accent)" strokeWidth={3} strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r={7} fill="var(--color-surface)" stroke="var(--color-accent)" strokeWidth={3} />
+        <text x={cx - r} y={cy + 20} textAnchor="middle" className="fill-ink-faint text-[11px]">0</text>
+        <text x={cx + r} y={cy + 20} textAnchor="middle" className="fill-ink-faint text-[11px]">100</text>
+      </svg>
+      <p className="-mt-1 text-[2.75rem] leading-none font-light text-ink">{Math.round(v)}%</p>
     </div>
   )
 }

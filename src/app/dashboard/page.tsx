@@ -1,18 +1,34 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { getMyAnswerAnalytics, getMyAttempts, summariseMyAttempts, type MyAttempt } from '@/lib/queries'
+import {
+  getExamTypes,
+  getLeaderboard,
+  getMyAnswerAnalytics,
+  getMyAttempts,
+  getSubjectBySlug,
+  getSuggestedSets,
+  summariseMyAttempts,
+  type AnswerBreakdown,
+  type LeaderboardScope,
+  type MyAttempt,
+} from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { buttonClass } from '@/components/ui/primitives'
-import { SHELL } from '@/components/site/Page'
-import { ArrowRight, CheckCircle, Clock, Exam, Lightning, Target } from '@/components/ui/icons'
+import { ArrowRight, Lightning } from '@/components/ui/icons'
 import { formatCount, formatDuration, formatSession, formatShortDate, istDayKey } from '@/lib/format'
-import { ScoreTrend, type TrendPoint } from '@/components/dashboard/ScoreTrend'
-import { ActivityCalendar, AnswerSplit, Panel, StatTile, SubjectBars, type SubjectScore } from '@/components/dashboard/panels'
+import { MetricExplorer, type MetricKey, type MetricSummary, type PaperPoint } from '@/components/dashboard/MetricExplorer'
+import { PaperCarousel, type CarouselPaper } from '@/components/dashboard/PaperCarousel'
+import { Leaderboard, type Board } from '@/components/dashboard/Leaderboard'
+import { artFor } from '@/lib/art'
+import { ActivityCalendar, AnswerSplit, Gauge, Panel, SubjectBars, type SubjectScore } from '@/components/dashboard/panels'
 
 export const dynamic = 'force-dynamic'
+
+/** Wider than the site's reading width: a dashboard is scanned, not read. */
+const WIDE = 'mx-auto w-full max-w-[100rem] px-4 sm:px-6 lg:px-10'
 
 export const metadata: Metadata = { title: 'Dashboard', robots: { index: false } }
 
@@ -29,6 +45,26 @@ function greeting(): string {
 function percentageOf(attempt: MyAttempt): number | null {
   const max = Number(attempt.max_score ?? 0)
   return max > 0 ? Math.round((Number(attempt.score ?? 0) / max) * 100) : null
+}
+
+const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length
+
+/** Recent papers against the same number just before them, once there are two. */
+function recentChange(values: number[]): number | null {
+  if (values.length < 2) return null
+  const k = Math.min(5, Math.floor(values.length / 2))
+  return mean(values.slice(-k)) - mean(values.slice(-2 * k, -k))
+}
+
+function paperMetrics(attempt: MyAttempt, split: AnswerBreakdown | undefined) {
+  const total = split ? split.correct + split.wrong + split.skipped + split.unmarked : 0
+  const answered = split ? split.correct + split.wrong : 0
+  return {
+    score: percentageOf(attempt),
+    accuracy: split && answered ? (split.correct / answered) * 100 : null,
+    attemptRate: split && total ? ((total - split.skipped) / total) * 100 : null,
+    secPerQ: split && split.timedAnswers ? split.timeSpent / split.timedAnswers : null,
+  }
 }
 
 /** Time spent on papers finished in the last seven days. */
@@ -106,7 +142,8 @@ export default async function StudentDashboard() {
 
   if (!last) {
     return (
-      <div className={`${SHELL} py-8`}>
+      <div className="min-h-[calc(100dvh-4rem)] bg-canvas">
+      <div className={`${WIDE} py-8`}>
         {header}
         <section className="mt-8 grid items-center gap-8 rounded-[10px] border border-rule bg-surface p-8 md:grid-cols-[320px_1fr]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -126,29 +163,49 @@ export default async function StudentDashboard() {
           </div>
         </section>
       </div>
+      </div>
     )
   }
 
   // ---- figures -------------------------------------------------------------
-  const { breakdown, topics } = analytics
-  const answered = breakdown.correct + breakdown.wrong
-  const accuracy = answered ? Math.round((breakdown.correct / answered) * 100) : null
-  const bestPct = progress.best ? percentageOf(progress.best) : null
+  const { breakdown, byAttempt, topics } = analytics
+  const chronological = [...attempts].reverse()
+  const metricsFor = (attempt: MyAttempt) => paperMetrics(attempt, byAttempt[attempt.id])
 
-  const totalSeconds = attempts.reduce((sum, a) => sum + (a.duration_seconds ?? 0), 0)
-  const weekSeconds = secondsInLastWeek(attempts)
-
-  const trend: TrendPoint[] = attempts
-    .filter((a) => percentageOf(a) !== null && a.submitted_at)
-    .slice(0, 15)
-    .reverse()
+  const points: PaperPoint[] = chronological
+    .filter((a) => a.submitted_at)
+    .slice(-15)
     .map((a) => ({
       id: a.id,
-      percentage: percentageOf(a) ?? 0,
+      date: formatShortDate(a.submitted_at!),
       subject: a.subject_name,
       exam: a.exam_type_name,
-      date: formatShortDate(a.submitted_at!),
+      ...metricsFor(a),
     }))
+
+  const answered = breakdown.correct + breakdown.wrong
+  const totalAnswers = answered + breakdown.skipped + breakdown.unmarked
+  const series = (key: MetricKey) =>
+    chronological.map((a) => metricsFor(a)[key]).filter((v): v is number => v !== null)
+  const summary: Record<MetricKey, MetricSummary> = {
+    score: { value: progress.averagePercentage, delta: recentChange(series('score')) },
+    accuracy: { value: answered ? (breakdown.correct / answered) * 100 : null, delta: recentChange(series('accuracy')) },
+    attemptRate: {
+      value: totalAnswers ? ((totalAnswers - breakdown.skipped) / totalAnswers) * 100 : null,
+      delta: recentChange(series('attemptRate')),
+    },
+    secPerQ: {
+      value: breakdown.timedAnswers ? breakdown.timeSpent / breakdown.timedAnswers : null,
+      delta: recentChange(series('secPerQ')),
+    },
+  }
+
+  const scores = series('score')
+  const formWindow = scores.slice(-5)
+  const form = formWindow.length ? mean(formWindow) : null
+  const formVsOverall = form !== null && progress.averagePercentage !== null ? form - progress.averagePercentage : null
+  const bestPct = progress.best ? percentageOf(progress.best) : null
+  const weekSeconds = secondsInLastWeek(attempts)
 
   const bySubject = new Map<string, SubjectScore>()
   for (const attempt of attempts) {
@@ -169,6 +226,48 @@ export default async function StudentDashboard() {
     bySubject.set(attempt.subject_slug, entry)
   }
   const subjects = [...bySubject.values()].sort((a, b) => b.percentage - a.percentage)
+
+  // Recommended papers and the leaderboards both follow what is practised most:
+  // the top subject (and its level and branch) and the most-sat exam.
+  const practised = [...bySubject.values()].sort((a, b) => b.attempts - a.attempts).map((s) => s.slug)
+  const examCounts = new Map<string, number>()
+  for (const attempt of attempts) examCounts.set(attempt.exam_type_name, (examCounts.get(attempt.exam_type_name) ?? 0) + 1)
+  const topExamName = [...examCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  const [suggested, topSubject, examTypes] = await Promise.all([
+    getSuggestedSets(practised, new Set(progress.bySet.keys()), 12),
+    practised[0] ? getSubjectBySlug(practised[0]) : Promise.resolve(null),
+    getExamTypes(),
+  ])
+  const topExam = examTypes.find((type) => type.name === topExamName) ?? null
+
+  type BoardSpec = Omit<Board, 'rows'> & { scope: LeaderboardScope; scopeKey: string | null }
+  const boardSpecs: BoardSpec[] = [
+    { key: 'overall', label: 'Overall', note: 'Every paper on QuizPractice', scope: 'overall', scopeKey: null },
+    ...(topSubject
+      ? [
+          { key: 'subject', label: topSubject.subject.name, note: `${topSubject.subject.name} papers`, scope: 'subject' as const, scopeKey: topSubject.subject.slug },
+        ]
+      : []),
+    ...(topExam ? [{ key: 'exam', label: topExam.name, note: `Every ${topExam.name} paper`, scope: 'exam' as const, scopeKey: topExam.slug }] : []),
+    ...(topSubject
+      ? [
+          { key: 'level', label: topSubject.level.name, note: `Subjects in ${topSubject.level.name}, ${topSubject.program.short_name ?? topSubject.program.name}`, scope: 'level' as const, scopeKey: topSubject.level.id },
+          { key: 'program', label: topSubject.program.short_name ?? topSubject.program.name, note: `Every subject in ${topSubject.program.name}`, scope: 'program' as const, scopeKey: topSubject.program.slug },
+        ]
+      : []),
+  ]
+  const boards: Board[] = await Promise.all(
+    boardSpecs.map(async ({ scope, scopeKey, ...spec }) => ({ ...spec, rows: await getLeaderboard(scope, scopeKey, 10) })),
+  )
+  const carousel: CarouselPaper[] = suggested.map((set) => ({
+    setId: set.set_id,
+    subject: set.subject_name,
+    exam: set.exam_type_name,
+    session: formatSession(set.session_date),
+    setCode: set.set_code,
+    art: artFor('subjects', set.subject_slug),
+  }))
 
   const focus =
     topics.length > 0
@@ -200,214 +299,226 @@ export default async function StudentDashboard() {
   const lastPct = percentageOf(last)
 
   return (
-    <div className={`${SHELL} py-8`}>
-      {header}
+    <div className="min-h-[calc(100dvh-4rem)] bg-canvas">
+      <div className={`${WIDE} py-8`}>
+        {header}
 
-      {/* At a glance */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          icon={<Exam size={20} />}
-          label="Papers attempted"
-          value={formatCount(progress.paperCount)}
-          caption={`${formatCount(progress.attemptCount)} ${progress.attemptCount === 1 ? 'attempt' : 'attempts'} in total`}
-        />
-        <StatTile
-          icon={<Target size={20} />}
-          label="Average score"
-          value={progress.averagePercentage === null ? '—' : `${progress.averagePercentage}%`}
-          caption={bestPct === null ? 'No marked papers yet' : `Best ${bestPct}% · ${progress.best?.subject_name}`}
-        />
-        <StatTile
-          icon={<CheckCircle size={20} />}
-          label="Accuracy"
-          value={accuracy === null ? '—' : `${accuracy}%`}
-          caption={`${formatCount(breakdown.correct)} of ${formatCount(answered)} answers right`}
-        />
-        <StatTile
-          icon={<Clock size={20} />}
-          label="Time practised"
-          value={formatDuration(totalSeconds)}
-          caption={`This week ${formatDuration(weekSeconds)}`}
-        />
-      </div>
+        {/* Performance, with a dial for recent form */}
+        <div className="mt-7 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Panel title="Performance" note="Pick a figure to see it paper by paper">
+            <MetricExplorer points={points} summary={summary} />
+          </Panel>
 
-      {/* Trend + where you left off */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Panel
+            title="Recent form"
+            note={`Average score on your last ${formWindow.length} ${formWindow.length === 1 ? 'paper' : 'papers'}`}
+          >
+            {form !== null ? (
+              <div>
+                <Gauge value={form} label="Recent form" />
+                <p className="mt-3 text-center text-meta font-light text-ink-faint">
+                  {formVsOverall === null || Math.round(formVsOverall) === 0 ? (
+                    'In line with your overall average'
+                  ) : (
+                    <>
+                      <span className={formVsOverall > 0 ? 'text-correct' : 'text-incorrect'}>
+                        {formVsOverall > 0 ? '▲' : '▼'} {Math.abs(Math.round(formVsOverall))} pts
+                      </span>{' '}
+                      {formVsOverall > 0 ? 'above' : 'below'} your overall average
+                    </>
+                  )}
+                </p>
+                <dl className="mt-6 grid grid-cols-3 gap-2 border-t border-rule pt-5 text-center">
+                  <div>
+                    <dt className="text-meta font-light text-ink-faint">Best</dt>
+                    <dd className="mt-1 text-card text-ink">{bestPct === null ? '—' : `${bestPct}%`}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-meta font-light text-ink-faint">Papers</dt>
+                    <dd className="mt-1 text-card text-ink">{formatCount(progress.paperCount)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-meta font-light text-ink-faint">This week</dt>
+                    <dd className="mt-1 text-card text-ink">{formatDuration(weekSeconds)}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : (
+              <p className="text-ui font-light text-ink-muted">Your form appears once a paper is marked.</p>
+            )}
+          </Panel>
+        </div>
+
+        {/* What to sit next */}
+        {carousel.length > 0 ? (
+          <Panel className="mt-4" title="Recommended for you" note="Papers from your subjects you haven’t sat yet, newest first">
+            <PaperCarousel papers={carousel} />
+          </Panel>
+        ) : null}
+
+        {/* Where you stand, and by subject */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Panel title="Leaderboard" note="Students ranked by their average best score per paper">
+            <Leaderboard boards={boards} />
+          </Panel>
+          <Panel title="Score by subject" note="Average across your papers, highest first">
+            <SubjectBars subjects={subjects.slice(0, 8)} />
+            {subjects.length > 8 ? (
+              <p className="mt-4 text-meta font-light text-ink-faint">and {subjects.length - 8} more subjects</p>
+            ) : null}
+          </Panel>
+        </div>
+
+        {/* Where you left off, how answers split, what to revise */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <Panel title="Continue where you left off" note={`Sat ${formatShortDate(last.submitted_at ?? new Date())}`}>
+            <p className="text-card font-normal text-ink">{last.subject_name}</p>
+            <p className="mt-1 text-meta font-light text-ink-faint tabular-nums">
+              {last.exam_type_name} · {formatSession(last.session_date)} · Set {last.set_code}
+            </p>
+            {lastPct !== null ? (
+              <div className="mt-6">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[2.25rem] leading-none font-light text-ink">{lastPct}%</span>
+                  <span className="text-meta text-ink-faint tabular-nums">
+                    {Number(last.score ?? 0)} / {Number(last.max_score)} marks
+                  </span>
+                </div>
+                <div className="mt-3 h-2.5 w-full bg-accent-soft">
+                  <div className="h-full rounded-r-[4px] bg-accent" style={{ width: `${Math.max(2, lastPct)}%` }} />
+                </div>
+                {last.duration_seconds ? (
+                  <p className="mt-3 text-meta font-light text-ink-faint">Finished in {formatDuration(last.duration_seconds)}</p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Link href={`/result/${last.id}`} className={buttonClass('primary', 'md')}>
+                Review answers
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <Link href={`/practice/${last.set_id}`} className={buttonClass('outline', 'md')}>
+                Try again
+              </Link>
+            </div>
+          </Panel>
+
+          <Panel title="How your answers split" note="Every question across your papers">
+            <AnswerSplit breakdown={breakdown} />
+          </Panel>
+
+          <Panel title="Focus next" note={topics.length ? 'Your weakest topics' : 'Your lowest-scoring subjects'}>
+            <ol className="flex flex-col gap-4">
+              {focus.map((item) => (
+                <li key={item.key}>
+                  <Link href={item.href} className="group block">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate text-ui font-light text-ink group-hover:text-accent">{item.label}</span>
+                      <span className="shrink-0 text-ui text-ink tabular-nums">{item.accuracy}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full bg-surface-2">
+                      <div className="h-full rounded-r-[4px] bg-ink-faint" style={{ width: `${Math.max(2, item.accuracy)}%` }} />
+                    </div>
+                    <p className="mt-1.5 text-meta font-light text-ink-faint">{item.note}</p>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        </div>
+
+        {/* Habit */}
         <Panel
-          title="Score trend"
-          note={`Your last ${trend.length} ${trend.length === 1 ? 'paper' : 'papers'}, oldest to newest`}
+          className="mt-4"
+          title="Practice activity"
+          note="Papers you finished each day over the last year"
           aside={
-            progress.averagePercentage !== null ? (
-              <p className="text-meta text-ink-faint">
-                Average <span className="text-ink tabular-nums">{progress.averagePercentage}%</span>
-              </p>
-            ) : null
+            <div className="flex gap-6 text-right">
+              <div>
+                <p className="flex items-center justify-end gap-1.5 text-[1.5rem] leading-none font-light text-ink">
+                  <Lightning size={18} weight="fill" className="text-marked" />
+                  {streak}
+                </p>
+                <p className="mt-1 text-meta font-light text-ink-faint">day streak</p>
+              </div>
+              <div>
+                <p className="text-[1.5rem] leading-none font-light text-ink">{longest}</p>
+                <p className="mt-1 text-meta font-light text-ink-faint">longest</p>
+              </div>
+              <div>
+                <p className="text-[1.5rem] leading-none font-light text-ink">{activity.size}</p>
+                <p className="mt-1 text-meta font-light text-ink-faint">active days</p>
+              </div>
+            </div>
           }
         >
-          {trend.length >= 2 ? (
-            <ScoreTrend points={trend} />
-          ) : (
-            <div className="flex h-[240px] flex-col items-center justify-center rounded-control bg-surface-2 text-center">
-              <p className="text-ui text-ink">{trend.length === 1 ? `${trend[0].percentage}% on your first paper` : 'No scores yet'}</p>
-              <p className="mt-1 text-meta font-light text-ink-faint">Sit one more paper to see your trend.</p>
-            </div>
-          )}
+          <ActivityCalendar days={activity} />
         </Panel>
 
-        <Panel title="Continue where you left off" note={`Sat ${formatShortDate(last.submitted_at ?? new Date())}`}>
-          <p className="text-card font-normal text-ink">{last.subject_name}</p>
-          <p className="mt-1 text-meta font-light text-ink-faint tabular-nums">
-            {last.exam_type_name} · {formatSession(last.session_date)} · Set {last.set_code}
-          </p>
-
-          {lastPct !== null ? (
-            <div className="mt-6">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[2.25rem] leading-none font-light text-ink">{lastPct}%</span>
-                <span className="text-meta text-ink-faint tabular-nums">
-                  {Number(last.score ?? 0)} / {Number(last.max_score)} marks
-                </span>
-              </div>
-              <div className="mt-3 h-2.5 w-full bg-accent-soft">
-                <div className="h-full rounded-r-[4px] bg-accent" style={{ width: `${Math.max(2, lastPct)}%` }} />
-              </div>
-              {last.duration_seconds ? (
-                <p className="mt-3 text-meta font-light text-ink-faint">Finished in {formatDuration(last.duration_seconds)}</p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Link href={`/result/${last.id}`} className={buttonClass('primary', 'md')}>
-              Review answers
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-            <Link href={`/practice/${last.set_id}`} className={buttonClass('outline', 'md')}>
-              Try again
-            </Link>
-          </div>
-        </Panel>
-      </div>
-
-      {/* Subjects, answers, what to revise */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Panel title="Score by subject" note="Average across your papers, highest first">
-          <SubjectBars subjects={subjects.slice(0, 6)} />
-          {subjects.length > 6 ? (
-            <p className="mt-4 text-meta font-light text-ink-faint">and {subjects.length - 6} more subjects</p>
-          ) : null}
-        </Panel>
-
-        <Panel title="How your answers split" note="Every question across your papers">
-          <AnswerSplit breakdown={breakdown} />
-        </Panel>
-
-        <Panel title="Focus next" note={topics.length ? 'Your weakest topics' : 'Your lowest-scoring subjects'}>
-          <ol className="flex flex-col gap-4">
-            {focus.map((item) => (
-              <li key={item.key}>
-                <Link href={item.href} className="group block">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 truncate text-ui font-light text-ink group-hover:text-accent">{item.label}</span>
-                    <span className="shrink-0 text-ui text-ink tabular-nums">{item.accuracy}%</span>
-                  </div>
-                  <div className="mt-2 h-1.5 w-full bg-surface-2">
-                    <div className="h-full rounded-r-[4px] bg-ink-faint" style={{ width: `${Math.max(2, item.accuracy)}%` }} />
-                  </div>
-                  <p className="mt-1.5 text-meta font-light text-ink-faint">{item.note}</p>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </Panel>
-      </div>
-
-      {/* Habit */}
-      <Panel
-        className="mt-4"
-        title="Practice activity"
-        note="Papers you finished each day over the last year"
-        aside={
-          <div className="flex gap-6 text-right">
-            <div>
-              <p className="flex items-center justify-end gap-1.5 text-[1.5rem] leading-none font-light text-ink">
-                <Lightning size={18} weight="fill" className="text-marked" />
-                {streak}
-              </p>
-              <p className="mt-1 text-meta font-light text-ink-faint">day streak</p>
-            </div>
-            <div>
-              <p className="text-[1.5rem] leading-none font-light text-ink">{longest}</p>
-              <p className="mt-1 text-meta font-light text-ink-faint">longest</p>
-            </div>
-            <div>
-              <p className="text-[1.5rem] leading-none font-light text-ink">{activity.size}</p>
-              <p className="mt-1 text-meta font-light text-ink-faint">active days</p>
-            </div>
-          </div>
-        }
-      >
-        <ActivityCalendar days={activity} />
-      </Panel>
-
-      {/* Every recent paper */}
-      <Panel className="mt-4" title="Recent attempts" note={attempts.length === 1 ? 'Your only paper so far' : `Your last ${Math.min(10, attempts.length)} papers`}>
-        <div className="-mx-5 overflow-x-auto sm:-mx-6">
-          <table className="w-full min-w-[640px] text-left">
-            <thead>
-              <tr className="border-y border-rule text-meta text-ink-faint">
-                <th className="px-5 py-2.5 font-normal sm:px-6">Paper</th>
-                <th className="px-3 py-2.5 font-normal">Sat on</th>
-                <th className="px-3 py-2.5 text-right font-normal">Marks</th>
-                <th className="px-3 py-2.5 font-normal">Score</th>
-                <th className="px-3 py-2.5 text-right font-normal">Time</th>
-                <th className="px-5 py-2.5 sm:px-6" />
-              </tr>
-            </thead>
-            <tbody>
-              {attempts.slice(0, 10).map((attempt) => {
-                const pct = percentageOf(attempt)
-                return (
-                  <tr key={attempt.id} className="border-b border-rule last:border-b-0 hover:bg-surface-2">
-                    <td className="px-5 py-3.5 sm:px-6">
-                      <p className="text-ui text-ink">{attempt.subject_name}</p>
-                      <p className="text-meta font-light text-ink-faint">
-                        {attempt.exam_type_name} · {formatSession(attempt.session_date)}
-                      </p>
-                    </td>
-                    <td className="px-3 py-3.5 text-ui font-light text-ink-muted tabular-nums">
-                      {attempt.submitted_at ? formatShortDate(attempt.submitted_at) : '—'}
-                    </td>
-                    <td className="px-3 py-3.5 text-right text-ui text-ink tabular-nums">
-                      {attempt.max_score ? `${Number(attempt.score ?? 0)} / ${Number(attempt.max_score)}` : '—'}
-                    </td>
-                    <td className="px-3 py-3.5">
-                      {pct === null ? (
-                        <span className="text-ui text-ink-faint">—</span>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="h-1.5 w-20 bg-surface-2">
-                            <div className="h-full rounded-r-[4px] bg-accent" style={{ width: `${Math.max(2, pct)}%` }} />
-                          </div>
-                          <span className="w-10 text-ui text-ink tabular-nums">{pct}%</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3.5 text-right text-ui font-light text-ink-muted tabular-nums">
-                      {attempt.duration_seconds ? formatDuration(attempt.duration_seconds) : '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-right sm:px-6">
-                      <Link href={`/result/${attempt.id}`} className="text-meta text-accent hover:underline">
-                        Review
-                      </Link>
-                    </td>
+        {/* Every recent paper */}
+        <div className="mt-4">
+          <Panel
+            title="Recent attempts"
+            note={attempts.length === 1 ? 'Your only paper so far' : `Your last ${Math.min(10, attempts.length)} papers`}
+          >
+            <div className="-mx-5 overflow-x-auto sm:-mx-6">
+              <table className="w-full min-w-[600px] text-left">
+                <thead>
+                  <tr className="border-y border-rule text-meta text-ink-faint">
+                    <th className="px-5 py-2.5 font-normal sm:px-6">Paper</th>
+                    <th className="px-3 py-2.5 font-normal">Sat on</th>
+                    <th className="px-3 py-2.5 text-right font-normal">Marks</th>
+                    <th className="px-3 py-2.5 font-normal">Score</th>
+                    <th className="px-3 py-2.5 text-right font-normal">Time</th>
+                    <th className="px-5 py-2.5 sm:px-6" />
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {attempts.slice(0, 10).map((attempt) => {
+                    const pct = percentageOf(attempt)
+                    return (
+                      <tr key={attempt.id} className="border-b border-rule last:border-b-0 hover:bg-surface-2">
+                        <td className="px-5 py-3.5 sm:px-6">
+                          <p className="text-ui text-ink">{attempt.subject_name}</p>
+                          <p className="text-meta font-light text-ink-faint">
+                            {attempt.exam_type_name} · {formatSession(attempt.session_date)}
+                          </p>
+                        </td>
+                        <td className="px-3 py-3.5 text-ui font-light text-ink-muted tabular-nums">
+                          {attempt.submitted_at ? formatShortDate(attempt.submitted_at) : '—'}
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-ui text-ink tabular-nums">
+                          {attempt.max_score ? `${Number(attempt.score ?? 0)} / ${Number(attempt.max_score)}` : '—'}
+                        </td>
+                        <td className="px-3 py-3.5">
+                          {pct === null ? (
+                            <span className="text-ui text-ink-faint">—</span>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <div className="h-1.5 w-16 bg-surface-2">
+                                <div className="h-full rounded-r-[4px] bg-accent" style={{ width: `${Math.max(2, pct)}%` }} />
+                              </div>
+                              <span className="w-10 text-ui text-ink tabular-nums">{pct}%</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3.5 text-right text-ui font-light text-ink-muted tabular-nums">
+                          {attempt.duration_seconds ? formatDuration(attempt.duration_seconds) : '—'}
+                        </td>
+                        <td className="px-5 py-3.5 text-right sm:px-6">
+                          <Link href={`/result/${attempt.id}`} className="text-meta text-accent hover:underline">
+                            Review
+                          </Link>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
         </div>
-      </Panel>
+      </div>
     </div>
   )
 }

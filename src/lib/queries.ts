@@ -946,6 +946,8 @@ export interface AnswerBreakdown {
 
 export interface MyAnswerAnalytics {
   breakdown: AnswerBreakdown
+  /** The same split for each attempt, keyed by attempt id. */
+  byAttempt: Record<string, AnswerBreakdown>
   /** Weakest first. */
   topics: StudentTopic[]
 }
@@ -968,15 +970,14 @@ function hasResponse(response: unknown): boolean {
  * PostgREST caps a response at 1,000 rows, so answers are read in pages.
  */
 export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnalytics> {
-  const empty: MyAnswerAnalytics = {
-    breakdown: { correct: 0, wrong: 0, skipped: 0, unmarked: 0, timeSpent: 0, timedAnswers: 0 },
-    topics: [],
-  }
+  const zero = (): AnswerBreakdown => ({ correct: 0, wrong: 0, skipped: 0, unmarked: 0, timeSpent: 0, timedAnswers: 0 })
+  const empty: MyAnswerAnalytics = { breakdown: zero(), byAttempt: {}, topics: [] }
   const supabase = await createClient()
   const userId = await signedInUserId(supabase)
   if (!userId) return empty
 
   type Raw = {
+    attempt_id: string
     is_correct: boolean | null
     response: unknown
     time_spent_seconds: number | null
@@ -988,7 +989,7 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
   for (let from = 0; from < 20_000; from += PAGE) {
     const { data } = await supabase
       .from('attempt_answers')
-      .select('is_correct, response, time_spent_seconds, questions(topics), attempts!inner(user_id, submitted_at)')
+      .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics), attempts!inner(user_id, submitted_at)')
       .eq('attempts.user_id', userId)
       .not('attempts.submitted_at', 'is', null)
       .order('id')
@@ -998,19 +999,23 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
     if (page.length < PAGE) break
   }
 
-  const breakdown = { ...empty.breakdown }
+  const breakdown = zero()
+  const byAttempt: Record<string, AnswerBreakdown> = {}
   const tally = new Map<string, { attempted: number; correct: number }>()
 
   for (const row of rows) {
     const answered = hasResponse(row.response)
-    if (row.is_correct === true) breakdown.correct += 1
-    else if (row.is_correct === false && answered) breakdown.wrong += 1
-    else if (!answered) breakdown.skipped += 1
-    else breakdown.unmarked += 1
+    const own = (byAttempt[row.attempt_id] ??= zero())
+    for (const split of [breakdown, own]) {
+      if (row.is_correct === true) split.correct += 1
+      else if (row.is_correct === false && answered) split.wrong += 1
+      else if (!answered) split.skipped += 1
+      else split.unmarked += 1
 
-    if (row.time_spent_seconds && row.time_spent_seconds > 0) {
-      breakdown.timeSpent += row.time_spent_seconds
-      breakdown.timedAnswers += 1
+      if (row.time_spent_seconds && row.time_spent_seconds > 0) {
+        split.timeSpent += row.time_spent_seconds
+        split.timedAnswers += 1
+      }
     }
 
     if (row.is_correct === null) continue
@@ -1032,7 +1037,65 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
     .sort((a, b) => a.accuracy - b.accuracy || b.attempted - a.attempted)
     .slice(0, topicLimit)
 
-  return { breakdown, topics }
+  return { breakdown, byAttempt, topics }
+}
+
+export interface SuggestedSet {
+  set_id: string
+  set_code: string
+  subject_name: string
+  subject_slug: string
+  exam_type_name: string
+  session_date: string | null
+}
+
+/**
+ * Papers in the student's own subjects that they have not sat yet, newest
+ * sitting first — what to practise next, rather than whatever came first.
+ */
+export async function getSuggestedSets(
+  subjectSlugs: string[],
+  attemptedSetIds: Set<string>,
+  limit = 10,
+): Promise<SuggestedSet[]> {
+  if (!subjectSlugs.length) return []
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('question_sets')
+    .select(
+      'id, set_code, question_papers!inner(session_date, status, exam_types(name), subjects!inner(name, slug))',
+    )
+    .eq('question_papers.status', 'published')
+    .in('question_papers.subjects.slug', subjectSlugs)
+    .limit(400)
+
+  type Raw = {
+    id: string
+    set_code: string
+    question_papers: {
+      session_date: string | null
+      exam_types: { name: string } | null
+      subjects: { name: string; slug: string } | null
+    } | null
+  }
+
+  return ((data ?? []) as unknown as Raw[])
+    .flatMap((set) => {
+      const paper = set.question_papers
+      if (!paper?.subjects || attemptedSetIds.has(set.id)) return []
+      return [
+        {
+          set_id: set.id,
+          set_code: set.set_code,
+          subject_name: paper.subjects.name,
+          subject_slug: paper.subjects.slug,
+          exam_type_name: paper.exam_types?.name ?? 'Exam',
+          session_date: paper.session_date,
+        },
+      ]
+    })
+    .sort((a, b) => (b.session_date ?? '').localeCompare(a.session_date ?? ''))
+    .slice(0, limit)
 }
 
 export interface SuggestedPaper {
@@ -1094,4 +1157,46 @@ export async function getUnattemptedPapers(
       ]
     })
     .slice(0, limit)
+}
+
+export type LeaderboardScope = 'overall' | 'subject' | 'exam' | 'level' | 'program'
+
+export interface LeaderboardRow {
+  rank: number
+  displayName: string
+  avatarUrl: string | null
+  papers: number
+  avgPercentage: number
+  isYou: boolean
+}
+
+/**
+ * Students ranked by their average best score per paper, overall or within a
+ * subject, exam type, level (by id — level slugs repeat across branches) or
+ * branch. The top rows, plus the caller's own row wherever they stand.
+ */
+export async function getLeaderboard(
+  scope: LeaderboardScope,
+  scopeKey: string | null = null,
+  topN = 10,
+): Promise<LeaderboardRow[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('leaderboard', { scope, scope_key: scopeKey, top_n: topN, min_papers: 1 })
+  if (error || !data) return []
+  type Raw = {
+    rank: number
+    display_name: string
+    avatar_url: string | null
+    papers: number
+    avg_percentage: number | string
+    is_you: boolean
+  }
+  return (data as Raw[]).map((row) => ({
+    rank: Number(row.rank),
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    papers: Number(row.papers),
+    avgPercentage: Number(row.avg_percentage),
+    isYou: row.is_you,
+  }))
 }
