@@ -202,8 +202,9 @@ export default async function HomePage() {
       </Section>
 
       {/* -------------------------------------------------------- Highlights */}
-      {/* Wider than the content column: 85% of the screen, a 16px gutter on phones. */}
-      <Spotlight placement="home" className="mx-auto w-[calc(100%-2rem)] pb-14 sm:w-[85vw]" />
+      <div className={SHELL}>
+        <Spotlight placement="home" className="pb-14" />
+      </div>
 
       {/* ---------------------------------------------------------- Branches */}
       <Section title="What are you preparing for?" link={{ href: '/subjects', label: 'All subjects' }}>
