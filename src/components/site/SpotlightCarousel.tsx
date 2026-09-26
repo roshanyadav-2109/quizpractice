@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { HIDDEN_COOKIE, type Spotlight, type SpotlightAction, type SpotlightTone } from '@/lib/spotlight-shared'
@@ -157,27 +158,60 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
       aria-roledescription="slide"
       aria-label={position}
       inert={!current}
-      className={`grid w-full shrink-0 items-center gap-8 px-5 pt-6 pb-10 sm:min-h-[13.5rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-12 sm:py-8 ${tone.band}`}
+      className={`grid w-full shrink-0 gap-8 px-5 pt-6 pb-10 sm:min-h-[15rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-12 sm:py-0 ${tone.band}`}
     >
-      <div className="min-w-0 pr-8 sm:pr-0">
+      <div className="min-w-0 self-center pr-8 sm:py-9 sm:pr-0">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[0.75rem] text-white ring-1 ring-white/20">
           <tone.Icon size={14} weight="duotone" aria-hidden="true" />
           {item.eyebrow}
         </span>
-        <h2 className="mt-3 text-[1.375rem] leading-tight font-normal text-balance sm:text-[1.75rem]">{item.title}</h2>
-        {item.body ? <p className="mt-2 max-w-[60ch] text-ui leading-relaxed font-light text-white/75">{item.body}</p> : null}
+        <h2 className="mt-3 text-[1.5rem] leading-tight font-normal text-balance sm:text-[2rem]">{item.title}</h2>
+        {item.body ? <p className="mt-2 max-w-[48ch] text-ui font-light text-white/75">{item.body}</p> : null}
         <div className="mt-5 flex flex-wrap gap-2">
           <Action action={item.cta} primary />
           {item.secondary ? <Action action={item.secondary} /> : null}
         </div>
       </div>
-      {item.stat ? (
-        <div className="hidden min-w-[11rem] flex-col border-l border-white/15 py-2 pl-10 sm:flex">
-          <p className="text-[3.5rem] leading-none font-light tabular-nums">{item.stat.value}</p>
-          <p className="mt-2 text-ui text-white/85">{item.stat.label}</p>
-          {item.stat.detail ? <p className="mt-3 text-meta font-light text-white/60">{item.stat.detail}</p> : null}
+      {item.screens ? <Devices {...item.screens} /> : null}
+    </div>
+  )
+}
+
+/**
+ * The site itself on a laptop, with a phone in front: real screens, framed.
+ * Sits on the bottom edge of the band; only on screens wide enough for both.
+ */
+function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
+  return (
+    <div aria-hidden="true" className="hidden items-end self-end pr-4 pb-5 lg:flex">
+      <div className="w-[19rem]">
+        <div className="rounded-t-[10px] bg-[#0d0d12] p-[6px] pb-[7px] ring-1 ring-white/15">
+          <Image
+            src={desktop}
+            alt=""
+            width={960}
+            height={600}
+            sizes="296px"
+            loading="eager"
+            className="block aspect-[16/10] w-full rounded-[3px] object-cover object-top"
+          />
         </div>
-      ) : null}
+        <div className="relative -mx-[7%] h-[9px] rounded-b-[10px] bg-linear-to-b from-[#d9d9de] to-[#9d9da6]">
+          <span className="absolute top-0 left-1/2 h-[4px] w-14 -translate-x-1/2 rounded-b-[4px] bg-[#8a8a93]" />
+        </div>
+      </div>
+      <div className="relative z-10 -mb-2 -ml-12 w-[5.75rem] rounded-[18px] bg-[#0d0d12] p-[5px] ring-1 ring-white/20">
+        <span className="absolute top-[9px] left-1/2 z-10 h-[5px] w-7 -translate-x-1/2 rounded-full bg-[#0d0d12]" />
+        <Image
+          src={mobile}
+          alt=""
+          width={360}
+          height={779}
+          sizes="84px"
+          loading="eager"
+          className="block aspect-[360/779] w-full rounded-[13px] object-cover object-top"
+        />
+      </div>
     </div>
   )
 }

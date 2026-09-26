@@ -1,7 +1,7 @@
 import 'server-only'
 import { publicClient, memoise } from '@/lib/supabase/public'
 import { getCurrentProfile } from '@/lib/supabase/server'
-import { getCatalogueCounts, getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
+import { getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
 import { termOf } from '@/lib/terms'
 import type { ExamType } from '@/types/db'
 import type { Spotlight, SpotlightPlacement, SpotlightTone } from '@/lib/spotlight-shared'
@@ -29,7 +29,13 @@ const MAX = 4
 const EXAM_WINDOW_DAYS = 60
 /** How long the newest sitting counts as just added. */
 const RELEASE_WINDOW_DAYS = 45
-const RETRY_BATCH = 10
+
+/** Real screens of the site, shown in a laptop and a phone on the banner. */
+const SCREENS = {
+  exam: { desktop: '/art/banners/desk-exam.webp', mobile: '/art/banners/phone-question.webp' },
+  release: { desktop: '/art/banners/desk-papers.webp', mobile: '/art/banners/phone-subject.webp' },
+  insights: { desktop: '/art/banners/desk-dashboard.webp', mobile: '/art/banners/phone-mistakes.webp' },
+}
 
 interface CalendarRow {
   id: string
@@ -68,7 +74,6 @@ const istDay = new Intl.DateTimeFormat('en-CA', {
 })
 const examDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 const satOn = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const count = new Intl.NumberFormat('en-IN')
 
 /** Today in India, as YYYY-MM-DD: exam days are Indian days. */
 function todayIst(): string {
@@ -115,19 +120,18 @@ const loadPrograms = memoise(async (): Promise<ProgramRow[]> => {
 export async function getSpotlights(context: SpotlightContext): Promise<Spotlight[]> {
   try {
     const today = todayIst()
-    const [profile, examTypes, index, calendar, banners, programs, catalogue] = await Promise.all([
+    const [profile, examTypes, index, calendar, banners, programs] = await Promise.all([
       getCurrentProfile(),
       getExamTypes(),
       getPaperIndex(),
       loadCalendar(),
       loadBanners(),
       loadPrograms(),
-      getCatalogueCounts(),
     ])
     const programId =
       context.subject?.programId ?? programs.find((program) => program.slug === context.programSlug)?.id ?? null
 
-    const personal = profile ? await mistakesSpotlight(context, today) : tourSpotlight(context, catalogue.bySet.size)
+    const personal = profile ? await mistakesSpotlight(context, today) : tourSpotlight(context)
 
     return [
       examSpotlight(context, today, programId, calendar, examTypes, index, programs),
@@ -164,21 +168,12 @@ function examSpotlight(
 
   const days = daysBetween(today, next.exam_date)
   const program = next.program_id ? programs.find((p) => p.id === next.program_id) : null
-  const papersFor = (subjectId: string | null) =>
-    index.filter((row) => row.exam_type_id === exam.id && (!subjectId || row.subject_id === subjectId))
 
   // Point at the page's subject, or the student's own, when it has this exam.
   const candidate = context.subject ?? context.focus ?? null
-  const scope = candidate && papersFor(candidate.id).length > 0 ? candidate : null
-  const rows = papersFor(scope?.id ?? null)
-  const terms = new Set(rows.map((row) => termOf(row.session_date)?.key).filter(Boolean)).size
-  const subjects = new Set(rows.map((row) => row.subject_id)).size
-
-  const when = days === 0 ? 'is today' : days === 1 ? 'is tomorrow' : `is in ${days} days`
-  const pastTerms = `${terms} past ${terms === 1 ? 'term' : 'terms'}`
-  const body = scope
-    ? `${scope.name} has ${exam.name} papers from ${pastTerms}. Sit the newest first — the closest match to what you’ll see on the day.`
-    : `${exam.name} papers from ${pastTerms} across ${subjects} subjects. Sit the ones for your subjects before the day.`
+  const scope =
+    candidate && index.some((row) => row.exam_type_id === exam.id && row.subject_id === candidate.id) ? candidate : null
+  const when = days === 0 ? 'is today' : days === 1 ? 'is tomorrow' : `in ${days} days`
   const allHref = `/papers?exam=${exam.slug}${program ? `&program=${program.slug}` : ''}`
 
   return {
@@ -186,16 +181,11 @@ function examSpotlight(
     tone: 'exam',
     eyebrow: `Exam countdown${program ? ` · ${program.short_name ?? program.name}` : ''}`,
     title: `${exam.name} ${when}`,
-    body: next.note ? `${next.note.replace(/\.$/, '')}. ${body}` : body,
+    body: next.note ?? `${examDay.format(new Date(`${next.exam_date}T00:00:00Z`))}. Sit the past papers first.`,
     cta: scope
       ? { label: `Practise ${scope.name}`, href: `/subject/${scope.slug}?exam=${exam.slug}` }
       : { label: `Past ${exam.name} papers`, href: allHref },
-    secondary: scope ? { label: `All ${exam.name} papers`, href: allHref } : undefined,
-    stat: {
-      value: days === 0 ? 'Today' : String(days),
-      label: days === 0 ? 'all the best' : days === 1 ? 'day to go' : 'days to go',
-      detail: examDay.format(new Date(`${next.exam_date}T00:00:00Z`)),
-    },
+    screens: SCREENS.exam,
   }
 }
 
@@ -213,37 +203,26 @@ function releaseSpotlight(
   const exam = examTypes.find((type) => type.id === latest.exam_type_id)
   if (!term || !exam || daysBetween(latest.session_date, today) > RELEASE_WINDOW_DAYS) return null
 
-  const batch = dated.filter((row) => row.exam_type_id === exam.id && termOf(row.session_date)?.key === term.key)
-  const subjectIds = [...new Set(batch.map((row) => row.subject_id))]
   const filter = `exam=${exam.slug}&year=${term.year}&term=${term.season}`
   const id = `new-${exam.slug}-${term.key}`
-
-  if (context.subject) {
-    const subject = context.subject
-    if (!subjectIds.includes(subject.id)) return null
-    return {
-      id,
-      tone: 'release',
-      eyebrow: 'Just added',
-      title: `The ${term.label} ${exam.name} is here`,
-      body: `${subject.name}’s newest paper, sat in ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}. The latest paper is the closest guide to the next one.`,
-      cta: { label: 'Sit the new paper', href: `/subject/${subject.slug}?${filter}` },
-      stat: { value: 'New', label: exam.name, detail: term.label },
-    }
+  const subject = context.subject
+  if (subject) {
+    const inBatch = dated.some(
+      (row) => row.subject_id === subject.id && row.exam_type_id === exam.id && termOf(row.session_date)?.key === term.key,
+    )
+    if (!inBatch) return null
   }
 
   return {
     id,
     tone: 'release',
     eyebrow: 'Just added',
-    title: `${exam.name} papers from the ${term.label}`,
-    body: `${subjectIds.length} subjects, sat in ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}. The latest papers are the closest guide to the ones you’ll sit next.`,
-    cta: { label: 'See the new papers', href: `/papers?${filter}` },
-    stat: {
-      value: String(subjectIds.length),
-      label: subjectIds.length === 1 ? 'new subject' : 'new subjects',
-      detail: `${exam.name} · ${term.short}`,
-    },
+    title: subject ? `New ${exam.name} paper is here` : `New ${exam.name} papers are in`,
+    body: `${term.label}, sat ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}.`,
+    cta: subject
+      ? { label: 'Sit the new paper', href: `/subject/${subject.slug}?${filter}` }
+      : { label: 'See the new papers', href: `/papers?${filter}` },
+    screens: SCREENS.release,
   }
 }
 
@@ -255,33 +234,32 @@ async function mistakesSpotlight(context: SpotlightContext, today: string): Prom
   const due = bank.filter((m) => m.state !== 'fixed' && (!subject || m.subjectSlug === subject.slug)).length
   if (due === 0) return null
 
-  const batch = Math.min(RETRY_BATCH, due)
   return {
     id: `mistakes-${today}`,
     tone: 'feature',
     eyebrow: 'Your mistake bank',
-    title: `${due} ${subject ? `${subject.name} ` : ''}${due === 1 ? 'mistake is' : 'mistakes are'} waiting for a retry`,
-    body: 'Every question you got wrong, in one place. Put one right and it comes back once, three days later, to check it stuck.',
+    title: `${due} ${due === 1 ? 'mistake' : 'mistakes'} to retry`,
+    body: 'Get each one right to clear it.',
     cta: {
-      label: `Retry ${batch} ${batch === 1 ? 'mistake' : 'mistakes'}`,
+      label: 'Retry now',
       href: subject ? `/mistakes/practice?subject=${subject.slug}` : '/mistakes/practice',
     },
     secondary: { label: 'Open the bank', href: subject ? `/mistakes?subject=${subject.slug}` : '/mistakes' },
-    stat: { value: count.format(due), label: 'to retry', detail: subject ? subject.name : 'across your subjects' },
+    screens: SCREENS.insights,
   }
 }
 
 /** For a visitor: what signing in adds, beyond sitting papers. */
-function tourSpotlight(context: SpotlightContext, papers: number): Spotlight | null {
+function tourSpotlight(context: SpotlightContext): Spotlight | null {
   if (context.placement !== 'home' && context.placement !== 'papers') return null
   return {
     id: 'tour-insights',
     tone: 'feature',
     eyebrow: 'Free with Google sign-in',
-    title: 'See exactly where your marks go',
-    body: 'A speed-versus-accuracy map of every answer, a mistake bank that brings questions back until they stick, and the questions most students got right that you missed.',
+    title: 'See where your marks go',
+    body: 'Speed map, mistake bank and peer gaps.',
     cta: { label: 'Sign in with Google', href: '/dashboard', signIn: true },
-    stat: { value: count.format(papers), label: 'past papers', detail: 'free to practise' },
+    screens: SCREENS.insights,
   }
 }
 
@@ -289,6 +267,11 @@ const EYEBROW: Record<BannerRow['kind'], string> = {
   announcement: 'Announcement',
   feature: 'New on QuizPractice',
   release: 'Just added',
+}
+const KIND_SCREENS: Record<BannerRow['kind'], Spotlight['screens']> = {
+  announcement: SCREENS.insights,
+  feature: SCREENS.insights,
+  release: SCREENS.release,
 }
 
 /** A banner staff wrote, if it is live on this page today. */
@@ -309,5 +292,6 @@ function announcement(
     title: row.title,
     body: row.body ?? '',
     cta: row.cta_label && row.cta_href ? { label: row.cta_label, href: row.cta_href } : { label: 'All papers', href: '/papers' },
+    screens: KIND_SCREENS[row.kind],
   }
 }

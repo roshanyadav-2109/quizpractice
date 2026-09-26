@@ -176,7 +176,7 @@ export default async function SpotlightAdminPage() {
             <AdminForm action={createBanner} submitLabel="Publish">
               <SelectField label="Kind" name="kind" options={KINDS} />
               <Field label="Title" name="title" required placeholder="Video solutions are here" />
-              <TextAreaField label="Text" name="body" placeholder="One or two sentences." />
+              <TextAreaField label="Text" name="body" placeholder="One short line." rows={2} />
               <Field label="Small label above the title" name="eyebrow" hint="Optional. Defaults to the kind." />
               <Field label="Button label" name="cta_label" placeholder="Watch one" />
               <Field label="Button link" name="cta_href" placeholder="/subject/dbms" />

@@ -23,8 +23,8 @@ export interface Spotlight {
   body: string
   cta: SpotlightAction
   secondary?: SpotlightAction
-  /** One figure on the right: days to an exam, new subjects, mistakes to retry. */
-  stat?: { value: string; label: string; detail?: string }
+  /** Real screens of the site, shown in a laptop and a phone. */
+  screens?: { desktop: string; mobile: string }
 }
 
 /** Banners a visitor has closed, by id. Read on the server so they never flash. */
