@@ -465,7 +465,8 @@ export function ExamRunner(props: ExamRunnerProps) {
     // 100dvh disagree (Windows display scaling with a browser zoom, mobile
     // toolbars) an h-dvh runner would sit shorter than the body and leave a gap
     // with a page scrollbar. Fixed inset-0 always fills the real viewport.
-    <div className="fixed inset-0 flex flex-col bg-surface">
+    // Learning mode keeps the site header (h-16 and its 1px rule) above it.
+    <div className={`fixed inset-x-0 bottom-0 flex flex-col bg-surface ${learning ? 'top-[calc(4rem+1px)]' : 'top-0'}`}>
       {/* Header: the paper, the mode, and the clock. */}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-3 sm:px-5">
         <Link
