@@ -114,9 +114,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             />
           </FilterRow>
           <div className="mt-5">
-            <h2 className="mb-3 text-[1.25rem] leading-tight font-medium text-ink">
-              {hits.length === 0 ? `Nothing matches “${term}”` : `Results for “${term}”`}
-            </h2>
+            {hits.length > 0 ? (
+              <h2 className="mb-3 text-[1.25rem] leading-tight font-medium text-ink">Results for “{term}”</h2>
+            ) : null}
 
             {shown.length > 0 ? (
               <ul className="flex flex-col gap-3">
@@ -154,7 +154,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                 ))}
               </ul>
             ) : hits.length === 0 ? (
-              <p className="text-ui text-ink-muted">
+              <EmptyState art="no-results" title={`Nothing matches “${term}”`}>
                 Try a shorter word, or one of:{' '}
                 {EXAMPLES.slice(0, 4).map((example, i) => (
                   <span key={example}>
@@ -164,7 +164,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                     </Link>
                   </span>
                 ))}
-              </p>
+              </EmptyState>
             ) : (
               <EmptyState art="no-results" title="No questions found">
                 Try fewer or different words, or change where to look.
