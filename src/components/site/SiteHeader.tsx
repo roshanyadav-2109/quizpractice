@@ -22,7 +22,7 @@ import { SignInButton } from './AuthDialog'
 /**
  * The navigation: the logo, each programme as a menu that opens onto its
  * levels and subjects, the exams as a menu that opens onto the branches and
- * terms each was sat in, then search, all papers, and the account.
+ * terms each was sat in, then search and the account.
  *
  * The menus only offer what has papers, and a programme or exam with none is
  * left out altogether — a menu full of dead ends is worse than a short one.
@@ -107,12 +107,6 @@ export async function SiteHeader() {
             className="hidden h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-ink transition-colors hover:bg-surface-3 sm:flex"
           >
             <MagnifyingGlass size={18} />
-          </Link>
-          <Link
-            href="/papers"
-            className="hidden h-10 items-center justify-center rounded-full border border-rule px-4 text-ui text-ink transition-colors hover:border-rule-strong lg:inline-flex"
-          >
-            All papers
           </Link>
           {profile ? (
             <AccountMenu name={profile.displayName} email={profile.email} staff={isStaff(profile)} />
