@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { requireStaff, NotStaffError } from '@/lib/supabase/server'
-import { signUpload } from '@/lib/cloudinary-server'
+import { signUpload, UploadBudgetError } from '@/lib/cloudinary-server'
 import { buildPublicId } from '@/lib/cloudinary'
 
 /**
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       name: parsed.data.name,
     })
 
-    const signature = signUpload({ publicId })
+    const signature = await signUpload({ publicId })
 
     return Response.json({
       publicId,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : 'Could not sign the upload.' },
-      { status: 500 },
+      { status: error instanceof UploadBudgetError ? 503 : 500 },
     )
   }
 }
