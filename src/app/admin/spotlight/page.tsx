@@ -10,7 +10,6 @@ const PLACEMENTS = [
   { value: 'home', label: 'Home' },
   { value: 'dashboard', label: 'Dashboard' },
   { value: 'papers', label: 'All papers' },
-  { value: 'subject', label: 'Subject pages' },
 ]
 
 const KINDS = [
@@ -43,7 +42,7 @@ const day = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric',
 const show = (date: string) => day.format(new Date(`${date}T00:00:00Z`))
 
 /**
- * The banners at the top of the home, dashboard, papers and subject pages.
+ * The banners on the home, dashboard and papers pages.
  * New papers and a student's mistakes appear there by themselves; what is
  * set here is the exam calendar the countdown reads, and any announcement.
  */
@@ -71,7 +70,7 @@ export default async function SpotlightAdminPage() {
   return (
     <div className="flex flex-col gap-9">
       <p className="max-w-[70ch] text-[0.8125rem] text-ink-muted">
-        Banners appear at the top of the home, dashboard, papers and subject pages. New papers and each student’s
+        Banners appear on the home page, the dashboard and All papers. New papers and each student’s
         mistakes to retry show up there by themselves. Here you set the exam dates the countdown reads, and write
         announcements. Changes reach the site within a minute.
       </p>

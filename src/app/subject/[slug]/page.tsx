@@ -11,7 +11,6 @@ import {
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
-import { Spotlight } from '@/components/site/Spotlight'
 import { PaperCard } from '@/components/site/PaperCard'
 import { Breadcrumb, SHELL, TitleCard, Trail } from '@/components/site/Page'
 import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
@@ -110,11 +109,6 @@ export default async function SubjectPage({
   if (!selected) {
     return (
       <div className={`${SHELL} py-6`}>
-        <Spotlight
-          placement="subject"
-          subject={{ id: subject.id, slug: subject.slug, name: subject.name, programId: program.id }}
-          className="mb-6"
-        />
         <Breadcrumb crumbs={crumbs} />
         <TitleCard
           back={levelHref}

@@ -460,7 +460,7 @@ const bannerInput = z
     cta_href: optionalText(300).pipe(
       z.string().regex(/^(\/|https:\/\/)/, 'Links start with / or https://').nullable(),
     ),
-    placements: z.array(z.enum(['home', 'dashboard', 'papers', 'subject'])).min(1, 'Pick at least one page.'),
+    placements: z.array(z.enum(['home', 'dashboard', 'papers'])).min(1, 'Pick at least one page.'),
     program_id: optionalId,
     starts_on: optionalDay,
     ends_on: optionalDay,
