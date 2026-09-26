@@ -15,12 +15,12 @@ import { useRouter } from 'next/navigation'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { AnswerInput } from './AnswerInput'
 import { ExamTimer } from './ExamTimer'
-import { SolutionPanel } from '@/components/question/SolutionPanel'
+import { LazySolutionPanel } from '@/components/question/LazySolutionPanel'
 import { DiscussionThread, countDiscussion } from '@/components/question/DiscussionPanel'
 import { ReportButton } from '@/components/question/ReportButton'
 import { gradeQuestion, isAnswered } from '@/lib/scoring'
 import type { QuestionResult } from '@/lib/scoring'
-import type { AnswerResponse, QuestionWithOptions, SolutionRow } from '@/types/db'
+import type { AnswerResponse, QuestionWithOptions } from '@/types/db'
 import { buttonClass } from '@/components/ui/primitives'
 import { PaletteLegend, QuestionPalette } from './QuestionPalette'
 import { PALETTE_LEGEND, PALETTE_ORDER, legendClasses, paletteStateFor, type PaletteState } from './palette-state'
@@ -48,7 +48,6 @@ export interface ExamRunnerProps {
   setId: string
   mode: 'exam' | 'learning'
   questions: QuestionWithOptions[]
-  solutions: Record<string, SolutionRow[]>
   meta: {
     examTypeName: string
     subjectName: string
@@ -111,7 +110,7 @@ const TYPE_LABEL: Record<QuestionWithOptions['type'], string> = {
  * nobody has to scroll past the question to find it.
  */
 export function ExamRunner(props: ExamRunnerProps) {
-  const { setId, mode, questions, solutions, meta, isSignedIn, startAt, review } = props
+  const { setId, mode, questions, meta, isSignedIn, startAt, review } = props
   const router = useRouter()
   const learning = mode === 'learning'
   // Learning mode keeps its own scratch answers: checking yourself against the
@@ -465,8 +464,7 @@ export function ExamRunner(props: ExamRunnerProps) {
     // 100dvh disagree (Windows display scaling with a browser zoom, mobile
     // toolbars) an h-dvh runner would sit shorter than the body and leave a gap
     // with a page scrollbar. Fixed inset-0 always fills the real viewport.
-    // Learning mode keeps the site header (h-16 and its 1px rule) above it.
-    <div className={`fixed inset-x-0 bottom-0 flex flex-col bg-surface ${learning ? 'top-[calc(4rem+1px)]' : 'top-0'}`}>
+    <div className="fixed inset-0 flex flex-col bg-surface">
       {/* Header: the paper, the mode, and the clock. */}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-3 sm:px-5">
         <Link
@@ -601,7 +599,7 @@ export function ExamRunner(props: ExamRunnerProps) {
                 <>
                   <div className="mt-6">
                     {learning ? (
-                      <SolutionPanel solutions={solutions[question.id] ?? []} />
+                      <LazySolutionPanel questionId={question.id} />
                     ) : (
                       // Exam mode never loads solutions; point at learning mode
                       // rather than claim there are none.

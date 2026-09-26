@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { getSetContext, getSetOverview, getSolutionsForSetId } from '@/lib/queries'
+import { getSetContext, getSetOverview } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
@@ -42,12 +42,11 @@ export default async function PracticePage({
   // Exam mode never asks the database for is_correct, so the answer key is
   // simply not in the page payload while a student is working through it.
   //
-  // The profile and the explanations do not depend on the set's contents, so
-  // they travel with it rather than each costing a round trip after it lands.
-  const [context, profile, solutions] = await Promise.all([
+  // Explanations are not loaded here: each is fetched when its answer is
+  // opened, so a paper does not bring every explanation with it.
+  const [context, profile] = await Promise.all([
     getSetContext(setId, { includeAnswers: mode === 'learning' }),
     getCurrentProfile(),
-    mode === 'learning' ? getSolutionsForSetId(setId) : Promise.resolve({}),
   ])
   if (!context) notFound()
 
@@ -62,7 +61,6 @@ export default async function PracticePage({
         setId={setId}
         mode={mode}
         questions={context.questions}
-        solutions={solutions}
         isSignedIn={Boolean(profile)}
         startAt={q ? Number(q) : undefined}
         meta={{

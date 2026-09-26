@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { TAG, refresh } from '@/lib/cache'
 import { getSetContext } from '@/lib/queries'
 import { gradeAttempt } from '@/lib/scoring'
 import type { AnswerResponse } from '@/types/db'
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
   })
 
   await supabase.from('attempt_answers').insert(answerRows)
+  // Their dashboard, mistakes and rankings change with this attempt.
+  refresh(TAG.user(user.id))
 
   return Response.json({ saved: true, attemptId: attempt.id, ...graded })
 }

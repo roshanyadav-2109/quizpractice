@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { TAG, refresh } from '@/lib/cache'
 import { getQuestionsWithAnswers } from '@/lib/queries'
 import { gradeQuestion } from '@/lib/scoring'
 import type { AnswerResponse } from '@/types/db'
@@ -58,6 +59,8 @@ export async function POST(request: NextRequest) {
     time_spent_seconds: timeSpentSeconds ?? null,
   })
   if (error) return Response.json({ error: 'Could not save this retry.' }, { status: 500 })
+  // Their mistake bank changes with this retry.
+  refresh(TAG.user(user.id))
 
   return Response.json({ result })
 }

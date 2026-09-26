@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { TAG, refresh } from '@/lib/cache'
 import { requireStaff, NotStaffError } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { importPaper, ImportError } from '@/lib/import-paper'
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
       createdBy: profile.id,
     })
 
+    refresh(TAG.catalogue, TAG.solutions)
     revalidatePath('/browse')
     revalidatePath('/admin/papers')
     revalidatePath('/')

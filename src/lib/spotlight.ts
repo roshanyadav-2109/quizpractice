@@ -1,5 +1,6 @@
 import 'server-only'
 import { publicClient, memoise } from '@/lib/supabase/public'
+import { TAG, shared } from '@/lib/cache'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
 import { termOf } from '@/lib/terms'
@@ -84,7 +85,8 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 }
 
-const loadCalendar = memoise(async (): Promise<CalendarRow[]> => {
+const loadCalendar = memoise(
+  shared('exam-calendar', [TAG.spotlight], async (): Promise<CalendarRow[]> => {
   const { data, error } = await publicClient
     .from('exam_calendar')
     .select('id, exam_type_id, program_id, exam_date, note')
@@ -93,9 +95,12 @@ const loadCalendar = memoise(async (): Promise<CalendarRow[]> => {
     .returns<CalendarRow[]>()
   if (error) throw new Error(`exam_calendar failed — ${error.message}`)
   return data ?? []
-}, 60_000)
+}),
+  60_000,
+)
 
-const loadBanners = memoise(async (): Promise<BannerRow[]> => {
+const loadBanners = memoise(
+  shared('banners', [TAG.spotlight], async (): Promise<BannerRow[]> => {
   const { data, error } = await publicClient
     .from('banners')
     .select('id, kind, eyebrow, title, body, cta_label, cta_href, placements, program_id, starts_on, ends_on')
@@ -105,16 +110,21 @@ const loadBanners = memoise(async (): Promise<BannerRow[]> => {
     .returns<BannerRow[]>()
   if (error) throw new Error(`banners failed — ${error.message}`)
   return data ?? []
-}, 60_000)
+}),
+  60_000,
+)
 
-const loadPrograms = memoise(async (): Promise<ProgramRow[]> => {
+const loadPrograms = memoise(
+  shared('spotlight-programs', [TAG.taxonomy], async (): Promise<ProgramRow[]> => {
   const { data, error } = await publicClient
     .from('programs')
     .select('id, slug, name, short_name')
     .returns<ProgramRow[]>()
   if (error) throw new Error(`programs failed — ${error.message}`)
   return data ?? []
-}, 60_000)
+}),
+  60_000,
+)
 
 /** Every banner for this page, in the order to show them. Never throws. */
 export async function getSpotlights(context: SpotlightContext): Promise<Spotlight[]> {

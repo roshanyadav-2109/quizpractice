@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { getMistakeBank, getQuestionsWithAnswers, getSolutionsForSet } from '@/lib/queries'
+import { getMistakeBank, getQuestionsWithAnswers } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
@@ -30,10 +30,7 @@ export default async function RetryMistakes({ searchParams }: { searchParams: Se
   const due = [...bank.filter((m) => m.state === 'recap'), ...bank.filter((m) => m.state === 'open')].slice(0, SESSION)
   if (!due.length) redirect(back)
 
-  const [loaded, solutions] = await Promise.all([
-    getQuestionsWithAnswers(due.map((m) => m.questionId)),
-    getSolutionsForSet(due.map((m) => m.questionId)),
-  ])
+  const loaded = await getQuestionsWithAnswers(due.map((m) => m.questionId))
   const meta = new Map(due.map((m) => [m.questionId, m]))
 
   // Numbered 1…n for the palette; the original paper and number go under each.
@@ -53,7 +50,6 @@ export default async function RetryMistakes({ searchParams }: { searchParams: Se
       setId="mistakes"
       mode="learning"
       questions={questions}
-      solutions={solutions}
       isSignedIn
       review={{
         backHref: back,

@@ -74,7 +74,11 @@ export const config = {
     /*
      * Everything except static assets and image files. Without an exclusion
      * like this the proxy would run on every CSS and JS request too.
+     *
+     * Also not the explanations API, which needs no session and is cached by
+     * the CDN — a refreshed session cookie on it would stop that — nor the
+     * cache-refresh endpoint, which scripts call with a secret.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/solutions|api/revalidate|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

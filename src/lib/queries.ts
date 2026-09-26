@@ -1,7 +1,12 @@
 import 'server-only'
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { publicClient, memoise } from '@/lib/supabase/public'
+import { TAG, personal, shared } from '@/lib/cache'
+
+/** Anything that depends on other students' answers refreshes on its own this often. */
+const HALF_HOUR = 30 * 60
 import { blocksToText, parseBlocks } from '@/lib/blocks/schema'
 import { classifyAttempt, type AttemptQuality } from '@/lib/analysis'
 import { isAutoMarkable } from '@/lib/scoring'
@@ -63,7 +68,8 @@ export interface ProgramWithLevels extends Program {
  * and at no other time — so it is read without a session and held briefly in
  * process. That takes three round trips off the front of every browse page.
  */
-const loadTaxonomy = memoise(async () => {
+const loadTaxonomy = memoise(
+  shared('taxonomy', [TAG.taxonomy], async () => {
   const [programsResult, levelsResult, subjectsResult] = await Promise.all([
     publicClient.from('programs').select('*').eq('is_active', true).returns<Program[]>(),
     publicClient.from('levels').select('*').eq('is_active', true).returns<Level[]>(),
@@ -83,7 +89,9 @@ const loadTaxonomy = memoise(async () => {
     levels: levelsResult.data ?? [],
     subjects: subjectsResult.data ?? [],
   }
-}, 60_000)
+}),
+  60_000,
+)
 
 /**
  * The full taxonomy tree, which is what every browse surface is built from.
@@ -196,7 +204,8 @@ export interface SetCount {
  * thing that leaves is a count of content that is already published and
  * already readable by anyone — no row, draft or answer.
  */
-const loadSetCounts = memoise(async (): Promise<SetCount[]> => {
+const loadSetCounts = memoise(
+  shared('set-counts', [TAG.catalogue], async (): Promise<SetCount[]> => {
   try {
     return await readAll((from, to) =>
       publicClient
@@ -230,7 +239,9 @@ const loadSetCounts = memoise(async (): Promise<SetCount[]> => {
     subject_id: row.question_papers?.subject_id ?? '',
     question_count: row.questions?.[0]?.count ?? 0,
   }))
-}, 60_000)
+}),
+  60_000,
+)
 
 export interface CatalogueCounts {
   /** Published questions per set. */
@@ -259,7 +270,8 @@ export async function getCatalogueCounts(): Promise<CatalogueCounts> {
 }
 
 /** Also public and also static, so it gets the same treatment as the taxonomy. */
-const loadExamTypes = memoise(async () => {
+const loadExamTypes = memoise(
+  shared('exam-types', [TAG.taxonomy], async () => {
   const { data, error } = await publicClient
     .from('exam_types')
     .select('*')
@@ -269,7 +281,9 @@ const loadExamTypes = memoise(async () => {
 
   if (error) throw new Error(`exam_types failed — ${error.message}`)
   return data ?? []
-}, 60_000)
+}),
+  60_000,
+)
 
 export async function getExamTypes(): Promise<ExamType[]> {
   return loadExamTypes()
@@ -287,7 +301,8 @@ export interface PaperIndexRow {
  * enough for the navigation to offer only menus that lead to papers. It is
  * public and it is read on every page, so it is memoised like the taxonomy.
  */
-const loadPaperIndex = memoise(async (): Promise<PaperIndexRow[]> => {
+const loadPaperIndex = memoise(
+  shared('paper-index', [TAG.catalogue], async (): Promise<PaperIndexRow[]> => {
   try {
     return await readAll((from, to) =>
       publicClient
@@ -301,7 +316,9 @@ const loadPaperIndex = memoise(async (): Promise<PaperIndexRow[]> => {
   } catch (error) {
     throw new Error(`paper index failed — ${error instanceof Error ? error.message : error}`)
   }
-}, 60_000)
+}),
+  60_000,
+)
 
 export async function getPaperIndex(): Promise<PaperIndexRow[]> {
   return loadPaperIndex()
@@ -370,23 +387,39 @@ type RawPaper = QuestionPaper & {
  * third of a second to Supabase.
  */
 const loadPublishedPapers = memoise(async (): Promise<RawPaper[]> => {
-  try {
-    return await readAll((from, to) =>
-      publicClient
-        .from('question_papers')
-        .select(
-          '*, exam_type:exam_types(*), subject:subjects(id, name, slug, code, level_id), sets:question_sets(*)',
-        )
-        .eq('status', 'published')
-        .order('session_date', { ascending: false, nullsFirst: false })
-        .order('id')
-        .range(from, to)
-        .returns<RawPaper[]>(),
-    )
-  } catch (error) {
-    throw new Error(`papers failed — ${error instanceof Error ? error.message : error}`)
-  }
+  const [papers, examTypes] = await Promise.all([loadPaperRows(), loadExamTypes()])
+  const examById = new Map(examTypes.map((exam) => [exam.id, exam]))
+  return papers.flatMap((paper) => {
+    const exam_type = examById.get(paper.exam_type_id)
+    return exam_type ? [{ ...paper, exam_type }] : []
+  })
 }, 60_000)
+
+/**
+ * The papers themselves, shared. The exam type is joined in memory rather
+ * than embedded: embedded, the same few exam types repeat on every one of
+ * 1,400+ rows, which is most of a megabyte of the same text each read.
+ */
+const loadPaperRows = shared(
+  'published-paper-rows',
+  [TAG.catalogue],
+  async (): Promise<Omit<RawPaper, 'exam_type'>[]> => {
+    try {
+      return await readAll((from, to) =>
+        publicClient
+          .from('question_papers')
+          .select('*, subject:subjects(id, name, slug, code, level_id), sets:question_sets(*)')
+          .eq('status', 'published')
+          .order('session_date', { ascending: false, nullsFirst: false })
+          .order('id')
+          .range(from, to)
+          .returns<Omit<RawPaper, 'exam_type'>[]>(),
+      )
+    } catch (error) {
+      throw new Error(`papers failed — ${error instanceof Error ? error.message : error}`)
+    }
+  },
+)
 
 /**
  * Published papers, newest sitting first, each with its sets and how many
@@ -458,9 +491,10 @@ export function getSetContext(
   return loadSetContext(setId, includeAnswers)
 }
 
-const loadSetContext = cache(async (setId: string, includeAnswers: boolean): Promise<SetContext | null> => {
-  const supabase = await createClient()
+type SetRow = QuestionSet & { paper: (QuestionPaper & { exam_type: ExamType }) | null }
 
+/** A set, its paper and its questions, as the database returns them. */
+async function readSetRows(db: Pick<typeof publicClient, 'from'>, setId: string, includeAnswers: boolean) {
   const optionColumns = includeAnswers
     ? 'id, question_id, label, content, is_correct, sort_order'
     : 'id, question_id, label, content, sort_order'
@@ -470,21 +504,41 @@ const loadSetContext = cache(async (setId: string, includeAnswers: boolean): Pro
   // paper, subject, level, programme, questions — about two seconds before
   // the page could render.
   const [{ data: row }, { data: questions }] = await Promise.all([
-    supabase
+    db
       .from('question_sets')
       .select('*, paper:question_papers(*, exam_type:exam_types(*))')
       .eq('id', setId)
-      .maybeSingle<QuestionSet & { paper: (QuestionPaper & { exam_type: ExamType }) | null }>(),
-    supabase
+      .maybeSingle<SetRow>(),
+    db
       .from('questions')
       .select(`*, options:question_options(${optionColumns})`)
       .eq('set_id', setId)
       .eq('status', 'published')
       .order('number'),
   ])
+  return row?.paper ? { row, questions: (questions ?? []) as unknown[] } : null
+}
 
-  if (!row?.paper) return null
-  const { paper, ...set } = row
+/**
+ * A published set, shared by everyone who opens it — the same questions for
+ * every visitor, read from the database once. Cleared when the paper or its
+ * questions change. Drafts are not cached; staff preview them live.
+ */
+function readPublishedSet(setId: string, includeAnswers: boolean) {
+  return unstable_cache(
+    async (id: string, answers: boolean) => {
+      const rows = await readSetRows(publicClient, id, answers)
+      return rows && rows.row.paper?.status === 'published' ? rows : null
+    },
+    ['qp-shared', 'set'],
+    { tags: [TAG.catalogue, TAG.set(setId)], revalidate: 24 * 60 * 60 },
+  )(setId, includeAnswers)
+}
+
+const loadSetContext = cache(async (setId: string, includeAnswers: boolean): Promise<SetContext | null> => {
+  const rows = (await readPublishedSet(setId, includeAnswers)) ?? (await readSetRows(await createClient(), setId, includeAnswers))
+  if (!rows?.row.paper) return null
+  const { paper, ...set } = rows.row
 
   const subjectContext = await getSubjectContextById(paper.subject_id)
   if (!subjectContext) return null
@@ -497,7 +551,7 @@ const loadSetContext = cache(async (setId: string, includeAnswers: boolean): Pro
     })[] | null
   }
 
-  const parsed: QuestionWithOptions[] = ((questions ?? []) as RawQuestion[]).map((question) => ({
+  const parsed: QuestionWithOptions[] = (rows.questions as RawQuestion[]).map((question) => ({
     ...question,
     body: parseBlocks(question.body),
     options: (question.options ?? [])
@@ -529,30 +583,22 @@ export interface SetOverview extends Omit<SetContext, 'questions'> {
  * a fraction of the payload. Deduplicated per request.
  */
 export const getSetOverview = cache(async (setId: string): Promise<SetOverview | null> => {
-  const supabase = await createClient()
-
-  const [{ data: row }, { data: questions }] = await Promise.all([
-    supabase
-      .from('question_sets')
-      .select('*, paper:question_papers(*, exam_type:exam_types(*))')
-      .eq('id', setId)
-      .maybeSingle<QuestionSet & { paper: (QuestionPaper & { exam_type: ExamType }) | null }>(),
-    supabase
-      .from('questions')
-      .select('id, type, marks, negative_marks')
-      .eq('set_id', setId)
-      .eq('status', 'published')
-      .order('number')
-      .returns<SetOverview['questions']>(),
-  ])
-
-  if (!row?.paper) return null
-  const { paper, ...set } = row
+  // The same shared entry the exam screen reads, so opening the paper after
+  // its overview costs no second read.
+  const rows = (await readPublishedSet(setId, false)) ?? (await readSetRows(await createClient(), setId, false))
+  if (!rows?.row.paper) return null
+  const { paper, ...set } = rows.row
 
   const subjectContext = await getSubjectContextById(paper.subject_id)
   if (!subjectContext) return null
 
-  return { set, paper, examType: paper.exam_type, ...subjectContext, questions: questions ?? [] }
+  const questions = (rows.questions as SetOverview['questions']).map(({ id, type, marks, negative_marks }) => ({
+    id,
+    type,
+    marks,
+    negative_marks,
+  }))
+  return { set, paper, examType: paper.exam_type, ...subjectContext, questions }
 })
 
 async function getSubjectContextById(subjectId: string): Promise<SubjectContext | null> {
@@ -593,52 +639,28 @@ async function getSubjectContextById(subjectId: string): Promise<SubjectContext 
   return { subject, level, program }
 }
 
-/** Approved solutions for every question in a set, keyed by question id. */
-export async function getSolutionsForSet(
-  questionIds: string[],
-): Promise<Record<string, SolutionRow[]>> {
-  if (!questionIds.length) return {}
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from('solutions')
-    .select('*')
-    .in('question_id', questionIds)
-    .eq('status', 'approved')
-    .order('kind')
-    .order('upvotes', { ascending: false })
-
-  const grouped: Record<string, SolutionRow[]> = {}
-  for (const raw of (data ?? []) as (Omit<SolutionRow, 'body'> & { body: unknown })[]) {
-    const solution: SolutionRow = { ...raw, body: parseBlocks(raw.body) }
-    grouped[solution.question_id] = [...(grouped[solution.question_id] ?? []), solution]
-  }
-  return grouped
-}
-
 /**
- * The same, found by the set rather than by its question ids — so it can be
- * asked for alongside the questions instead of waiting for them to arrive.
+ * One question's approved explanations. Fetched only when a student opens the
+ * answer, and shared: the first student to open it reads the database, every
+ * one after gets the same copy.
  */
-export async function getSolutionsForSetId(setId: string): Promise<Record<string, SolutionRow[]>> {
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from('solutions')
-    .select('*, questions!inner(set_id)')
-    .eq('questions.set_id', setId)
-    .eq('status', 'approved')
-    .order('kind')
-    .order('upvotes', { ascending: false })
-
-  const grouped: Record<string, SolutionRow[]> = {}
-  for (const raw of (data ?? []) as (Omit<SolutionRow, 'body'> & { body: unknown; questions?: unknown })[]) {
-    const { questions: _join, ...rest } = raw
-    void _join
-    const solution: SolutionRow = { ...rest, body: parseBlocks(rest.body) }
-    grouped[solution.question_id] = [...(grouped[solution.question_id] ?? []), solution]
-  }
-  return grouped
+export async function getSolutionsForQuestion(questionId: string): Promise<SolutionRow[]> {
+  const rows = await unstable_cache(
+    async (id: string) => {
+      const { data, error } = await publicClient
+        .from('solutions')
+        .select('*')
+        .eq('question_id', id)
+        .eq('status', 'approved')
+        .order('kind')
+        .order('upvotes', { ascending: false })
+      if (error) throw new Error(`solutions failed — ${error.message}`)
+      return (data ?? []) as (Omit<SolutionRow, 'body'> & { body: unknown })[]
+    },
+    ['qp-shared', 'question-solutions'],
+    { tags: [TAG.solutions], revalidate: 60 * 60 },
+  )(questionId)
+  return rows.map((row) => ({ ...row, body: parseBlocks(row.body) }))
 }
 
 export interface SearchHit {
@@ -846,75 +868,59 @@ export interface MyAttempt {
  * The signed-in student's own attempts, newest first. RLS already restricts
  * these to the owner, so no extra filter is needed here.
  */
-/**
- * The signed-in user's id, verified locally from the session token — no round
- * trip — or null for a visitor.
- *
- * "Mine" queries filter on it explicitly. Row-level security alone is not
- * enough: it lets an admin read every attempt, which would put other students'
- * attempts on an admin's own dashboard.
- */
-async function signedInUserId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data } = await supabase.auth.getClaims()
-  const sub = data?.claims?.sub
-  return typeof sub === 'string' ? sub : null
-}
-
 export async function getMyAttempts(limit = 50): Promise<MyAttempt[]> {
-  const supabase = await createClient()
-  const userId = await signedInUserId(supabase)
-  if (!userId) return []
+  return personal(`attempts:${limit}`, async (supabase, userId) => {
+    const { data } = await supabase
+      .from('attempts')
+      .select(
+        `id, set_id, score, max_score, submitted_at, duration_seconds,
+         question_sets ( set_code,
+           question_papers ( session_date,
+             exam_types ( name ),
+             subjects ( name, slug ) ) )`,
+      )
+      .eq('user_id', userId)
+      .not('submitted_at', 'is', null)
+      .order('submitted_at', { ascending: false })
+      .limit(limit)
 
-  const { data } = await supabase
-    .from('attempts')
-    .select(
-      `id, set_id, score, max_score, submitted_at, duration_seconds,
-       question_sets ( set_code,
-         question_papers ( session_date,
-           exam_types ( name ),
-           subjects ( name, slug ) ) )`,
-    )
-    .eq('user_id', userId)
-    .not('submitted_at', 'is', null)
-    .order('submitted_at', { ascending: false })
-    .limit(limit)
-
-  type Raw = {
-    id: string
-    set_id: string
-    score: number | null
-    max_score: number | null
-    submitted_at: string | null
-    duration_seconds: number | null
-    question_sets: {
-      set_code: string
-      question_papers: {
-        session_date: string | null
-        exam_types: { name: string } | null
-        subjects: { name: string; slug: string } | null
+    type Raw = {
+      id: string
+      set_id: string
+      score: number | null
+      max_score: number | null
+      submitted_at: string | null
+      duration_seconds: number | null
+      question_sets: {
+        set_code: string
+        question_papers: {
+          session_date: string | null
+          exam_types: { name: string } | null
+          subjects: { name: string; slug: string } | null
+        } | null
       } | null
-    } | null
-  }
+    }
 
-  return ((data ?? []) as unknown as Raw[]).flatMap((row) => {
-    const paper = row.question_sets?.question_papers
-    if (!paper?.subjects) return []
-    return [
-      {
-        id: row.id,
-        set_id: row.set_id,
-        score: row.score,
-        max_score: row.max_score,
-        submitted_at: row.submitted_at,
-        duration_seconds: row.duration_seconds,
-        subject_name: paper.subjects.name,
-        subject_slug: paper.subjects.slug,
-        exam_type_name: paper.exam_types?.name ?? 'Exam',
-        set_code: row.question_sets?.set_code ?? '',
-        session_date: paper.session_date,
-      },
-    ]
-  })
+    return ((data ?? []) as unknown as Raw[]).flatMap((row) => {
+      const paper = row.question_sets?.question_papers
+      if (!paper?.subjects) return []
+      return [
+        {
+          id: row.id,
+          set_id: row.set_id,
+          score: row.score,
+          max_score: row.max_score,
+          submitted_at: row.submitted_at,
+          duration_seconds: row.duration_seconds,
+          subject_name: paper.subjects.name,
+          subject_slug: paper.subjects.slug,
+          exam_type_name: paper.exam_types?.name ?? 'Exam',
+          set_code: row.question_sets?.set_code ?? '',
+          session_date: paper.session_date,
+        },
+      ]
+    })
+  }, [])
 }
 
 export interface MyProgress {
@@ -1020,86 +1026,84 @@ function hasResponse(response: unknown): boolean {
 export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnalytics> {
   const zero = (): AnswerBreakdown => ({ correct: 0, wrong: 0, skipped: 0, unmarked: 0, timeSpent: 0, timedAnswers: 0 })
   const empty: MyAnswerAnalytics = { breakdown: zero(), byAttempt: {}, qualityByAttempt: {}, topics: [] }
-  const supabase = await createClient()
-  const userId = await signedInUserId(supabase)
-  if (!userId) return empty
+  return personal(`analytics:${topicLimit}`, async (supabase, userId) => {
+    type Raw = {
+      attempt_id: string
+      is_correct: boolean | null
+      response: unknown
+      time_spent_seconds: number | null
+      questions: { topics: string[] | null; marks: number | string; type: string } | null
+    }
 
-  type Raw = {
-    attempt_id: string
-    is_correct: boolean | null
-    response: unknown
-    time_spent_seconds: number | null
-    questions: { topics: string[] | null; marks: number | string; type: string } | null
-  }
+    const rows: Raw[] = []
+    const PAGE = 1000
+    for (let from = 0; from < 20_000; from += PAGE) {
+      const { data } = await supabase
+        .from('attempt_answers')
+        .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics, marks, type), attempts!inner(user_id, submitted_at)')
+        .eq('attempts.user_id', userId)
+        .not('attempts.submitted_at', 'is', null)
+        .order('id')
+        .range(from, from + PAGE - 1)
+      const page = (data ?? []) as unknown as Raw[]
+      rows.push(...page)
+      if (page.length < PAGE) break
+    }
 
-  const rows: Raw[] = []
-  const PAGE = 1000
-  for (let from = 0; from < 20_000; from += PAGE) {
-    const { data } = await supabase
-      .from('attempt_answers')
-      .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics, marks, type), attempts!inner(user_id, submitted_at)')
-      .eq('attempts.user_id', userId)
-      .not('attempts.submitted_at', 'is', null)
-      .order('id')
-      .range(from, from + PAGE - 1)
-    const page = (data ?? []) as unknown as Raw[]
-    rows.push(...page)
-    if (page.length < PAGE) break
-  }
+    const breakdown = zero()
+    const byAttempt: Record<string, AnswerBreakdown> = {}
+    const qualityByAttempt: Record<string, QualityCounts> = {}
+    const tally = new Map<string, { attempted: number; correct: number }>()
 
-  const breakdown = zero()
-  const byAttempt: Record<string, AnswerBreakdown> = {}
-  const qualityByAttempt: Record<string, QualityCounts> = {}
-  const tally = new Map<string, { attempted: number; correct: number }>()
+    for (const row of rows) {
+      const answered = hasResponse(row.response)
+      const own = (byAttempt[row.attempt_id] ??= zero())
+      for (const split of [breakdown, own]) {
+        if (row.is_correct === true) split.correct += 1
+        else if (row.is_correct === false && answered) split.wrong += 1
+        else if (!answered) split.skipped += 1
+        else split.unmarked += 1
 
-  for (const row of rows) {
-    const answered = hasResponse(row.response)
-    const own = (byAttempt[row.attempt_id] ??= zero())
-    for (const split of [breakdown, own]) {
-      if (row.is_correct === true) split.correct += 1
-      else if (row.is_correct === false && answered) split.wrong += 1
-      else if (!answered) split.skipped += 1
-      else split.unmarked += 1
+        if (row.time_spent_seconds && row.time_spent_seconds > 0) {
+          split.timeSpent += row.time_spent_seconds
+          split.timedAnswers += 1
+        }
+      }
 
-      if (row.time_spent_seconds && row.time_spent_seconds > 0) {
-        split.timeSpent += row.time_spent_seconds
-        split.timedAnswers += 1
+      const autoMarked = isAutoMarkable({ type: row.questions?.type ?? '' }) && row.is_correct !== null
+      const quality = classifyAttempt({
+        questionId: '',
+        marks: Number(row.questions?.marks ?? 1),
+        isCorrect: row.is_correct,
+        answered,
+        autoMarked,
+        timeSpentSeconds: row.time_spent_seconds,
+        topics: [],
+      })
+      const counts = (qualityByAttempt[row.attempt_id] ??= {})
+      counts[quality] = (counts[quality] ?? 0) + 1
+
+      if (row.is_correct === null) continue
+      for (const topic of row.questions?.topics ?? []) {
+        const entry = tally.get(topic) ?? { attempted: 0, correct: 0 }
+        entry.attempted += 1
+        if (row.is_correct) entry.correct += 1
+        tally.set(topic, entry)
       }
     }
 
-    const autoMarked = isAutoMarkable({ type: row.questions?.type ?? '' }) && row.is_correct !== null
-    const quality = classifyAttempt({
-      questionId: '',
-      marks: Number(row.questions?.marks ?? 1),
-      isCorrect: row.is_correct,
-      answered,
-      autoMarked,
-      timeSpentSeconds: row.time_spent_seconds,
-      topics: [],
-    })
-    const counts = (qualityByAttempt[row.attempt_id] ??= {})
-    counts[quality] = (counts[quality] ?? 0) + 1
+    const topics = [...tally.entries()]
+      .map(([topic, entry]) => ({
+        topic,
+        attempted: entry.attempted,
+        correct: entry.correct,
+        accuracy: Math.round((entry.correct / entry.attempted) * 100),
+      }))
+      .sort((a, b) => a.accuracy - b.accuracy || b.attempted - a.attempted)
+      .slice(0, topicLimit)
 
-    if (row.is_correct === null) continue
-    for (const topic of row.questions?.topics ?? []) {
-      const entry = tally.get(topic) ?? { attempted: 0, correct: 0 }
-      entry.attempted += 1
-      if (row.is_correct) entry.correct += 1
-      tally.set(topic, entry)
-    }
-  }
-
-  const topics = [...tally.entries()]
-    .map(([topic, entry]) => ({
-      topic,
-      attempted: entry.attempted,
-      correct: entry.correct,
-      accuracy: Math.round((entry.correct / entry.attempted) * 100),
-    }))
-    .sort((a, b) => a.accuracy - b.accuracy || b.attempted - a.attempted)
-    .slice(0, topicLimit)
-
-  return { breakdown, byAttempt, qualityByAttempt, topics }
+    return { breakdown, byAttempt, qualityByAttempt, topics }
+  }, empty)
 }
 
 export interface SuggestedSet {
@@ -1242,25 +1246,26 @@ export async function getLeaderboard(
   scopeKey: string | null = null,
   topN = 10,
 ): Promise<LeaderboardRow[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc('leaderboard', { scope, scope_key: scopeKey, top_n: topN, min_papers: 1 })
-  if (error || !data) return []
-  type Raw = {
-    rank: number
-    display_name: string
-    avatar_url: string | null
-    papers: number
-    avg_percentage: number | string
-    is_you: boolean
-  }
-  return (data as Raw[]).map((row) => ({
-    rank: Number(row.rank),
-    displayName: row.display_name,
-    avatarUrl: row.avatar_url,
-    papers: Number(row.papers),
-    avgPercentage: Number(row.avg_percentage),
-    isYou: row.is_you,
-  }))
+  return personal(`leaderboard:${scope}:${scopeKey ?? ''}:${topN}`, async (supabase) => {
+    const { data, error } = await supabase.rpc('leaderboard', { scope, scope_key: scopeKey, top_n: topN, min_papers: 1 })
+    if (error || !data) return []
+    type Raw = {
+      rank: number
+      display_name: string
+      avatar_url: string | null
+      papers: number
+      avg_percentage: number | string
+      is_you: boolean
+    }
+    return (data as Raw[]).map((row) => ({
+      rank: Number(row.rank),
+      displayName: row.display_name,
+      avatarUrl: row.avatar_url,
+      papers: Number(row.papers),
+      avgPercentage: Number(row.avg_percentage),
+      isYou: row.is_you,
+    }))
+  }, [], HALF_HOUR)
 }
 
 // ---------------------------------------------------------------------------
@@ -1300,114 +1305,112 @@ export interface MistakeItem {
  *          yet due for its recap
  */
 export async function getMistakeBank(): Promise<MistakeItem[]> {
-  const supabase = await createClient()
-  const userId = await signedInUserId(supabase)
-  if (!userId) return []
+  return personal('mistake-bank', async (supabase, userId) => {
+    type Event = { at: string; correct: boolean }
+    const history = new Map<string, Event[]>()
+    const add = (questionId: string, event: Event) => history.set(questionId, [...(history.get(questionId) ?? []), event])
 
-  type Event = { at: string; correct: boolean }
-  const history = new Map<string, Event[]>()
-  const add = (questionId: string, event: Event) => history.set(questionId, [...(history.get(questionId) ?? []), event])
+    const PAGE = 1000
+    for (let from = 0; from < 20_000; from += PAGE) {
+      const { data } = await supabase
+        .from('attempt_answers')
+        .select('question_id, is_correct, attempts!inner(user_id, submitted_at)')
+        .eq('attempts.user_id', userId)
+        .not('attempts.submitted_at', 'is', null)
+        .not('is_correct', 'is', null)
+        .order('id')
+        .range(from, from + PAGE - 1)
+      const page = (data ?? []) as unknown as {
+        question_id: string
+        is_correct: boolean
+        attempts: { submitted_at: string }
+      }[]
+      for (const row of page) add(row.question_id, { at: row.attempts.submitted_at, correct: row.is_correct })
+      if (page.length < PAGE) break
+    }
+    for (let from = 0; from < 20_000; from += PAGE) {
+      const { data } = await supabase
+        .from('question_reviews')
+        .select('question_id, is_correct, reviewed_at')
+        .eq('user_id', userId)
+        .order('id')
+        .range(from, from + PAGE - 1)
+      const page = (data ?? []) as { question_id: string; is_correct: boolean; reviewed_at: string }[]
+      for (const row of page) add(row.question_id, { at: row.reviewed_at, correct: row.is_correct })
+      if (page.length < PAGE) break
+    }
 
-  const PAGE = 1000
-  for (let from = 0; from < 20_000; from += PAGE) {
-    const { data } = await supabase
-      .from('attempt_answers')
-      .select('question_id, is_correct, attempts!inner(user_id, submitted_at)')
-      .eq('attempts.user_id', userId)
-      .not('attempts.submitted_at', 'is', null)
-      .not('is_correct', 'is', null)
-      .order('id')
-      .range(from, from + PAGE - 1)
-    const page = (data ?? []) as unknown as {
-      question_id: string
-      is_correct: boolean
-      attempts: { submitted_at: string }
-    }[]
-    for (const row of page) add(row.question_id, { at: row.attempts.submitted_at, correct: row.is_correct })
-    if (page.length < PAGE) break
-  }
-  for (let from = 0; from < 20_000; from += PAGE) {
-    const { data } = await supabase
-      .from('question_reviews')
-      .select('question_id, is_correct, reviewed_at')
-      .eq('user_id', userId)
-      .order('id')
-      .range(from, from + PAGE - 1)
-    const page = (data ?? []) as { question_id: string; is_correct: boolean; reviewed_at: string }[]
-    for (const row of page) add(row.question_id, { at: row.reviewed_at, correct: row.is_correct })
-    if (page.length < PAGE) break
-  }
+    const now = Date.now()
+    const states = new Map<string, Pick<MistakeItem, 'state' | 'misses' | 'lastSeen' | 'recapOn'>>()
+    for (const [questionId, events] of history) {
+      const misses = events.filter((e) => !e.correct).length
+      if (!misses) continue
+      events.sort((a, b) => a.at.localeCompare(b.at))
+      const last = events[events.length - 1]
+      let streak = 0
+      for (let i = events.length - 1; i >= 0 && events[i].correct; i--) streak += 1
 
-  const now = Date.now()
-  const states = new Map<string, Pick<MistakeItem, 'state' | 'misses' | 'lastSeen' | 'recapOn'>>()
-  for (const [questionId, events] of history) {
-    const misses = events.filter((e) => !e.correct).length
-    if (!misses) continue
-    events.sort((a, b) => a.at.localeCompare(b.at))
-    const last = events[events.length - 1]
-    let streak = 0
-    for (let i = events.length - 1; i >= 0 && events[i].correct; i--) streak += 1
+      let state: MistakeState = 'open'
+      let recapOn: string | null = null
+      if (streak >= 2) state = 'fixed'
+      else if (streak === 1) {
+        const due = new Date(last.at).getTime() + RECAP_DAYS * 24 * 3600 * 1000
+        if (due <= now) state = 'recap'
+        else {
+          state = 'fixed'
+          recapOn = new Date(due).toISOString()
+        }
+      }
+      states.set(questionId, { state, misses, lastSeen: last.at, recapOn })
+    }
 
-    let state: MistakeState = 'open'
-    let recapOn: string | null = null
-    if (streak >= 2) state = 'fixed'
-    else if (streak === 1) {
-      const due = new Date(last.at).getTime() + RECAP_DAYS * 24 * 3600 * 1000
-      if (due <= now) state = 'recap'
-      else {
-        state = 'fixed'
-        recapOn = new Date(due).toISOString()
+    const ids = [...states.keys()]
+    const items: MistakeItem[] = []
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data } = await supabase
+        .from('questions')
+        .select('id, number, set_id, body, question_sets(question_papers(session_date, exam_types(name), subjects(name, slug)))')
+        .in('id', ids.slice(i, i + 150))
+      type Raw = {
+        id: string
+        number: number
+        set_id: string
+        body: unknown
+        question_sets: {
+          question_papers: {
+            session_date: string | null
+            exam_types: { name: string } | null
+            subjects: { name: string; slug: string } | null
+          } | null
+        } | null
+      }
+      for (const q of (data ?? []) as unknown as Raw[]) {
+        const paper = q.question_sets?.question_papers
+        const state = states.get(q.id)
+        if (!paper?.subjects || !state) continue
+        // A one-line preview: the question's words without Markdown or LaTeX marks.
+        const text = blocksToText(parseBlocks(q.body))
+          .replace(/\|[\s:|-]*-[\s:|-]*\|/g, ' ')
+          .replace(/[|*_`$#>]+|\\(?=\s)/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        items.push({
+          questionId: q.id,
+          setId: q.set_id,
+          number: q.number,
+          snippet: text.length > 160 ? `${text.slice(0, 157)}…` : text || 'Question with an image',
+          subjectName: paper.subjects.name,
+          subjectSlug: paper.subjects.slug,
+          examName: paper.exam_types?.name ?? 'Exam',
+          session: paper.session_date,
+          ...state,
+        })
       }
     }
-    states.set(questionId, { state, misses, lastSeen: last.at, recapOn })
-  }
 
-  const ids = [...states.keys()]
-  const items: MistakeItem[] = []
-  for (let i = 0; i < ids.length; i += 150) {
-    const { data } = await supabase
-      .from('questions')
-      .select('id, number, set_id, body, question_sets(question_papers(session_date, exam_types(name), subjects(name, slug)))')
-      .in('id', ids.slice(i, i + 150))
-    type Raw = {
-      id: string
-      number: number
-      set_id: string
-      body: unknown
-      question_sets: {
-        question_papers: {
-          session_date: string | null
-          exam_types: { name: string } | null
-          subjects: { name: string; slug: string } | null
-        } | null
-      } | null
-    }
-    for (const q of (data ?? []) as unknown as Raw[]) {
-      const paper = q.question_sets?.question_papers
-      const state = states.get(q.id)
-      if (!paper?.subjects || !state) continue
-      // A one-line preview: the question's words without Markdown or LaTeX marks.
-      const text = blocksToText(parseBlocks(q.body))
-        .replace(/\|[\s:|-]*-[\s:|-]*\|/g, ' ')
-        .replace(/[|*_`$#>]+|\\(?=\s)/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-      items.push({
-        questionId: q.id,
-        setId: q.set_id,
-        number: q.number,
-        snippet: text.length > 160 ? `${text.slice(0, 157)}…` : text || 'Question with an image',
-        subjectName: paper.subjects.name,
-        subjectSlug: paper.subjects.slug,
-        examName: paper.exam_types?.name ?? 'Exam',
-        session: paper.session_date,
-        ...state,
-      })
-    }
-  }
-
-  const order: Record<MistakeState, number> = { open: 0, recap: 1, fixed: 2 }
-  return items.sort((a, b) => order[a.state] - order[b.state] || b.lastSeen.localeCompare(a.lastSeen))
+    const order: Record<MistakeState, number> = { open: 0, recap: 1, fixed: 2 }
+    return items.sort((a, b) => order[a.state] - order[b.state] || b.lastSeen.localeCompare(a.lastSeen))
+  }, [])
 }
 
 /**
@@ -1467,35 +1470,36 @@ export interface PeerGap {
 
 /** Questions this student got wrong that most other students got right. */
 export async function getMyPeerGaps(limit = 8): Promise<PeerGap[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc('my_peer_gaps', { max_rows: limit, min_peers: 3 })
-  if (error || !data) return []
-  type Raw = {
-    question_id: string
-    set_id: string
-    question_number: number
-    subject_name: string
-    subject_slug: string
-    exam_type_name: string
-    session_date: string | null
-    peer_count: number
-    peer_correct_percentage: number | string
-    peer_avg_seconds: number | string | null
-    your_seconds: number | null
-    answered: boolean
-  }
-  return (data as Raw[]).map((row) => ({
-    questionId: row.question_id,
-    setId: row.set_id,
-    number: row.question_number,
-    subjectName: row.subject_name,
-    subjectSlug: row.subject_slug,
-    examName: row.exam_type_name,
-    session: row.session_date,
-    peerCount: Number(row.peer_count),
-    peerCorrect: Number(row.peer_correct_percentage),
-    peerSeconds: row.peer_avg_seconds === null ? null : Number(row.peer_avg_seconds),
-    yourSeconds: row.your_seconds,
-    answered: row.answered,
-  }))
+  return personal(`peer-gaps:${limit}`, async (supabase) => {
+    const { data, error } = await supabase.rpc('my_peer_gaps', { max_rows: limit, min_peers: 3 })
+    if (error || !data) return []
+    type Raw = {
+      question_id: string
+      set_id: string
+      question_number: number
+      subject_name: string
+      subject_slug: string
+      exam_type_name: string
+      session_date: string | null
+      peer_count: number
+      peer_correct_percentage: number | string
+      peer_avg_seconds: number | string | null
+      your_seconds: number | null
+      answered: boolean
+    }
+    return (data as Raw[]).map((row) => ({
+      questionId: row.question_id,
+      setId: row.set_id,
+      number: row.question_number,
+      subjectName: row.subject_name,
+      subjectSlug: row.subject_slug,
+      examName: row.exam_type_name,
+      session: row.session_date,
+      peerCount: Number(row.peer_count),
+      peerCorrect: Number(row.peer_correct_percentage),
+      peerSeconds: row.peer_avg_seconds === null ? null : Number(row.peer_avg_seconds),
+      yourSeconds: row.your_seconds,
+      answered: row.answered,
+    }))
+  }, [], HALF_HOUR)
 }

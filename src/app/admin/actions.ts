@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient, requireStaff } from '@/lib/supabase/server'
+import { TAG, refresh } from '@/lib/cache'
 import { blocksSchema } from '@/lib/blocks/schema'
 
 /**
@@ -55,6 +56,7 @@ export async function createProgram(
   const { error } = await supabase.from('programs').insert(parsed.data)
   if (error) return fail(error.message)
 
+  refresh(TAG.taxonomy)
   revalidatePath('/admin/taxonomy')
   revalidatePath('/browse')
   revalidatePath('/')
@@ -90,6 +92,7 @@ export async function createLevel(
   const { error } = await supabase.from('levels').insert(parsed.data)
   if (error) return fail(error.message)
 
+  refresh(TAG.taxonomy)
   revalidatePath('/admin/taxonomy')
   revalidatePath('/browse')
   return { ok: true }
@@ -132,6 +135,7 @@ export async function createSubject(
   })
   if (error) return fail(error.message)
 
+  refresh(TAG.taxonomy)
   revalidatePath('/admin/taxonomy')
   revalidatePath('/browse')
   return { ok: true }
@@ -165,6 +169,7 @@ export async function createExamType(
   const { error } = await supabase.from('exam_types').insert(parsed.data)
   if (error) return fail(error.message)
 
+  refresh(TAG.taxonomy)
   revalidatePath('/admin/taxonomy')
   revalidatePath('/browse')
   return { ok: true }
@@ -185,6 +190,7 @@ export async function toggleActive(
   const { error } = await supabase.from(table).update({ is_active: isActive }).eq('id', id)
   if (error) return fail(error.message)
 
+  refresh(TAG.taxonomy)
   revalidatePath('/admin/taxonomy')
   revalidatePath('/browse')
   return { ok: true }
@@ -211,6 +217,7 @@ export async function setPaperStatus(
     .eq('id', paperId)
   if (error) return fail(error.message)
 
+  refresh(TAG.catalogue)
   revalidatePath('/admin/papers')
   revalidatePath(`/admin/papers/${paperId}`)
   revalidatePath('/browse')
@@ -229,6 +236,7 @@ export async function deletePaper(paperId: string): Promise<ActionState> {
   const { error } = await supabase.from('question_papers').delete().eq('id', paperId)
   if (error) return fail(error.message)
 
+  refresh(TAG.catalogue)
   revalidatePath('/admin/papers')
   revalidatePath('/browse')
   return { ok: true }
@@ -296,6 +304,7 @@ export async function updateQuestion(
 
   if (error) return fail(error.message)
 
+  refresh(TAG.catalogue)
   revalidatePath(`/admin/questions/${parsed.data.id}`)
   return { ok: true }
 }
@@ -329,6 +338,7 @@ export async function updateOption(
   const supabase = await createClient()
   const { error } = await supabase.from('question_options').update(update).eq('id', optionId)
   if (error) return fail(error.message)
+  refresh(TAG.catalogue)
 
   return { ok: true }
 }
@@ -376,6 +386,7 @@ export async function moderateSolution(
   const { error } = await supabase.from('solutions').update({ status }).eq('id', solutionId)
   if (error) return fail(error.message)
 
+  refresh(TAG.solutions)
   revalidatePath('/admin/solutions')
   return { ok: true }
 }
@@ -446,6 +457,7 @@ export async function createExamDate(_previous: ActionState, formData: FormData)
   const supabase = await createClient()
   const { error } = await supabase.from('exam_calendar').insert(parsed.data)
   if (error) return fail(error.message)
+  refresh(TAG.spotlight)
   revalidatePath('/admin/spotlight')
   return { ok: true }
 }
@@ -480,6 +492,7 @@ export async function createBanner(_previous: ActionState, formData: FormData): 
   const supabase = await createClient()
   const { error } = await supabase.from('banners').insert(parsed.data)
   if (error) return fail(error.message)
+  refresh(TAG.spotlight)
   revalidatePath('/admin/spotlight')
   return { ok: true }
 }
@@ -493,6 +506,7 @@ export async function setBannerActive(id: string, isActive: boolean): Promise<Ac
   const supabase = await createClient()
   const { error } = await supabase.from('banners').update({ is_active: isActive }).eq('id', id)
   if (error) return fail(error.message)
+  refresh(TAG.spotlight)
   revalidatePath('/admin/spotlight')
   return { ok: true }
 }
@@ -506,6 +520,7 @@ export async function deleteSpotlightRow(table: 'banners' | 'exam_calendar', id:
   const supabase = await createClient()
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) return fail(error.message)
+  refresh(TAG.spotlight)
   revalidatePath('/admin/spotlight')
   return { ok: true }
 }
