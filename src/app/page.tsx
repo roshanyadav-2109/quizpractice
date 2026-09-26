@@ -117,9 +117,6 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* -------------------------------------------------------- Highlights */}
-      <Spotlight placement="home" className={`${SHELL} pt-6`} />
-
       {/* ------------------------------------------------------------ Search */}
       <section className={`${SHELL} pt-12 pb-14 text-center lg:pt-16`}>
         <h1 className="mx-auto max-w-3xl text-[2rem] leading-[1.15] font-medium text-balance text-ink sm:text-[2.5rem]">
@@ -196,6 +193,9 @@ export default async function HomePage() {
           ))}
         </ul>
       </Section>
+
+      {/* -------------------------------------------------------- Highlights */}
+      <Spotlight placement="home" className={`${SHELL} pb-14`} />
 
       {/* ---------------------------------------------------------- Branches */}
       <Section title="What are you preparing for?" link={{ href: '/subjects', label: 'All subjects' }}>
