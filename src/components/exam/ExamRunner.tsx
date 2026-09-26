@@ -62,6 +62,18 @@ export interface ExamRunnerProps {
   isSignedIn: boolean
   /** Question number to open on — "Solution →" in a result lands here. */
   startAt?: number
+  /**
+   * Retrying mistakes rather than sitting one paper: the same learning-mode
+   * screen, titled and linked for the mistake bank, each question labelled
+   * with the paper it came from, and every check saved to the bank.
+   */
+  review?: {
+    backHref: string
+    title: string
+    subtitle: string
+    /** Where each question came from, keyed by question id. */
+    sources: Record<string, string>
+  }
 }
 
 interface GradeResponse {
@@ -98,12 +110,12 @@ const TYPE_LABEL: Record<QuestionWithOptions['type'], string> = {
  * nobody has to scroll past the question to find it.
  */
 export function ExamRunner(props: ExamRunnerProps) {
-  const { setId, mode, questions, solutions, meta, isSignedIn, startAt } = props
+  const { setId, mode, questions, solutions, meta, isSignedIn, startAt, review } = props
   const router = useRouter()
   const learning = mode === 'learning'
   // Learning mode keeps its own scratch answers: checking yourself against the
   // key must never leak into — or be restored from — a timed attempt.
-  const storageKey = learning ? `qp:learning:${setId}` : `qp:attempt:${setId}`
+  const storageKey = review ? 'qp:mistakes' : learning ? `qp:learning:${setId}` : `qp:attempt:${setId}`
 
   /**
    * In-progress answers survive a refresh — refreshing mid-paper is common and
@@ -224,6 +236,19 @@ export function ExamRunner(props: ExamRunnerProps) {
 
   function checkAnswer(questionId: string) {
     setChecked((current) => new Set(current).add(questionId))
+    // A retried mistake is recorded in the bank; the server marks it again
+    // against the key rather than trusting this screen's verdict.
+    if (review) {
+      void fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          response: responses[questionId] ?? null,
+          timeSpentSeconds: snapshotTimings()[questionId],
+        }),
+      }).catch(() => {})
+    }
   }
 
   /** Puts a checked question back as it was: unanswered and unmarked. */
@@ -441,34 +466,43 @@ export function ExamRunner(props: ExamRunnerProps) {
       {/* Header: the paper, the mode, and the clock. */}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-3 sm:px-5">
         <Link
-          href={`/paper/${setId}`}
-          aria-label="Leave the paper"
-          title="Leave the paper — your answers stay saved on this device"
+          href={review?.backHref ?? `/paper/${setId}`}
+          aria-label={review ? 'Back to the mistake bank' : 'Leave the paper'}
+          title={review ? 'Back to the mistake bank' : 'Leave the paper — your answers stay saved on this device'}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink hover:bg-surface-2"
         >
           <ArrowLeft size={20} />
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-ui font-medium text-ink">
-            <Trail
-              parts={[
-                meta.subjectName,
-                <span key="exam" className="font-normal text-ink-muted">
-                  {meta.examTypeName}
-                </span>,
-              ]}
-            />
-          </p>
-          <p className="truncate text-meta text-ink-faint tabular-nums">
-            <Trail
-              parts={[meta.termLabel, meta.sessionLabel, `Set ${meta.setCode}`].filter(
-                (part): part is string => Boolean(part),
-              )}
-            />
-          </p>
+          {review ? (
+            <>
+              <p className="truncate text-ui font-medium text-ink">{review.title}</p>
+              <p className="truncate text-meta text-ink-faint">{review.subtitle}</p>
+            </>
+          ) : (
+            <>
+              <p className="truncate text-ui font-medium text-ink">
+                <Trail
+                  parts={[
+                    meta.subjectName,
+                    <span key="exam" className="font-normal text-ink-muted">
+                      {meta.examTypeName}
+                    </span>,
+                  ]}
+                />
+              </p>
+              <p className="truncate text-meta text-ink-faint tabular-nums">
+                <Trail
+                  parts={[meta.termLabel, meta.sessionLabel, `Set ${meta.setCode}`].filter(
+                    (part): part is string => Boolean(part),
+                  )}
+                />
+              </p>
+            </>
+          )}
         </div>
 
-        <ModeSwitch setId={setId} mode={mode} className="hidden md:flex" />
+        {review ? null : <ModeSwitch setId={setId} mode={mode} className="hidden md:flex" />}
 
         {learning ? (
           <span className="rounded-control bg-surface-2 px-3 py-2 text-meta text-ink-muted md:hidden">
@@ -528,6 +562,10 @@ export function ExamRunner(props: ExamRunnerProps) {
                   Instructions
                 </button>
               </div>
+
+              {review?.sources[question.id] ? (
+                <p className="mt-2 text-meta text-ink-faint">{review.sources[question.id]}</p>
+              ) : null}
 
               <div className="paper mt-5 text-ink">
                 <BlockRenderer blocks={question.body} />
@@ -708,7 +746,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           />
           <div className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col rounded-t-card bg-surface">
             <div className="flex items-center justify-between gap-3 border-b border-rule px-4 py-3">
-              <ModeSwitch setId={setId} mode={mode} className="flex" />
+              {review ? <span className="text-ui text-ink">Mistakes</span> : <ModeSwitch setId={setId} mode={mode} className="flex" />}
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}

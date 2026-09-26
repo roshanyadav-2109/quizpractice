@@ -13,6 +13,6 @@ import type { ReactNode } from 'react'
  */
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  if (pathname?.startsWith('/practice/')) return null
+  if (pathname?.startsWith('/practice/') || pathname?.startsWith('/mistakes/practice')) return null
   return <>{children}</>
 }
