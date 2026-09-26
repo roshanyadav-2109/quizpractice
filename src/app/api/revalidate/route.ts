@@ -4,7 +4,7 @@ import { refresh } from '@/lib/cache'
 
 const input = z.object({
   tags: z
-    .array(z.string().regex(/^(taxonomy|catalogue|spotlight|solutions|(set|user):[0-9a-f-]{36})$/, 'Unknown tag.'))
+    .array(z.string().regex(/^(taxonomy|catalogue|spotlight|solutions|search|(set|user):[0-9a-f-]{36})$/, 'Unknown tag.'))
     .min(1)
     .max(50),
 })
