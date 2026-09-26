@@ -14,7 +14,8 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buttonClass } from '@/components/ui/primitives'
-import { Check, WarningCircle, X } from '@/components/ui/icons'
+import { DEMO_ACCOUNTS, demoLoginsEnabled } from '@/lib/demo-accounts'
+import { Check, Gauge, User, WarningCircle, X } from '@/components/ui/icons'
 
 const PERKS = [
   'Save every attempt and score',
@@ -116,6 +117,17 @@ function SignInPanel({
   const [error, setError] = useState<string | null>(null)
   const shownError = error ?? notice
 
+  const [demoBusy, setDemoBusy] = useState(false)
+
+  async function signInAsDemo(email: string, password: string) {
+    setDemoBusy(true)
+    setError(null)
+    const { error: signInError } = await createClient().auth.signInWithPassword({ email, password })
+    setDemoBusy(false)
+    if (signInError) setError(signInError.message)
+    else completeSignIn()
+  }
+
   function completeSignIn() {
     onClose()
     if (next) router.push(next)
@@ -151,6 +163,26 @@ function SignInPanel({
             <GoogleButton onError={setError} onDone={completeSignIn} />
           </div>
           <p className="mt-3 text-center text-meta font-light text-ink-faint">New here? Signing in creates your account.</p>
+
+          {demoLoginsEnabled ? (
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <p className="text-meta font-light text-ink-faint">or try a demo account</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    disabled={demoBusy}
+                    onClick={() => void signInAsDemo(account.email, account.password)}
+                    className="inline-flex h-9 items-center gap-2 rounded-control border border-rule px-3.5 text-meta text-ink-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-60"
+                  >
+                    {account.role === 'admin' ? <Gauge size={15} /> : <User size={15} />}
+                    {account.displayName}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {shownError ? (
             <p className="mt-4 flex items-start gap-2 text-meta text-incorrect">

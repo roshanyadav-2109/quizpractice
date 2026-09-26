@@ -933,34 +933,87 @@ export interface StudentTopic {
   accuracy: number
 }
 
+export interface AnswerBreakdown {
+  correct: number
+  wrong: number
+  skipped: number
+  /** Answered, but not auto-marked (written answers) — compared by hand. */
+  unmarked: number
+  /** Seconds, over the answers that recorded time. */
+  timeSpent: number
+  timedAnswers: number
+}
+
+export interface MyAnswerAnalytics {
+  breakdown: AnswerBreakdown
+  /** Weakest first. */
+  topics: StudentTopic[]
+}
+
+function hasResponse(response: unknown): boolean {
+  if (response == null) return false
+  if (typeof response !== 'object') return true
+  const value = response as { option_ids?: unknown[]; value?: unknown; text?: unknown }
+  if (Array.isArray(value.option_ids)) return value.option_ids.length > 0
+  if (typeof value.value === 'string') return value.value.trim() !== ''
+  if (typeof value.text === 'string') return value.text.trim() !== ''
+  return Object.keys(value).length > 0
+}
+
 /**
- * Topic performance across every attempt this student has submitted.
+ * Every answer this student has submitted, reduced to what the dashboard
+ * shows: how answers split between right, wrong and skipped, the time spent,
+ * and accuracy per topic (weakest first). One read serves both.
  *
- * Answers the only question a dashboard really needs to answer — what should I
- * revise — and it is computable from data we already store, because questions
- * carry topics and answers carry correctness. Ordered weakest first.
+ * PostgREST caps a response at 1,000 rows, so answers are read in pages.
  */
-export async function getMyTopicPerformance(limit = 8): Promise<StudentTopic[]> {
+export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnalytics> {
+  const empty: MyAnswerAnalytics = {
+    breakdown: { correct: 0, wrong: 0, skipped: 0, unmarked: 0, timeSpent: 0, timedAnswers: 0 },
+    topics: [],
+  }
   const supabase = await createClient()
   const userId = await signedInUserId(supabase)
-  if (!userId) return []
-
-  const { data } = await supabase
-    .from('attempt_answers')
-    .select('is_correct, questions(topics), attempts!inner(submitted_at, user_id)')
-    .eq('attempts.user_id', userId)
-    .not('is_correct', 'is', null)
-    .not('attempts.submitted_at', 'is', null)
-    .limit(2000)
+  if (!userId) return empty
 
   type Raw = {
     is_correct: boolean | null
+    response: unknown
+    time_spent_seconds: number | null
     questions: { topics: string[] | null } | null
   }
 
+  const rows: Raw[] = []
+  const PAGE = 1000
+  for (let from = 0; from < 20_000; from += PAGE) {
+    const { data } = await supabase
+      .from('attempt_answers')
+      .select('is_correct, response, time_spent_seconds, questions(topics), attempts!inner(user_id, submitted_at)')
+      .eq('attempts.user_id', userId)
+      .not('attempts.submitted_at', 'is', null)
+      .order('id')
+      .range(from, from + PAGE - 1)
+    const page = (data ?? []) as unknown as Raw[]
+    rows.push(...page)
+    if (page.length < PAGE) break
+  }
+
+  const breakdown = { ...empty.breakdown }
   const tally = new Map<string, { attempted: number; correct: number }>()
 
-  for (const row of (data ?? []) as unknown as Raw[]) {
+  for (const row of rows) {
+    const answered = hasResponse(row.response)
+    if (row.is_correct === true) breakdown.correct += 1
+    else if (row.is_correct === false && answered) breakdown.wrong += 1
+    else if (!answered) breakdown.skipped += 1
+    else breakdown.unmarked += 1
+
+    if (row.time_spent_seconds && row.time_spent_seconds > 0) {
+      breakdown.timeSpent += row.time_spent_seconds
+      breakdown.timedAnswers += 1
+    }
+
+    if (row.is_correct === null) continue
     for (const topic of row.questions?.topics ?? []) {
       const entry = tally.get(topic) ?? { attempted: 0, correct: 0 }
       entry.attempted += 1
@@ -969,7 +1022,7 @@ export async function getMyTopicPerformance(limit = 8): Promise<StudentTopic[]> 
     }
   }
 
-  return [...tally.entries()]
+  const topics = [...tally.entries()]
     .map(([topic, entry]) => ({
       topic,
       attempted: entry.attempted,
@@ -977,7 +1030,9 @@ export async function getMyTopicPerformance(limit = 8): Promise<StudentTopic[]> 
       accuracy: Math.round((entry.correct / entry.attempted) * 100),
     }))
     .sort((a, b) => a.accuracy - b.accuracy || b.attempted - a.attempted)
-    .slice(0, limit)
+    .slice(0, topicLimit)
+
+  return { breakdown, topics }
 }
 
 export interface SuggestedPaper {

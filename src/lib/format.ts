@@ -33,3 +33,26 @@ export function formatSession(date: string | null): string {
   if (!date) return 'Undated'
   return sessions.format(new Date(`${date}T00:00:00Z`))
 }
+
+/** A length of time, as "1h 20m", "12m" or "45s". */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return `${total}s`
+}
+
+const istDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' })
+const istShort = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })
+
+/** The calendar day an instant falls on in India, as "2026-09-26". */
+export function istDayKey(instant: string | Date): string {
+  return istDay.format(typeof instant === 'string' ? new Date(instant) : instant)
+}
+
+/** An instant as its day in India, "26 Sep". */
+export function formatShortDate(instant: string | Date): string {
+  return istShort.format(typeof instant === 'string' ? new Date(instant) : instant)
+}

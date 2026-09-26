@@ -63,6 +63,7 @@ export {
   Check,
   CheckCircle,
   XCircle,
+  MinusCircle,
   Flag,
   BookmarkSimple,
   ChatCircleText,

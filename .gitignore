@@ -46,7 +46,7 @@ next-env.d.ts
 
 # local debug artifacts (Playwright MCP screenshots / console logs, ad-hoc captures)
 .playwright-mcp/
-/endterm-*.png
+/*.png
 
 # vercel
 .vercel
