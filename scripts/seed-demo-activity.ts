@@ -61,7 +61,8 @@ async function main() {
 
   // 1. Start from a clean slate. attempt_answers cascade with their attempt.
   const { count: removed } = await supabase.from('attempts').delete({ count: 'exact' }).eq('user_id', userId)
-  console.log(`removed ${removed ?? 0} earlier demo attempts`)
+  const { count: reviews } = await supabase.from('question_reviews').delete({ count: 'exact' }).eq('user_id', userId)
+  console.log(`removed ${removed ?? 0} earlier demo attempts and ${reviews ?? 0} mistake retries`)
 
   // 2. Candidate papers: published sets with enough auto-marked questions.
   const subjectSlugs = Object.keys(SUBJECTS)

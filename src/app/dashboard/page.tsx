@@ -4,6 +4,8 @@ import type { Metadata } from 'next'
 import {
   getExamTypes,
   getLeaderboard,
+  getMistakeBank,
+  getMyPeerGaps,
   getMyAnswerAnalytics,
   getMyAttempts,
   getSubjectBySlug,
@@ -11,6 +13,7 @@ import {
   summariseMyAttempts,
   type AnswerBreakdown,
   type LeaderboardScope,
+  type QualityCounts,
   type MyAttempt,
 } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
@@ -22,6 +25,7 @@ import { formatCount, formatDuration, formatSession, formatShortDate, istDayKey 
 import { MetricExplorer, type MetricKey, type MetricSummary, type PaperPoint } from '@/components/dashboard/MetricExplorer'
 import { PaperCarousel, type CarouselPaper } from '@/components/dashboard/PaperCarousel'
 import { Leaderboard, type Board } from '@/components/dashboard/Leaderboard'
+import { SpeedMap, type SubjectQuality } from '@/components/dashboard/SpeedMap'
 import { artFor } from '@/lib/art'
 import { ActivityCalendar, AnswerSplit, Gauge, Panel, SubjectBars, type SubjectScore } from '@/components/dashboard/panels'
 
@@ -234,10 +238,12 @@ export default async function StudentDashboard() {
   for (const attempt of attempts) examCounts.set(attempt.exam_type_name, (examCounts.get(attempt.exam_type_name) ?? 0) + 1)
   const topExamName = [...examCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
 
-  const [suggested, topSubject, examTypes] = await Promise.all([
+  const [suggested, topSubject, examTypes, mistakes, peerGaps] = await Promise.all([
     getSuggestedSets(practised, new Set(progress.bySet.keys()), 12),
     practised[0] ? getSubjectBySlug(practised[0]) : Promise.resolve(null),
     getExamTypes(),
+    getMistakeBank(),
+    getMyPeerGaps(6),
   ])
   const topExam = examTypes.find((type) => type.name === topExamName) ?? null
 
@@ -268,6 +274,73 @@ export default async function StudentDashboard() {
     setCode: set.set_code,
     art: artFor('subjects', set.subject_slug),
   }))
+
+
+  // Speed against accuracy: every answer's class, overall and per subject.
+  const subjectOfAttempt = new Map(attempts.map((a) => [a.id, { slug: a.subject_slug, name: a.subject_name }]))
+  const qualityOverall: QualityCounts = {}
+  const qualityBySubject = new Map<string, SubjectQuality>()
+  for (const [attemptId, counts] of Object.entries(analytics.qualityByAttempt)) {
+    const subject = subjectOfAttempt.get(attemptId)
+    for (const [quality, n] of Object.entries(counts) as [keyof QualityCounts, number][]) {
+      qualityOverall[quality] = (qualityOverall[quality] ?? 0) + n
+      if (!subject) continue
+      const entry = qualityBySubject.get(subject.slug) ?? { slug: subject.slug, name: subject.name, counts: {} }
+      entry.counts[quality] = (entry.counts[quality] ?? 0) + n
+      qualityBySubject.set(subject.slug, entry)
+    }
+  }
+  const zone = (counts: QualityCounts, ...keys: (keyof QualityCounts)[]) => keys.reduce((sum, k) => sum + (counts[k] ?? 0), 0)
+  const qualitySubjects = [...qualityBySubject.values()]
+    .filter((s) => zone(s.counts, 'perfect', 'slow_correct', 'incorrect', 'rushed', 'sunk') > 0)
+    .sort((a, b) => zone(b.counts, 'perfect') / Math.max(1, zone(b.counts, 'perfect', 'slow_correct', 'incorrect', 'rushed', 'sunk')) - zone(a.counts, 'perfect') / Math.max(1, zone(a.counts, 'perfect', 'slow_correct', 'incorrect', 'rushed', 'sunk')))
+    .slice(0, 7)
+
+  // Plain-language findings: the subject where each pattern is strongest.
+  const findings: { share: number; text: string }[] = []
+  const strongest = (share: (c: QualityCounts) => number | null) =>
+    [...qualityBySubject.values()]
+      .filter((s) => zone(s.counts, 'perfect', 'slow_correct', 'incorrect', 'rushed', 'sunk') >= 10)
+      .map((s) => ({ s, share: share(s.counts) }))
+      .filter((x): x is { s: SubjectQuality; share: number } => x.share !== null)
+      .sort((a, b) => b.share - a.share)[0]
+  const careless = strongest((c) => (zone(c, 'rushed', 'incorrect', 'sunk') >= 4 ? zone(c, 'rushed') / zone(c, 'rushed', 'incorrect', 'sunk') : null))
+  if (careless && careless.share >= 0.25)
+    findings.push({
+      share: careless.share,
+      text: `In ${careless.s.name}, ${Math.round(careless.share * 100)}% of your wrong answers were rushed. Slow down and re-read the question before answering.`,
+    })
+  const slow = strongest((c) => (zone(c, 'perfect', 'slow_correct') >= 4 ? zone(c, 'slow_correct') / zone(c, 'perfect', 'slow_correct') : null))
+  if (slow && slow.share >= 0.25)
+    findings.push({
+      share: slow.share,
+      text: `In ${slow.s.name} you're accurate but slow: ${Math.round(slow.share * 100)}% of your right answers took longer than their marks allow. Timed practice will help.`,
+    })
+  const sunk = strongest((c) => (zone(c, 'rushed', 'incorrect', 'sunk') >= 4 ? zone(c, 'sunk') / zone(c, 'rushed', 'incorrect', 'sunk') : null))
+  if (sunk && sunk.share >= 0.25)
+    findings.push({
+      share: sunk.share,
+      text: `In ${sunk.s.name}, ${Math.round(sunk.share * 100)}% of your wrong answers came after a long struggle. Revise the concepts before practising more papers.`,
+    })
+  const best = strongest((c) => zone(c, 'perfect') / zone(c, 'perfect', 'slow_correct', 'incorrect', 'rushed', 'sunk'))
+  if (best && best.share >= 0.4)
+    findings.push({
+      share: best.share * 0.5,
+      text: `${best.s.name} is your strongest: ${Math.round(best.share * 100)}% of answers there were right and on pace.`,
+    })
+  const speedInsights = findings.sort((a, b) => b.share - a.share).slice(0, 3).map((f) => f.text)
+
+  // Mistake bank summary.
+  const mistakeCounts = {
+    open: mistakes.filter((m) => m.state === 'open').length,
+    recap: mistakes.filter((m) => m.state === 'recap').length,
+    fixed: mistakes.filter((m) => m.state === 'fixed').length,
+  }
+  const mistakeSubjects = [...new Map(mistakes.map((m) => [m.subjectSlug, m.subjectName])).entries()]
+    .map(([slug, name]) => ({ slug, name, open: mistakes.filter((m) => m.subjectSlug === slug && m.state !== 'fixed').length }))
+    .filter((s) => s.open > 0)
+    .sort((a, b) => b.open - a.open)
+    .slice(0, 4)
 
   const focus =
     topics.length > 0
@@ -346,6 +419,112 @@ export default async function StudentDashboard() {
             ) : (
               <p className="text-ui font-light text-ink-muted">Your form appears once a paper is marked.</p>
             )}
+          </Panel>
+        </div>
+
+        {/* Speed against accuracy */}
+        <Panel
+          className="mt-4"
+          title="Speed vs accuracy"
+          note="Every answer, placed by whether it was right and how long it took"
+        >
+          <SpeedMap overall={qualityOverall} subjects={qualitySubjects} insights={speedInsights} />
+        </Panel>
+
+        {/* Gaps against other students, and the mistake bank */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Panel
+            title="Easy for others, missed by you"
+            note="Questions you got wrong that most students get right — your real gaps"
+          >
+            {peerGaps.length > 0 ? (
+              <ul className="flex flex-col">
+                {peerGaps.map((gap) => (
+                  <li key={gap.questionId} className="border-b border-rule py-3.5 first:pt-0 last:border-b-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-ui text-ink">
+                          {gap.subjectName} <span className="text-ink-faint">· Q{gap.number}</span>
+                        </p>
+                        <p className="text-meta font-light text-ink-faint">
+                          {gap.examName} · {formatSession(gap.session)}
+                        </p>
+                      </div>
+                      <div className="w-44">
+                        <div className="flex items-baseline justify-between text-meta">
+                          <span className="text-ink-muted">Others right</span>
+                          <span className="text-ink tabular-nums">{Math.round(gap.peerCorrect)}%</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 bg-surface-2">
+                          <div className="h-full rounded-r-[4px] bg-accent" style={{ width: `${gap.peerCorrect}%` }} />
+                        </div>
+                        <p className="mt-1 text-[0.75rem] font-light text-ink-faint tabular-nums">of {gap.peerCount} students</p>
+                      </div>
+                      <p className="w-40 text-meta font-light text-ink-muted tabular-nums">
+                        {gap.answered
+                          ? `You ${gap.yourSeconds ? formatDuration(gap.yourSeconds) : '—'} · them ${gap.peerSeconds ? formatDuration(gap.peerSeconds) : '—'}`
+                          : 'You left it blank'}
+                      </p>
+                      <Link
+                        href={`/practice/${gap.setId}?mode=learning&q=${gap.number}`}
+                        className="text-meta text-accent hover:underline"
+                      >
+                        See solution
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="rounded-control bg-surface-2 px-5 py-8 text-center">
+                <p className="text-ui text-ink">Waiting for more students</p>
+                <p className="mx-auto mt-1.5 max-w-[52ch] text-meta font-light text-ink-faint">
+                  This compares each question you missed with how other students did on it. It appears once at least three
+                  other students have answered the same questions.
+                </p>
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Mistake bank" note="Questions you got wrong or left blank">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { label: 'Open', value: mistakeCounts.open, dot: 'bg-incorrect' },
+                { label: 'Recap due', value: mistakeCounts.recap, dot: 'bg-marked' },
+                { label: 'Fixed', value: mistakeCounts.fixed, dot: 'bg-correct' },
+              ].map((cell) => (
+                <div key={cell.label} className="rounded-control bg-surface-2 px-2 py-3">
+                  <p className="text-[1.5rem] leading-none font-light text-ink">{cell.value}</p>
+                  <p className="mt-1.5 flex items-center justify-center gap-1.5 text-meta font-light text-ink-faint">
+                    <span className={`h-2 w-2 rounded-full ${cell.dot}`} aria-hidden="true" />
+                    {cell.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {mistakeSubjects.length > 0 ? (
+              <ul className="mt-5 flex flex-col gap-2.5">
+                {mistakeSubjects.map((s) => (
+                  <li key={s.slug}>
+                    <Link href={`/mistakes?subject=${s.slug}`} className="flex items-baseline justify-between gap-3 text-ui hover:text-accent">
+                      <span className="min-w-0 truncate font-light">{s.name}</span>
+                      <span className="shrink-0 text-meta text-ink-faint tabular-nums">{s.open} to fix</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="mt-6 flex flex-wrap gap-2">
+              {mistakeCounts.open + mistakeCounts.recap > 0 ? (
+                <Link href="/mistakes/practice" className={buttonClass('primary', 'md')}>
+                  Retry mistakes
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              ) : null}
+              <Link href="/mistakes" className={buttonClass('outline', 'md')}>
+                Open bank
+              </Link>
+            </div>
           </Panel>
         </div>
 

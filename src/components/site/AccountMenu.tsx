@@ -94,6 +94,9 @@ export function AccountMenu({
             <Link role="menuitem" href="/dashboard" className={item} onClick={() => setOpen(false)}>
               Dashboard
             </Link>
+            <Link role="menuitem" href="/mistakes" className={item} onClick={() => setOpen(false)}>
+              Mistake bank
+            </Link>
             <Link role="menuitem" href="/account" className={item} onClick={() => setOpen(false)}>
               Account
             </Link>

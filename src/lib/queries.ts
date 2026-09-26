@@ -2,7 +2,9 @@ import 'server-only'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { publicClient, memoise } from '@/lib/supabase/public'
-import { parseBlocks } from '@/lib/blocks/schema'
+import { blocksToText, parseBlocks } from '@/lib/blocks/schema'
+import { classifyAttempt, type AttemptQuality } from '@/lib/analysis'
+import { isAutoMarkable } from '@/lib/scoring'
 import type {
   ExamType,
   Level,
@@ -944,10 +946,15 @@ export interface AnswerBreakdown {
   timedAnswers: number
 }
 
+/** How many answers fell in each speed-and-accuracy class (see analysis.ts). */
+export type QualityCounts = Partial<Record<AttemptQuality, number>>
+
 export interface MyAnswerAnalytics {
   breakdown: AnswerBreakdown
   /** The same split for each attempt, keyed by attempt id. */
   byAttempt: Record<string, AnswerBreakdown>
+  /** Speed-and-accuracy classes for each attempt, keyed by attempt id. */
+  qualityByAttempt: Record<string, QualityCounts>
   /** Weakest first. */
   topics: StudentTopic[]
 }
@@ -971,7 +978,7 @@ function hasResponse(response: unknown): boolean {
  */
 export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnalytics> {
   const zero = (): AnswerBreakdown => ({ correct: 0, wrong: 0, skipped: 0, unmarked: 0, timeSpent: 0, timedAnswers: 0 })
-  const empty: MyAnswerAnalytics = { breakdown: zero(), byAttempt: {}, topics: [] }
+  const empty: MyAnswerAnalytics = { breakdown: zero(), byAttempt: {}, qualityByAttempt: {}, topics: [] }
   const supabase = await createClient()
   const userId = await signedInUserId(supabase)
   if (!userId) return empty
@@ -981,7 +988,7 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
     is_correct: boolean | null
     response: unknown
     time_spent_seconds: number | null
-    questions: { topics: string[] | null } | null
+    questions: { topics: string[] | null; marks: number | string; type: string } | null
   }
 
   const rows: Raw[] = []
@@ -989,7 +996,7 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
   for (let from = 0; from < 20_000; from += PAGE) {
     const { data } = await supabase
       .from('attempt_answers')
-      .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics), attempts!inner(user_id, submitted_at)')
+      .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics, marks, type), attempts!inner(user_id, submitted_at)')
       .eq('attempts.user_id', userId)
       .not('attempts.submitted_at', 'is', null)
       .order('id')
@@ -1001,6 +1008,7 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
 
   const breakdown = zero()
   const byAttempt: Record<string, AnswerBreakdown> = {}
+  const qualityByAttempt: Record<string, QualityCounts> = {}
   const tally = new Map<string, { attempted: number; correct: number }>()
 
   for (const row of rows) {
@@ -1017,6 +1025,19 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
         split.timedAnswers += 1
       }
     }
+
+    const autoMarked = isAutoMarkable({ type: row.questions?.type ?? '' }) && row.is_correct !== null
+    const quality = classifyAttempt({
+      questionId: '',
+      marks: Number(row.questions?.marks ?? 1),
+      isCorrect: row.is_correct,
+      answered,
+      autoMarked,
+      timeSpentSeconds: row.time_spent_seconds,
+      topics: [],
+    })
+    const counts = (qualityByAttempt[row.attempt_id] ??= {})
+    counts[quality] = (counts[quality] ?? 0) + 1
 
     if (row.is_correct === null) continue
     for (const topic of row.questions?.topics ?? []) {
@@ -1037,7 +1058,7 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
     .sort((a, b) => a.accuracy - b.accuracy || b.attempted - a.attempted)
     .slice(0, topicLimit)
 
-  return { breakdown, byAttempt, topics }
+  return { breakdown, byAttempt, qualityByAttempt, topics }
 }
 
 export interface SuggestedSet {
@@ -1198,5 +1219,242 @@ export async function getLeaderboard(
     papers: Number(row.papers),
     avgPercentage: Number(row.avg_percentage),
     isYou: row.is_you,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Mistake bank
+// ---------------------------------------------------------------------------
+
+/** Days a fixed mistake waits before it comes back once, to check it stuck. */
+export const RECAP_DAYS = 3
+
+export type MistakeState = 'open' | 'recap' | 'fixed'
+
+export interface MistakeItem {
+  questionId: string
+  setId: string
+  number: number
+  snippet: string
+  subjectName: string
+  subjectSlug: string
+  examName: string
+  session: string | null
+  state: MistakeState
+  /** Times answered wrong or left blank, across papers and retries. */
+  misses: number
+  lastSeen: string
+  /** For a fixed mistake still waiting on its recap: when it comes back. */
+  recapOn: string | null
+}
+
+/**
+ * Every question this student has got wrong or left blank, with where it
+ * stands now. A question's state comes from its whole history — papers and
+ * retries together, newest last:
+ *
+ *   open   the latest answer is still wrong
+ *   recap  put right once, RECAP_DAYS ago or more — due for one more check
+ *   fixed  right twice in a row since the last miss, or right once and not
+ *          yet due for its recap
+ */
+export async function getMistakeBank(): Promise<MistakeItem[]> {
+  const supabase = await createClient()
+  const userId = await signedInUserId(supabase)
+  if (!userId) return []
+
+  type Event = { at: string; correct: boolean }
+  const history = new Map<string, Event[]>()
+  const add = (questionId: string, event: Event) => history.set(questionId, [...(history.get(questionId) ?? []), event])
+
+  const PAGE = 1000
+  for (let from = 0; from < 20_000; from += PAGE) {
+    const { data } = await supabase
+      .from('attempt_answers')
+      .select('question_id, is_correct, attempts!inner(user_id, submitted_at)')
+      .eq('attempts.user_id', userId)
+      .not('attempts.submitted_at', 'is', null)
+      .not('is_correct', 'is', null)
+      .order('id')
+      .range(from, from + PAGE - 1)
+    const page = (data ?? []) as unknown as {
+      question_id: string
+      is_correct: boolean
+      attempts: { submitted_at: string }
+    }[]
+    for (const row of page) add(row.question_id, { at: row.attempts.submitted_at, correct: row.is_correct })
+    if (page.length < PAGE) break
+  }
+  for (let from = 0; from < 20_000; from += PAGE) {
+    const { data } = await supabase
+      .from('question_reviews')
+      .select('question_id, is_correct, reviewed_at')
+      .eq('user_id', userId)
+      .order('id')
+      .range(from, from + PAGE - 1)
+    const page = (data ?? []) as { question_id: string; is_correct: boolean; reviewed_at: string }[]
+    for (const row of page) add(row.question_id, { at: row.reviewed_at, correct: row.is_correct })
+    if (page.length < PAGE) break
+  }
+
+  const now = Date.now()
+  const states = new Map<string, Pick<MistakeItem, 'state' | 'misses' | 'lastSeen' | 'recapOn'>>()
+  for (const [questionId, events] of history) {
+    const misses = events.filter((e) => !e.correct).length
+    if (!misses) continue
+    events.sort((a, b) => a.at.localeCompare(b.at))
+    const last = events[events.length - 1]
+    let streak = 0
+    for (let i = events.length - 1; i >= 0 && events[i].correct; i--) streak += 1
+
+    let state: MistakeState = 'open'
+    let recapOn: string | null = null
+    if (streak >= 2) state = 'fixed'
+    else if (streak === 1) {
+      const due = new Date(last.at).getTime() + RECAP_DAYS * 24 * 3600 * 1000
+      if (due <= now) state = 'recap'
+      else {
+        state = 'fixed'
+        recapOn = new Date(due).toISOString()
+      }
+    }
+    states.set(questionId, { state, misses, lastSeen: last.at, recapOn })
+  }
+
+  const ids = [...states.keys()]
+  const items: MistakeItem[] = []
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data } = await supabase
+      .from('questions')
+      .select('id, number, set_id, body, question_sets(question_papers(session_date, exam_types(name), subjects(name, slug)))')
+      .in('id', ids.slice(i, i + 150))
+    type Raw = {
+      id: string
+      number: number
+      set_id: string
+      body: unknown
+      question_sets: {
+        question_papers: {
+          session_date: string | null
+          exam_types: { name: string } | null
+          subjects: { name: string; slug: string } | null
+        } | null
+      } | null
+    }
+    for (const q of (data ?? []) as unknown as Raw[]) {
+      const paper = q.question_sets?.question_papers
+      const state = states.get(q.id)
+      if (!paper?.subjects || !state) continue
+      // A one-line preview: the question's words without Markdown or LaTeX marks.
+      const text = blocksToText(parseBlocks(q.body))
+        .replace(/\|[\s:|-]*-[\s:|-]*\|/g, ' ')
+        .replace(/[|*_`$#>]+|\\(?=\s)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      items.push({
+        questionId: q.id,
+        setId: q.set_id,
+        number: q.number,
+        snippet: text.length > 160 ? `${text.slice(0, 157)}…` : text || 'Question with an image',
+        subjectName: paper.subjects.name,
+        subjectSlug: paper.subjects.slug,
+        examName: paper.exam_types?.name ?? 'Exam',
+        session: paper.session_date,
+        ...state,
+      })
+    }
+  }
+
+  const order: Record<MistakeState, number> = { open: 0, recap: 1, fixed: 2 }
+  return items.sort((a, b) => order[a.state] - order[b.state] || b.lastSeen.localeCompare(a.lastSeen))
+}
+
+/**
+ * Published questions by id, with their answer keys — for retrying mistakes,
+ * where the student has already seen the paper's solutions.
+ */
+export async function getQuestionsWithAnswers(ids: string[]): Promise<QuestionWithOptions[]> {
+  if (!ids.length) return []
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('questions')
+    .select('*, options:question_options(id, question_id, label, content, is_correct, sort_order)')
+    .in('id', ids)
+    .eq('status', 'published')
+
+  type RawQuestion = Omit<QuestionWithOptions, 'body' | 'options'> & {
+    body: unknown
+    options: (Omit<QuestionOptionRow, 'content'> & { content: unknown })[] | null
+  }
+  const byId = new Map<string, QuestionWithOptions>(
+    ((data ?? []) as RawQuestion[]).map((question) => [
+      question.id,
+      {
+        ...question,
+        body: parseBlocks(question.body),
+        options: (question.options ?? [])
+          .slice()
+          .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label))
+          .map((option) => ({ ...option, content: parseBlocks(option.content) })),
+      },
+    ]),
+  )
+  return ids.flatMap((id) => {
+    const question = byId.get(id)
+    return question ? [question] : []
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Easy for others, missed by you
+// ---------------------------------------------------------------------------
+
+export interface PeerGap {
+  questionId: string
+  setId: string
+  number: number
+  subjectName: string
+  subjectSlug: string
+  examName: string
+  session: string | null
+  peerCount: number
+  peerCorrect: number
+  peerSeconds: number | null
+  yourSeconds: number | null
+  answered: boolean
+}
+
+/** Questions this student got wrong that most other students got right. */
+export async function getMyPeerGaps(limit = 8): Promise<PeerGap[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('my_peer_gaps', { max_rows: limit, min_peers: 3 })
+  if (error || !data) return []
+  type Raw = {
+    question_id: string
+    set_id: string
+    question_number: number
+    subject_name: string
+    subject_slug: string
+    exam_type_name: string
+    session_date: string | null
+    peer_count: number
+    peer_correct_percentage: number | string
+    peer_avg_seconds: number | string | null
+    your_seconds: number | null
+    answered: boolean
+  }
+  return (data as Raw[]).map((row) => ({
+    questionId: row.question_id,
+    setId: row.set_id,
+    number: row.question_number,
+    subjectName: row.subject_name,
+    subjectSlug: row.subject_slug,
+    examName: row.exam_type_name,
+    session: row.session_date,
+    peerCount: Number(row.peer_count),
+    peerCorrect: Number(row.peer_correct_percentage),
+    peerSeconds: row.peer_avg_seconds === null ? null : Number(row.peer_avg_seconds),
+    yourSeconds: row.your_seconds,
+    answered: row.answered,
   }))
 }
