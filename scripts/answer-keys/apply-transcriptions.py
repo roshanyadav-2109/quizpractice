@@ -37,16 +37,25 @@ DISPLAY = re.compile(r'(\$\$.*?\$\$)', re.S)
 
 
 LIST_MARKER = re.compile(r'[ \t]*([-*+]|\d+[.)])[ \t]')
+TABLE_ROW = re.compile(r'[ \t]*\|')
+BLOCK_START = re.compile(r'[ \t]*(\||>|#{1,6}\s|```|~~~)')
 
 
 def hard_breaks(text):
     """A single newline the transcriber kept is a real line break - except
-    between list items, where the newline already separates them and a
-    trailing backslash would just print as a stray "\\"."""
+    between list items and table rows, which the newline already separates
+    (a trailing backslash on "| a | b |" stops it being a table row at all),
+    and before a table, quote, heading or fence, which needs a blank line to
+    start rather than a break. Display maths is left alone."""
     parts = DISPLAY.split(text)
     for i in range(0, len(parts), 2):
-        def repl(m):
-            return '\n' if LIST_MARKER.match(parts[i], m.end()) else '\\\n'
+        def repl(m, seg=parts[i]):
+            line = seg[seg.rfind('\n', 0, m.start()) + 1:m.start()]
+            if LIST_MARKER.match(seg, m.end()) or TABLE_ROW.match(line):
+                return '\n'
+            if BLOCK_START.match(seg, m.end()) and not line.lstrip().startswith('>'):
+                return '\n\n'
+            return '\\\n'
         parts[i] = re.sub(r'(?<![\n\\])\n(?!\n)', repl, parts[i])
     return ''.join(parts)
 
