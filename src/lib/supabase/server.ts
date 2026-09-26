@@ -70,10 +70,15 @@ export const getCurrentProfile = cache(async () => {
 
   if (!row) return null
 
+  // The Google photo, from the profile — or, until the profile has caught up,
+  // from the sign-in token itself, so it shows from the first sign-in.
+  const meta = (claims?.user_metadata ?? {}) as { avatar_url?: unknown; picture?: unknown }
+  const tokenPhoto = [meta.avatar_url, meta.picture].find((value): value is string => typeof value === 'string' && value !== '')
+
   return {
     id: row.id,
     displayName: row.display_name ?? email ?? 'Account',
-    avatarUrl: row.avatar_url,
+    avatarUrl: row.avatar_url ?? tokenPhoto ?? null,
     role: row.role,
     email,
   }

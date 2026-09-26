@@ -109,7 +109,12 @@ export async function SiteHeader() {
             <MagnifyingGlass size={18} />
           </Link>
           {profile ? (
-            <AccountMenu name={profile.displayName} email={profile.email} staff={isStaff(profile)} />
+            <AccountMenu
+              name={profile.displayName}
+              email={profile.email}
+              avatarUrl={profile.avatarUrl}
+              staff={isStaff(profile)}
+            />
           ) : (
             <SignInButton className="inline-flex h-10 items-center justify-center rounded-full bg-ink px-5 text-ui text-white transition-colors hover:bg-ink/85">
               Sign in
