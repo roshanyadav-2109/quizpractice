@@ -17,6 +17,7 @@
     "check": "npm run typecheck && npm run test && npm run db:validate",
     "db:push": "tsx scripts/db-push.ts",
     "demo:users": "tsx scripts/seed-demo-users.ts",
+    "demo:activity": "tsx scripts/seed-demo-activity.ts",
     "images:convert": "tsx scripts/convert-images.ts",
     "bank:migrate": "tsx scripts/migrate-bank.ts",
     "icons:cut": "tsx scripts/cut-icons.ts"
