@@ -774,6 +774,24 @@ export const getPopularSearches = shared(
   10 * 60,
 )
 
+/**
+ * How many students practised each subject in the last week, by subject id —
+ * only subjects where at least three did (the database leaves out the rest).
+ * Shared, and refreshed every fifteen minutes.
+ */
+export const getActiveStudents = shared(
+  'active-students',
+  [TAG.activity],
+  async (): Promise<Record<string, number>> => {
+    const { data, error } = await publicClient.rpc('active_students_by_subject', { days: 7 })
+    if (error) return {}
+    return Object.fromEntries(
+      ((data ?? []) as { subject_id: string; students: number | string }[]).map((row) => [row.subject_id, Number(row.students)]),
+    )
+  },
+  15 * 60,
+)
+
 /** Counts one search towards the suggestions. Anonymous: only the words and the day are kept. */
 export async function logSearch(term: string): Promise<void> {
   const { createAdminClient } = await import('@/lib/supabase/admin')

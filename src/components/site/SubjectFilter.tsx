@@ -11,6 +11,8 @@ export interface SubjectChoice {
   code: string | null
   /** Papers under the other filters in force. */
   count: number
+  /** Students who practised it this week, when three or more did. */
+  active?: number
   icon: string | null
 }
 
@@ -187,9 +189,15 @@ export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]
                             <span className={`block truncate text-ui ${active ? 'text-accent' : 'text-ink'}`}>
                               {subject.name}
                             </span>
-                            {subject.code ? (
-                              <span className="block text-[0.75rem] font-light text-ink-faint">{subject.code}</span>
-                            ) : null}
+                            <span className="flex flex-wrap items-center gap-x-2 text-[0.75rem] font-light text-ink-faint">
+                              {subject.code ? <span>{subject.code}</span> : null}
+                              {subject.active ? (
+                                <span className="inline-flex items-center gap-1 tabular-nums">
+                                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-correct" />
+                                  {subject.active} this week
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
                           <span className="shrink-0 text-meta text-ink-faint tabular-nums">
                             {subject.count} {subject.count === 1 ? 'paper' : 'papers'}

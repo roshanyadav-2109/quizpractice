@@ -40,6 +40,8 @@ export const TAG = {
   solutions: 'solutions',
   /** What people search for. */
   search: 'search',
+  /** How many students practise each subject. */
+  activity: 'activity',
   /** One set's questions. */
   set: (setId: string) => `set:${setId}`,
   /** Everything cached for one student. */

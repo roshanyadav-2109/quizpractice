@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import {
+  getActiveStudents,
   getBrowseTree,
   getExamTypes,
   getMyAttempts,
@@ -48,7 +49,7 @@ const PAGE_SIZE = 24
 export default async function PapersPage({ searchParams }: { searchParams: SearchParams }) {
   if (!isSupabaseConfigured) return <SetupNotice />
 
-  const [query, examTypes, tree, profile, papers, attempts] = await Promise.all([
+  const [query, examTypes, tree, profile, papers, attempts, active] = await Promise.all([
     searchParams,
     getExamTypes(),
     getBrowseTree(),
@@ -56,6 +57,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
     getPapers(),
     // Secured to their owner; empty for a visitor, and no wait on the profile.
     getMyAttempts(200),
+    getActiveStudents(),
   ])
   const myAttempts = profile ? attempts : []
   const { bySet } = summariseMyAttempts(myAttempts)
@@ -129,6 +131,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
             name: subject.name,
             code: subject.code,
             count: countBySubject.get(subject.id) ?? 0,
+            active: active[subject.id],
             icon: artFor('subjects', subject.slug),
           })),
       }))

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import {
+  getActiveStudents,
   getExamTypes,
   getMyAttempts,
   getPapersForSubject,
@@ -11,6 +12,7 @@ import {
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { ActiveCount } from '@/components/site/ActiveCount'
 import { PaperCard } from '@/components/site/PaperCard'
 import { Breadcrumb, SHELL, TitleCard, Trail } from '@/components/site/Page'
 import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
@@ -70,11 +72,12 @@ export default async function SubjectPage({
   // Everything at once. Attempts are row-level secured to their owner, so
   // asking before knowing who is signed in costs nothing and returns nothing
   // for a visitor — and saves waiting on the profile first.
-  const [context, profile, examTypes, attempts] = await Promise.all([
+  const [context, profile, examTypes, attempts, active] = await Promise.all([
     getSubjectBySlug(slug),
     getCurrentProfile(),
     getExamTypes(),
     getMyAttempts(200),
+    getActiveStudents(),
   ])
   if (!context) notFound()
 
@@ -113,6 +116,7 @@ export default async function SubjectPage({
         <TitleCard
           back={levelHref}
           icon={art ? <Art src={art} size={48} /> : undefined}
+          subtitle={active[subject.id] ? <ActiveCount count={active[subject.id]} /> : undefined}
           title={subject.name}
         />
 
@@ -199,6 +203,7 @@ export default async function SubjectPage({
         back={subjectHref}
         icon={art ? <Art src={art} size={48} /> : undefined}
         title={<Trail parts={[subject.name, examType.name]} />}
+        subtitle={active[subject.id] ? <ActiveCount count={active[subject.id]} /> : undefined}
       />
 
       <FilterRow>

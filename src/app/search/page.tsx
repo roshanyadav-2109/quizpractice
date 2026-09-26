@@ -1,7 +1,15 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { after } from 'next/server'
-import { getBrowseTree, getCatalogueCounts, getPopularSearches, logSearch, searchWithOptions } from '@/lib/queries'
+import {
+  getActiveStudents,
+  getBrowseTree,
+  getCatalogueCounts,
+  getPopularSearches,
+  logSearch,
+  searchWithOptions,
+} from '@/lib/queries'
+import { ActiveCount } from '@/components/site/ActiveCount'
 import { artFor } from '@/lib/art'
 import { Art } from '@/components/ui/Art'
 import { RecentSearches, RememberSearch } from '@/components/search/RecentSearches'
@@ -203,7 +211,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
 /** Under the suggestions: the subjects with the most papers, one click away. */
 async function BrowseSubjects() {
-  const [tree, counts] = await Promise.all([getBrowseTree(), getCatalogueCounts()])
+  const [tree, counts, active] = await Promise.all([getBrowseTree(), getCatalogueCounts(), getActiveStudents()])
   const subjects = tree
     .flatMap((program) => program.levels.flatMap((level) => level.subjects))
     .map((subject) => ({ subject, papers: counts.bySubject.get(subject.id)?.papers ?? 0 }))
@@ -229,7 +237,10 @@ async function BrowseSubjects() {
               className="flex items-center gap-3 rounded-control border border-rule bg-surface px-3 py-2.5 transition-colors hover:border-rule-strong"
             >
               <Art src={artFor('subjects', subject.slug)} size={32} />
-              <span className="min-w-0 flex-1 truncate text-ui text-ink">{subject.name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-ui text-ink">{subject.name}</span>
+                <ActiveCount count={active[subject.id]} compact />
+              </span>
               <span className="shrink-0 text-meta text-ink-faint tabular-nums">{papers} papers</span>
             </Link>
           </li>
