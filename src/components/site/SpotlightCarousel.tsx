@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { HIDDEN_COOKIE, type Spotlight, type SpotlightAction, type SpotlightTone } from '@/lib/spotlight-shared'
@@ -12,35 +11,12 @@ import { ArrowRight, CaretLeft, CaretRight, ClockCountdown, Info, Sparkle, Targe
 const INTERVAL_MS = 8000
 const SWIPE_PX = 48
 
-const TONES: Record<SpotlightTone, { slide: string; border: string; chip: string; glow: string; Icon: typeof Info }> = {
-  exam: {
-    slide: 'bg-linear-to-r from-[#fff4e6] via-[#fffaf3] to-surface',
-    border: 'border-[#f3d4a8]',
-    chip: 'text-marked ring-[#f3d4a8]',
-    glow: 'bg-[#ffe6c4]',
-    Icon: ClockCountdown,
-  },
-  release: {
-    slide: 'bg-linear-to-r from-accent-soft via-[#f7f9ff] to-surface',
-    border: 'border-[#cbd9fb]',
-    chip: 'text-accent ring-[#cbd9fb]',
-    glow: 'bg-[#dbe6ff]',
-    Icon: Sparkle,
-  },
-  feature: {
-    slide: 'bg-linear-to-r from-review-soft via-[#fbf9ff] to-surface',
-    border: 'border-[#ddd3fa]',
-    chip: 'text-review ring-[#ddd3fa]',
-    glow: 'bg-[#ebe4ff]',
-    Icon: Target,
-  },
-  announcement: {
-    slide: 'bg-linear-to-r from-correct-soft via-[#f7fcf9] to-surface',
-    border: 'border-[#c9e9d5]',
-    chip: 'text-correct ring-[#c9e9d5]',
-    glow: 'bg-[#d9f2e3]',
-    Icon: Info,
-  },
+/** Deep bands, one hue each, so the kind of banner reads before its words do. */
+const TONES: Record<SpotlightTone, { band: string; Icon: typeof Info }> = {
+  exam: { band: 'bg-linear-to-br from-[#9a3412] to-[#6b210a]', Icon: ClockCountdown },
+  release: { band: 'bg-linear-to-br from-[#1e40af] to-[#172554]', Icon: Sparkle },
+  feature: { band: 'bg-linear-to-br from-[#5b21b6] to-[#2e1065]', Icon: Target },
+  announcement: { band: 'bg-linear-to-br from-[#047857] to-[#053d2e]', Icon: Info },
 }
 
 /** Remembers a closed banner for a year, in a cookie the server reads. */
@@ -101,7 +77,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
       }}
-      className={`group relative overflow-hidden rounded-[12px] border transition-colors duration-500 ${TONES[current.tone].border}`}
+      className="group relative overflow-hidden rounded-[12px] text-white"
     >
       <div
         aria-live={paused ? 'polite' : 'off'}
@@ -126,7 +102,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
         type="button"
         onClick={close}
         aria-label="Close this banner"
-        className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-surface hover:text-ink"
+        className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
       >
         <X size={16} aria-hidden="true" />
       </button>
@@ -137,7 +113,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
             type="button"
             onClick={() => go(active - 1)}
             aria-label="Previous banner"
-            className="absolute top-1/2 left-2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-rule bg-surface/90 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
+            className="absolute top-1/2 left-2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
           >
             <CaretLeft size={16} aria-hidden="true" />
           </button>
@@ -145,7 +121,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
             type="button"
             onClick={() => go(active + 1)}
             aria-label="Next banner"
-            className="absolute top-1/2 right-2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-rule bg-surface/90 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
+            className="absolute top-1/2 right-2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
           >
             <CaretRight size={16} aria-hidden="true" />
           </button>
@@ -161,7 +137,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
               >
                 <span
                   className={`block h-1.5 rounded-full transition-all duration-300 ${
-                    i === active ? 'w-5 bg-ink/70' : 'w-1.5 bg-ink/20 hover:bg-ink/40'
+                    i === active ? 'w-5 bg-white' : 'w-1.5 bg-white/35 hover:bg-white/60'
                   }`}
                 />
               </button>
@@ -181,33 +157,33 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
       aria-roledescription="slide"
       aria-label={position}
       inert={!current}
-      className={`grid w-full shrink-0 items-center gap-6 px-5 pt-6 pb-9 sm:min-h-[13.5rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-12 sm:py-7 ${tone.slide}`}
+      className={`grid w-full shrink-0 items-center gap-8 px-5 pt-6 pb-10 sm:min-h-[13.5rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-12 sm:py-8 ${tone.band}`}
     >
       <div className="min-w-0 pr-8 sm:pr-0">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[0.75rem] ring-1 ${tone.chip}`}
-        >
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[0.75rem] text-white ring-1 ring-white/20">
           <tone.Icon size={14} weight="duotone" aria-hidden="true" />
           {item.eyebrow}
         </span>
-        <h2 className="mt-3 text-[1.375rem] leading-tight font-normal text-balance text-ink sm:text-[1.75rem]">
-          {item.title}
-        </h2>
-        {item.body ? (
-          <p className="mt-2 max-w-[60ch] text-ui leading-relaxed font-light text-ink-muted">{item.body}</p>
-        ) : null}
+        <h2 className="mt-3 text-[1.375rem] leading-tight font-normal text-balance sm:text-[1.75rem]">{item.title}</h2>
+        {item.body ? <p className="mt-2 max-w-[60ch] text-ui leading-relaxed font-light text-white/75">{item.body}</p> : null}
         <div className="mt-5 flex flex-wrap gap-2">
           <Action action={item.cta} primary />
           {item.secondary ? <Action action={item.secondary} /> : null}
         </div>
       </div>
-      <Visual item={item} glow={tone.glow} />
+      {item.stat ? (
+        <div className="hidden min-w-[11rem] flex-col border-l border-white/15 py-2 pl-10 sm:flex">
+          <p className="text-[3.5rem] leading-none font-light tabular-nums">{item.stat.value}</p>
+          <p className="mt-2 text-ui text-white/85">{item.stat.label}</p>
+          {item.stat.detail ? <p className="mt-3 text-meta font-light text-white/60">{item.stat.detail}</p> : null}
+        </div>
+      ) : null}
     </div>
   )
 }
 
 function Action({ action, primary = false }: { action: SpotlightAction; primary?: boolean }) {
-  const className = buttonClass(primary ? 'primary' : 'outline', 'md')
+  const className = buttonClass(primary ? 'inverse' : 'inverseOutline', 'md')
   const content = (
     <>
       {action.label}
@@ -225,53 +201,5 @@ function Action({ action, primary = false }: { action: SpotlightAction; primary?
     <Link href={action.href} className={className}>
       {content}
     </Link>
-  )
-}
-
-/** The right-hand side: a countdown, a fan of subject icons, or an illustration. */
-function Visual({ item, glow }: { item: Spotlight; glow: string }) {
-  if (item.countdown) {
-    const { days, date } = item.countdown
-    return (
-      <div className="hidden items-center gap-5 sm:flex">
-        {item.art ? (
-          <span className="relative flex h-28 w-28 items-center justify-center">
-            <span aria-hidden="true" className={`absolute inset-2 rounded-full ${glow}`} />
-            <Image src={item.art} alt="" width={96} height={96} loading="eager" className="relative" />
-          </span>
-        ) : null}
-        <div className="w-36 rounded-[12px] border border-rule bg-surface px-4 py-4 text-center">
-          <p className="text-[3rem] leading-none font-light text-ink tabular-nums">{days === 0 ? 'Today' : days}</p>
-          <p className="mt-1.5 text-meta text-ink-muted">{days === 0 ? 'good luck' : days === 1 ? 'day to go' : 'days to go'}</p>
-          <p className="mt-3 border-t border-rule pt-2.5 text-meta font-light text-ink-faint">{date}</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (item.stack && item.stack.length > 1) {
-    const tilt = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3']
-    const tile = 'relative flex h-20 w-20 items-center justify-center rounded-[14px] border border-rule bg-surface'
-    return (
-      <div aria-hidden="true" className="relative hidden h-40 items-center pr-2 sm:flex">
-        <span className={`absolute inset-x-2 inset-y-7 rounded-full ${glow}`} />
-        {item.stack.map((src, i) => (
-          <span key={src} className={`${tile} ${tilt[i] ?? ''} ${i > 0 ? '-ml-3' : ''}`}>
-            <Image src={src} alt="" width={52} height={52} loading="eager" />
-          </span>
-        ))}
-        {item.stackMore ? (
-          <span className={`${tile} -ml-3 rotate-2 text-ui text-ink-muted tabular-nums`}>+{item.stackMore}</span>
-        ) : null}
-      </div>
-    )
-  }
-
-  if (!item.art) return null
-  return (
-    <span aria-hidden="true" className="relative hidden h-44 w-44 items-center justify-center sm:flex">
-      <span className={`absolute inset-3 rounded-full ${glow}`} />
-      <Image src={item.art} alt="" width={176} height={176} loading="eager" className="relative" />
-    </span>
   )
 }

@@ -26,6 +26,9 @@ const BUTTON_TONES = {
   outline: 'border border-rule bg-surface text-ink hover:border-rule-strong',
   ghost: 'text-ink-muted hover:bg-surface-2 hover:text-ink',
   correct: 'bg-correct text-white hover:bg-correct/90',
+  // On a deep-coloured band.
+  inverse: 'bg-white text-ink hover:bg-white/90',
+  inverseOutline: 'border border-white/35 text-white hover:border-white/60 hover:bg-white/10',
   danger:
     'border border-rule bg-surface text-incorrect hover:border-incorrect/40 hover:bg-incorrect-soft',
 } as const

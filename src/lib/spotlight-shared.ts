@@ -23,14 +23,8 @@ export interface Spotlight {
   body: string
   cta: SpotlightAction
   secondary?: SpotlightAction
-  /** One illustration on the right. */
-  art?: string | null
-  /** Several subject icons, fanned, for a release that spans subjects. */
-  stack?: string[]
-  /** How many more subjects the release covers than the icons show. */
-  stackMore?: number
-  /** Days until an exam, with its date written out. */
-  countdown?: { days: number; date: string }
+  /** One figure on the right: days to an exam, new subjects, mistakes to retry. */
+  stat?: { value: string; label: string; detail?: string }
 }
 
 /** Banners a visitor has closed, by id. Read on the server so they never flash. */

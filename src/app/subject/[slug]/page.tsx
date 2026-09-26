@@ -110,17 +110,16 @@ export default async function SubjectPage({
   if (!selected) {
     return (
       <div className={`${SHELL} py-6`}>
+        <Spotlight
+          placement="subject"
+          subject={{ id: subject.id, slug: subject.slug, name: subject.name, programId: program.id }}
+          className="mb-6"
+        />
         <Breadcrumb crumbs={crumbs} />
         <TitleCard
           back={levelHref}
           icon={art ? <Art src={art} size={48} /> : undefined}
           title={subject.name}
-        />
-
-        <Spotlight
-          placement="subject"
-          subject={{ id: subject.id, slug: subject.slug, name: subject.name, programId: program.id }}
-          className="mt-6"
         />
 
         {exams.length > 0 ? (

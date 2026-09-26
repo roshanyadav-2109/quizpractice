@@ -102,8 +102,8 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
 
   return (
     <div className={`${SHELL} py-6`}>
+      <Spotlight placement="papers" programSlug={query.program ?? null} className="mb-6" />
       <TitleCard title="All papers" />
-      <Spotlight placement="papers" programSlug={query.program ?? null} className="mt-6 mb-2" />
 
       <FilterRow>
         <FilterSelect

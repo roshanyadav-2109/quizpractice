@@ -1,8 +1,7 @@
 import 'server-only'
 import { publicClient, memoise } from '@/lib/supabase/public'
 import { getCurrentProfile } from '@/lib/supabase/server'
-import { getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
-import { artFor } from '@/lib/art'
+import { getCatalogueCounts, getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
 import { termOf } from '@/lib/terms'
 import type { ExamType } from '@/types/db'
 import type { Spotlight, SpotlightPlacement, SpotlightTone } from '@/lib/spotlight-shared'
@@ -31,14 +30,6 @@ const EXAM_WINDOW_DAYS = 60
 /** How long the newest sitting counts as just added. */
 const RELEASE_WINDOW_DAYS = 45
 const RETRY_BATCH = 10
-
-/** Illustrations for banners that bring none of their own. */
-const ART = {
-  papers: '/art/login/slide-1.webp',
-  exam: '/art/login/slide-2.webp',
-  learn: '/art/login/slide-3.webp',
-  soon: '/art/states/coming-soon.webp',
-}
 
 interface CalendarRow {
   id: string
@@ -77,6 +68,7 @@ const istDay = new Intl.DateTimeFormat('en-CA', {
 })
 const examDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 const satOn = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+const count = new Intl.NumberFormat('en-IN')
 
 /** Today in India, as YYYY-MM-DD: exam days are Indian days. */
 function todayIst(): string {
@@ -110,13 +102,6 @@ const loadBanners = memoise(async (): Promise<BannerRow[]> => {
   return data ?? []
 }, 60_000)
 
-/** Subject slugs by id, for the icons on a release. Public and fixed, like the taxonomy. */
-const loadSubjectSlugs = memoise(async (): Promise<Map<string, string>> => {
-  const { data, error } = await publicClient.from('subjects').select('id, slug').returns<{ id: string; slug: string }[]>()
-  if (error) throw new Error(`subjects failed — ${error.message}`)
-  return new Map((data ?? []).map((row) => [row.id, row.slug]))
-}, 60_000)
-
 const loadPrograms = memoise(async (): Promise<ProgramRow[]> => {
   const { data, error } = await publicClient
     .from('programs')
@@ -130,24 +115,24 @@ const loadPrograms = memoise(async (): Promise<ProgramRow[]> => {
 export async function getSpotlights(context: SpotlightContext): Promise<Spotlight[]> {
   try {
     const today = todayIst()
-    const [profile, examTypes, index, calendar, banners, programs, slugs] = await Promise.all([
+    const [profile, examTypes, index, calendar, banners, programs, catalogue] = await Promise.all([
       getCurrentProfile(),
       getExamTypes(),
       getPaperIndex(),
       loadCalendar(),
       loadBanners(),
       loadPrograms(),
-      loadSubjectSlugs(),
+      getCatalogueCounts(),
     ])
     const programId =
       context.subject?.programId ?? programs.find((program) => program.slug === context.programSlug)?.id ?? null
 
-    const personal = profile ? await mistakesSpotlight(context, today) : tourSpotlight(context)
+    const personal = profile ? await mistakesSpotlight(context, today) : tourSpotlight(context, catalogue.bySet.size)
 
     return [
       examSpotlight(context, today, programId, calendar, examTypes, index, programs),
       personal,
-      releaseSpotlight(context, today, examTypes, index, slugs),
+      releaseSpotlight(context, today, examTypes, index),
       ...banners.map((row) => announcement(row, context, today, programId)),
     ]
       .filter((item): item is Spotlight => item !== null)
@@ -206,8 +191,11 @@ function examSpotlight(
       ? { label: `Practise ${scope.name}`, href: `/subject/${scope.slug}?exam=${exam.slug}` }
       : { label: `Past ${exam.name} papers`, href: allHref },
     secondary: scope ? { label: `All ${exam.name} papers`, href: allHref } : undefined,
-    art: artFor('exams', exam.slug) ?? ART.exam,
-    countdown: { days, date: examDay.format(new Date(`${next.exam_date}T00:00:00Z`)) },
+    stat: {
+      value: days === 0 ? 'Today' : String(days),
+      label: days === 0 ? 'all the best' : days === 1 ? 'day to go' : 'days to go',
+      detail: examDay.format(new Date(`${next.exam_date}T00:00:00Z`)),
+    },
   }
 }
 
@@ -217,7 +205,6 @@ function releaseSpotlight(
   today: string,
   examTypes: ExamType[],
   index: PaperIndexRow[],
-  slugs: Map<string, string>,
 ): Spotlight | null {
   const dated = index.filter((row): row is PaperIndexRow & { session_date: string } => row.session_date !== null)
   if (dated.length === 0) return null
@@ -241,14 +228,10 @@ function releaseSpotlight(
       title: `The ${term.label} ${exam.name} is here`,
       body: `${subject.name}’s newest paper, sat in ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}. The latest paper is the closest guide to the next one.`,
       cta: { label: 'Sit the new paper', href: `/subject/${subject.slug}?${filter}` },
-      art: artFor('subjects', subject.slug) ?? ART.papers,
+      stat: { value: 'New', label: exam.name, detail: term.label },
     }
   }
 
-  const stack = subjectIds
-    .map((id) => artFor('subjects', slugs.get(id) ?? ''))
-    .filter((src): src is string => src !== null)
-    .slice(0, 4)
   return {
     id,
     tone: 'release',
@@ -256,9 +239,11 @@ function releaseSpotlight(
     title: `${exam.name} papers from the ${term.label}`,
     body: `${subjectIds.length} subjects, sat in ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}. The latest papers are the closest guide to the ones you’ll sit next.`,
     cta: { label: 'See the new papers', href: `/papers?${filter}` },
-    stack,
-    stackMore: subjectIds.length - stack.length,
-    art: ART.papers,
+    stat: {
+      value: String(subjectIds.length),
+      label: subjectIds.length === 1 ? 'new subject' : 'new subjects',
+      detail: `${exam.name} · ${term.short}`,
+    },
   }
 }
 
@@ -282,12 +267,12 @@ async function mistakesSpotlight(context: SpotlightContext, today: string): Prom
       href: subject ? `/mistakes/practice?subject=${subject.slug}` : '/mistakes/practice',
     },
     secondary: { label: 'Open the bank', href: subject ? `/mistakes?subject=${subject.slug}` : '/mistakes' },
-    art: ART.learn,
+    stat: { value: count.format(due), label: 'to retry', detail: subject ? subject.name : 'across your subjects' },
   }
 }
 
 /** For a visitor: what signing in adds, beyond sitting papers. */
-function tourSpotlight(context: SpotlightContext): Spotlight | null {
+function tourSpotlight(context: SpotlightContext, papers: number): Spotlight | null {
   if (context.placement !== 'home' && context.placement !== 'papers') return null
   return {
     id: 'tour-insights',
@@ -296,7 +281,7 @@ function tourSpotlight(context: SpotlightContext): Spotlight | null {
     title: 'See exactly where your marks go',
     body: 'A speed-versus-accuracy map of every answer, a mistake bank that brings questions back until they stick, and the questions most students got right that you missed.',
     cta: { label: 'Sign in with Google', href: '/dashboard', signIn: true },
-    art: ART.learn,
+    stat: { value: count.format(papers), label: 'past papers', detail: 'free to practise' },
   }
 }
 
@@ -305,7 +290,6 @@ const EYEBROW: Record<BannerRow['kind'], string> = {
   feature: 'New on QuizPractice',
   release: 'Just added',
 }
-const KIND_ART: Record<BannerRow['kind'], string> = { announcement: ART.soon, feature: ART.exam, release: ART.papers }
 
 /** A banner staff wrote, if it is live on this page today. */
 function announcement(
@@ -325,6 +309,5 @@ function announcement(
     title: row.title,
     body: row.body ?? '',
     cta: row.cta_label && row.cta_href ? { label: row.cta_label, href: row.cta_href } : { label: 'All papers', href: '/papers' },
-    art: KIND_ART[row.kind],
   }
 }
