@@ -15,7 +15,7 @@ export interface SpotlightAction {
 }
 
 export interface Spotlight {
-  /** Stable while the banner means the same thing, so a dismissal sticks. */
+  /** Stable while the banner means the same thing. */
   id: string
   tone: SpotlightTone
   eyebrow: string
@@ -26,6 +26,3 @@ export interface Spotlight {
   /** Real screens of the site, shown in a laptop and a phone. */
   screens?: { desktop: string; mobile: string }
 }
-
-/** Banners a visitor has closed, by id. Read on the server so they never flash. */
-export const HIDDEN_COOKIE = 'qp_hidden'

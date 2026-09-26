@@ -3,10 +3,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { HIDDEN_COOKIE, type Spotlight, type SpotlightAction, type SpotlightTone } from '@/lib/spotlight-shared'
+import type { Spotlight, SpotlightAction, SpotlightTone } from '@/lib/spotlight-shared'
 import { SignInButton } from '@/components/site/AuthDialog'
 import { buttonClass } from '@/components/ui/primitives'
-import { ArrowRight, CaretLeft, CaretRight, ClockCountdown, Info, Sparkle, Target, X } from '@/components/ui/icons'
+import { ArrowRight, CaretLeft, CaretRight, ClockCountdown, Info, Sparkle, Target } from '@/components/ui/icons'
 
 /** Long enough to read a banner through before it moves on. */
 const INTERVAL_MS = 8000
@@ -20,28 +20,19 @@ const TONES: Record<SpotlightTone, { band: string; Icon: typeof Info }> = {
   announcement: { band: 'bg-linear-to-br from-[#047857] to-[#053d2e]', Icon: Info },
 }
 
-/** Remembers a closed banner for a year, in a cookie the server reads. */
-function rememberHidden(id: string) {
-  const current = document.cookie.match(new RegExp(`(?:^|; )${HIDDEN_COOKIE}=([^;]*)`))?.[1] ?? ''
-  const ids = [...new Set([...current.split('.').filter(Boolean), id])].slice(-30)
-  document.cookie = `${HIDDEN_COOKIE}=${ids.join('.')}; path=/; max-age=31536000; samesite=lax`
-}
-
 /**
  * The banners at the top of a page, one at a time. Moves on by itself unless
  * the reader is pointing at it, focused inside it, or prefers less motion;
- * arrows, dots and a swipe move it by hand; each banner can be closed.
+ * arrows, dots and a swipe move it by hand.
  */
 export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
-  const [hidden, setHidden] = useState<string[]>([])
   const [index, setIndex] = useState(0)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const [still, setStill] = useState(false)
   const swipeFrom = useRef<number | null>(null)
 
-  const shown = items.filter((item) => !hidden.includes(item.id))
-  const count = shown.length
+  const count = items.length
   const active = Math.min(index, Math.max(0, count - 1))
   const paused = hovered || focused || still
 
@@ -60,13 +51,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
   }, [paused, count])
 
   if (count === 0) return null
-  const current = shown[active]
   const go = (next: number) => setIndex((next + count) % count)
-
-  const close = () => {
-    rememberHidden(current.id)
-    setHidden((ids) => [...ids, current.id])
-  }
 
   return (
     <section
@@ -94,19 +79,10 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
           if (Math.abs(dx) > SWIPE_PX) go(active + (dx < 0 ? 1 : -1))
         }}
       >
-        {shown.map((item, i) => (
+        {items.map((item, i) => (
           <Slide key={item.id} item={item} position={`${i + 1} of ${count}`} current={i === active} />
         ))}
       </div>
-
-      <button
-        type="button"
-        onClick={close}
-        aria-label="Close this banner"
-        className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-      >
-        <X size={16} aria-hidden="true" />
-      </button>
 
       {count > 1 ? (
         <>
@@ -127,7 +103,7 @@ export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
             <CaretRight size={16} aria-hidden="true" />
           </button>
           <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {shown.map((item, i) => (
+            {items.map((item, i) => (
               <button
                 key={item.id}
                 type="button"
@@ -160,7 +136,7 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
       inert={!current}
       className={`grid w-full shrink-0 gap-8 px-5 pt-6 pb-10 sm:min-h-[15rem] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-12 sm:py-0 ${tone.band}`}
     >
-      <div className="min-w-0 self-center pr-8 sm:py-9 sm:pr-0">
+      <div className="min-w-0 self-center sm:py-9">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[0.75rem] text-white ring-1 ring-white/20">
           <tone.Icon size={14} weight="duotone" aria-hidden="true" />
           {item.eyebrow}

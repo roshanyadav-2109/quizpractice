@@ -1,7 +1,5 @@
 import { Suspense } from 'react'
-import { cookies } from 'next/headers'
 import { getSpotlights, type SpotlightContext } from '@/lib/spotlight'
-import { HIDDEN_COOKIE } from '@/lib/spotlight-shared'
 import { SpotlightCarousel } from './SpotlightCarousel'
 
 type Props = SpotlightContext & { className?: string }
@@ -26,13 +24,11 @@ export function Spotlight(props: Props) {
 }
 
 async function Banners({ className, ...context }: Props) {
-  const [items, jar] = await Promise.all([getSpotlights(context), cookies()])
-  const hidden = new Set((jar.get(HIDDEN_COOKIE)?.value ?? '').split('.'))
-  const shown = items.filter((item) => !hidden.has(item.id))
-  if (shown.length === 0) return null
+  const items = await getSpotlights(context)
+  if (items.length === 0) return null
   return (
     <div className={className}>
-      <SpotlightCarousel items={shown} />
+      <SpotlightCarousel items={items} />
     </div>
   )
 }
