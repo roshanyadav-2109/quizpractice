@@ -25,6 +25,24 @@ import type {
  * silently missing rows rather than an error.
  */
 
+/**
+ * Reads every row of a query. The API returns at most 1,000 rows a request —
+ * and there are more papers and sets than that — so a plain read silently
+ * drops the rest. `page` builds the query for one slice; it must be ordered
+ * on something unique for the slices to line up.
+ */
+async function readAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await page(from, from + 999)
+    if (error) throw new Error(error.message)
+    rows.push(...(data ?? []))
+    if (!data || data.length < 1000) return rows
+  }
+}
+
 export interface SubjectWithStats extends Subject {
   stats: SubjectStats | null
 }
@@ -141,18 +159,21 @@ export async function getBrowseTree(
  */
 export async function getSubjectsWithPapers(): Promise<Set<string>> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('question_papers')
-    .select('subject_id')
-    .eq('status', 'published')
-    .returns<{ subject_id: string }[]>()
-
-  if (error) {
-    console.error(`getSubjectsWithPapers failed — ${error.message}`)
+  try {
+    const rows = await readAll((from, to) =>
+      supabase
+        .from('question_papers')
+        .select('subject_id')
+        .eq('status', 'published')
+        .order('id')
+        .range(from, to)
+        .returns<{ subject_id: string }[]>(),
+    )
+    return new Set(rows.map((row) => row.subject_id))
+  } catch (error) {
+    console.error(`getSubjectsWithPapers failed — ${error instanceof Error ? error.message : error}`)
     return new Set()
   }
-
-  return new Set((data ?? []).map((row) => row.subject_id))
 }
 
 export interface SetCount {
@@ -176,8 +197,17 @@ export interface SetCount {
  * already readable by anyone — no row, draft or answer.
  */
 const loadSetCounts = memoise(async (): Promise<SetCount[]> => {
-  const viaFunction = await publicClient.rpc('published_set_counts')
-  if (!viaFunction.error) return (viaFunction.data ?? []) as SetCount[]
+  try {
+    return await readAll((from, to) =>
+      publicClient
+        .rpc('published_set_counts')
+        .order('set_id')
+        .range(from, to)
+        .then(({ data, error }) => ({ data: data as SetCount[] | null, error })),
+    )
+  } catch {
+    // The function is missing: fall back to reading the tables directly.
+  }
 
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const { data, error } = await createAdminClient()
@@ -258,14 +288,19 @@ export interface PaperIndexRow {
  * public and it is read on every page, so it is memoised like the taxonomy.
  */
 const loadPaperIndex = memoise(async (): Promise<PaperIndexRow[]> => {
-  const { data, error } = await publicClient
-    .from('question_papers')
-    .select('exam_type_id, subject_id, year, session_date')
-    .eq('status', 'published')
-    .returns<PaperIndexRow[]>()
-
-  if (error) throw new Error(`paper index failed — ${error.message}`)
-  return data ?? []
+  try {
+    return await readAll((from, to) =>
+      publicClient
+        .from('question_papers')
+        .select('exam_type_id, subject_id, year, session_date')
+        .eq('status', 'published')
+        .order('id')
+        .range(from, to)
+        .returns<PaperIndexRow[]>(),
+    )
+  } catch (error) {
+    throw new Error(`paper index failed — ${error instanceof Error ? error.message : error}`)
+  }
 }, 60_000)
 
 export async function getPaperIndex(): Promise<PaperIndexRow[]> {
@@ -335,16 +370,22 @@ type RawPaper = QuestionPaper & {
  * third of a second to Supabase.
  */
 const loadPublishedPapers = memoise(async (): Promise<RawPaper[]> => {
-  const { data, error } = await publicClient
-    .from('question_papers')
-    .select(
-      '*, exam_type:exam_types(*), subject:subjects(id, name, slug, code, level_id), sets:question_sets(*)',
+  try {
+    return await readAll((from, to) =>
+      publicClient
+        .from('question_papers')
+        .select(
+          '*, exam_type:exam_types(*), subject:subjects(id, name, slug, code, level_id), sets:question_sets(*)',
+        )
+        .eq('status', 'published')
+        .order('session_date', { ascending: false, nullsFirst: false })
+        .order('id')
+        .range(from, to)
+        .returns<RawPaper[]>(),
     )
-    .eq('status', 'published')
-    .order('session_date', { ascending: false, nullsFirst: false })
-
-  if (error) throw new Error(`papers failed — ${error.message}`)
-  return (data ?? []) as RawPaper[]
+  } catch (error) {
+    throw new Error(`papers failed — ${error instanceof Error ? error.message : error}`)
+  }
 }, 60_000)
 
 /**
@@ -683,16 +724,16 @@ const searches = new Map<string, { results: SearchResults; expires: number }>()
 /** Distinct years that actually have published papers, for the year filter. */
 export async function getAvailableYears(subjectId?: string): Promise<number[]> {
   const supabase = await createClient()
-  let query = supabase
-    .from('question_papers')
-    .select('year')
-    .eq('status', 'published')
-    .not('year', 'is', null)
-
-  if (subjectId) query = query.eq('subject_id', subjectId)
-
-  const { data } = await query.returns<{ year: number }[]>()
-  return [...new Set((data ?? []).map((row) => row.year))].sort((a, b) => b - a)
+  const rows = await readAll((from, to) => {
+    let query = supabase
+      .from('question_papers')
+      .select('year')
+      .eq('status', 'published')
+      .not('year', 'is', null)
+    if (subjectId) query = query.eq('subject_id', subjectId)
+    return query.order('id').range(from, to).returns<{ year: number }[]>()
+  }).catch(() => [])
+  return [...new Set(rows.map((row) => row.year))].sort((a, b) => b - a)
 }
 
 export interface RecentPaper {
