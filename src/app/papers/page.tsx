@@ -33,6 +33,7 @@ type SearchParams = Promise<{
   year?: string
   term?: string
   program?: string
+  level?: string
   subject?: string
   page?: string
 }>
@@ -42,7 +43,7 @@ const PAGE_SIZE = 24
 /**
  * Every published sitting across every subject, newest first — the page to
  * use when you know the exam you are preparing for but not yet the subject.
- * Exam, branch, year and the term within it as dropdowns; twenty-four at a time.
+ * Exam, branch, level, subject, year and the term within it; twenty-four at a time.
  */
 export default async function PapersPage({ searchParams }: { searchParams: SearchParams }) {
   if (!isSupabaseConfigured) return <SetupNotice />
@@ -60,9 +61,15 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
   const { bySet } = summariseMyAttempts(myAttempts)
 
   const programOf = new Map<string, string>()
+  // Level slugs repeat across branches ("foundation" in each), so a level is
+  // filtered by slug: with no branch chosen, Foundation means every branch's.
+  const levelOf = new Map<string, string>()
   for (const program of tree) {
     for (const level of program.levels) {
-      for (const subject of level.subjects) programOf.set(subject.id, program.slug)
+      for (const subject of level.subjects) {
+        programOf.set(subject.id, program.slug)
+        levelOf.set(subject.id, level.slug)
+      }
     }
   }
 
@@ -81,10 +88,23 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
   )
   const selectedProgram = programs.find((program) => program.slug === query.program)
 
-  const scoped = papers.filter(
+  const inProgram = papers.filter(
+    (paper) => !selectedProgram || programOf.get(paper.subject_id) === selectedProgram.slug,
+  )
+  const levels = [
+    ...new Map(
+      (selectedProgram ? [selectedProgram] : programs)
+        .flatMap((program) => program.levels)
+        .filter((level) => inProgram.some((paper) => levelOf.get(paper.subject_id) === level.slug))
+        .map((level) => [level.slug, level] as const),
+    ).values(),
+  ]
+  const selectedLevel = levels.find((level) => level.slug === query.level) ?? null
+
+  const scoped = inProgram.filter(
     (paper) =>
       (!selectedExam || paper.exam_type_id === selectedExam.id) &&
-      (!selectedProgram || programOf.get(paper.subject_id) === selectedProgram.slug),
+      (!selectedLevel || levelOf.get(paper.subject_id) === selectedLevel.slug),
   )
   // The subject panel: every subject of the branch in force that has papers,
   // by level, each with how many papers it has under the other filters.
@@ -98,6 +118,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
   const withPapers = new Set(papers.map((paper) => paper.subject_id))
   const subjectGroups: SubjectGroup[] = (selectedProgram ? [selectedProgram] : programs).flatMap((program) =>
     program.levels
+      .filter((level) => !selectedLevel || level.slug === selectedLevel.slug)
       .map((level) => ({
         key: `${program.slug}-${level.slug}`,
         title: selectedProgram ? level.name : `${program.short_name ?? program.name} · ${level.name}`,
@@ -115,7 +136,8 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
   )
   const selectedSubject = query.subject
     ? (selectedProgram ? [selectedProgram] : programs)
-        .flatMap((program) => program.levels.flatMap((level) => level.subjects))
+        .flatMap((program) => program.levels.filter((level) => !selectedLevel || level.slug === selectedLevel.slug))
+        .flatMap((level) => level.subjects)
         .find((subject) => subject.slug === query.subject && withPapers.has(subject.id))
     : undefined
   const inSubject = selectedSubject ? scoped.filter((paper) => paper.subject_id === selectedSubject.id) : scoped
@@ -136,6 +158,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
     const search = new URLSearchParams()
     if (query.exam) search.set('exam', query.exam)
     if (query.program) search.set('program', query.program)
+    if (selectedLevel) search.set('level', selectedLevel.slug)
     if (selectedSubject) search.set('subject', selectedSubject.slug)
     if (query.year) search.set('year', query.year)
     if (query.term) search.set('term', query.term)
@@ -169,10 +192,22 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
           }))}
           resets={['year', 'term', 'subject']}
         />
+        {levels.length > 1 ? (
+          <FilterSelect
+            name="level"
+            label="Level"
+            allLabel="All levels"
+            value={selectedLevel?.slug ?? null}
+            options={levels.map((level) => ({ value: level.slug, label: level.name }))}
+            resets={['subject', 'year', 'term']}
+          />
+        ) : null}
         <SubjectFilter
           groups={subjectGroups}
           value={selectedSubject?.slug ?? null}
-          scope={selectedProgram ? (selectedProgram.short_name ?? selectedProgram.name) : 'Every branch'}
+          scope={[selectedProgram ? (selectedProgram.short_name ?? selectedProgram.name) : 'Every branch', selectedLevel?.name]
+            .filter(Boolean)
+            .join(' · ')}
         />
         {filter.years.length > 1 ? (
           <FilterSelect
