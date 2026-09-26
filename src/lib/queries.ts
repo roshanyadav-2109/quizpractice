@@ -758,6 +758,28 @@ export async function getAvailableYears(subjectId?: string): Promise<number[]> {
   return [...new Set(rows.map((row) => row.year))].sort((a, b) => b - a)
 }
 
+/**
+ * What people have searched for most over the last month — only searches that
+ * found questions are counted. Shared, and refreshed every ten minutes, so the
+ * suggestions follow what students are looking for.
+ */
+export const getPopularSearches = shared(
+  'popular-searches',
+  [TAG.search],
+  async (limit: number = 10): Promise<string[]> => {
+    const { data, error } = await publicClient.rpc('popular_searches', { days: 30, max_rows: limit })
+    if (error) return []
+    return ((data ?? []) as { label: string }[]).map((row) => row.label)
+  },
+  10 * 60,
+)
+
+/** Counts one search towards the suggestions. Anonymous: only the words and the day are kept. */
+export async function logSearch(term: string): Promise<void> {
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  await createAdminClient().rpc('log_search', { raw: term })
+}
+
 export interface RecentPaper {
   paper_id: string
   set_id: string

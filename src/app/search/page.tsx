@@ -1,6 +1,10 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { searchWithOptions } from '@/lib/queries'
+import { after } from 'next/server'
+import { getBrowseTree, getCatalogueCounts, getPopularSearches, logSearch, searchWithOptions } from '@/lib/queries'
+import { artFor } from '@/lib/art'
+import { Art } from '@/components/ui/Art'
+import { RecentSearches, RememberSearch } from '@/components/search/RecentSearches'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { parseBlocks, type Block } from '@/lib/blocks/schema'
@@ -22,7 +26,10 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<{ q?: string; in?: string }>
 
-/** Checked against the bank: every one of these returns questions. */
+/**
+ * Checked against the bank: every one of these returns questions. Used until
+ * enough people have searched for the suggestions to come from them.
+ */
 const EXAMPLES = ['BCNF', 'JOIN', 'binary search', 'Dijkstra', 'linked list', 'eigenvalue', 'regression', 'Bengaluru']
 
 const PLACES: MatchIn[] = ['question', 'options', 'code', 'table', 'details']
@@ -38,7 +45,19 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const { q = '', in: rawIn } = await searchParams
   const term = q.trim()
   // The hits and their options together, held briefly per term.
-  const { hits, options } = await searchWithOptions(term)
+  const [{ hits, options }, popular] = await Promise.all([searchWithOptions(term), getPopularSearches(10)])
+
+  // Suggestions follow what people search for; the fixed examples fill in
+  // until there are enough of those.
+  const suggestions = [
+    ...popular,
+    ...EXAMPLES.filter((example) => !popular.some((known) => known.toLowerCase() === example.toLowerCase())),
+  ].slice(0, 10)
+
+  // A search that found something counts towards them — after the page is
+  // sent, so it never slows the results. Changing the "matched in" filter is
+  // the same search again, so it is not counted twice.
+  if (term && hits.length > 0 && !rawIn) after(() => logSearch(term).catch(() => undefined))
   const optionsBy = new Map<string, Block[][]>(
     [...options].map(([questionId, contents]) => [questionId, contents.map((content) => parseBlocks(content))]),
   )
@@ -85,20 +104,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       </TitleCard>
 
       {!term ? (
-        <div className="mt-5">
-          <p className="mb-3 text-meta text-ink-muted">Try one of these</p>
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((example) => (
-              <Link
-                key={example}
-                href={`/search?q=${encodeURIComponent(example)}`}
-                className="inline-flex h-10 items-center rounded-control border border-rule bg-surface px-4 text-ui text-ink transition-colors hover:border-rule-strong"
-              >
-                {example}
-              </Link>
-            ))}
-          </div>
-        </div>
+        <>
+          <section className="mt-6">
+            <h2 className="mb-3 text-meta text-ink-muted">{popular.length ? 'Popular searches' : 'Try one of these'}</h2>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((example) => (
+                <Link
+                  key={example}
+                  href={`/search?q=${encodeURIComponent(example)}`}
+                  className="inline-flex h-10 items-center rounded-control border border-rule bg-surface px-4 text-ui text-ink transition-colors hover:border-rule-strong"
+                >
+                  {example}
+                </Link>
+              ))}
+            </div>
+          </section>
+          <RecentSearches className="mt-8" />
+          <BrowseSubjects />
+        </>
       ) : (
         <>
           <FilterRow>
@@ -113,6 +136,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               }))}
             />
           </FilterRow>
+          {hits.length > 0 ? <RememberSearch term={term} /> : null}
           <div className="mt-5">
             {hits.length > 0 ? (
               <h2 className="mb-3 text-[1.25rem] leading-tight font-medium text-ink">Results for “{term}”</h2>
@@ -156,7 +180,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             ) : hits.length === 0 ? (
               <EmptyState art="no-results" title={`Nothing matches “${term}”`}>
                 Try a shorter word, or one of:{' '}
-                {EXAMPLES.slice(0, 4).map((example, i) => (
+                {suggestions.slice(0, 4).map((example, i) => (
                   <span key={example}>
                     {i > 0 ? ', ' : ''}
                     <Link href={`/search?q=${encodeURIComponent(example)}`} className="text-accent hover:underline">
@@ -174,5 +198,43 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         </>
       )}
     </div>
+  )
+}
+
+/** Under the suggestions: the subjects with the most papers, one click away. */
+async function BrowseSubjects() {
+  const [tree, counts] = await Promise.all([getBrowseTree(), getCatalogueCounts()])
+  const subjects = tree
+    .flatMap((program) => program.levels.flatMap((level) => level.subjects))
+    .map((subject) => ({ subject, papers: counts.bySubject.get(subject.id)?.papers ?? 0 }))
+    .filter((row) => row.papers > 0)
+    .sort((a, b) => b.papers - a.papers)
+    .slice(0, 12)
+  if (subjects.length === 0) return null
+
+  return (
+    <section className="mt-8">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-meta text-ink-muted">Or open a subject</h2>
+        <Link href="/subjects" className="flex items-center gap-1 text-meta text-ink-muted hover:text-ink hover:underline">
+          All subjects
+          <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+      </div>
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {subjects.map(({ subject, papers }) => (
+          <li key={subject.id}>
+            <Link
+              href={`/subject/${subject.slug}`}
+              className="flex items-center gap-3 rounded-control border border-rule bg-surface px-3 py-2.5 transition-colors hover:border-rule-strong"
+            >
+              <Art src={artFor('subjects', subject.slug)} size={32} />
+              <span className="min-w-0 flex-1 truncate text-ui text-ink">{subject.name}</span>
+              <span className="shrink-0 text-meta text-ink-faint tabular-nums">{papers} papers</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

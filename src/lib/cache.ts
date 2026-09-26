@@ -38,6 +38,8 @@ export const TAG = {
   spotlight: 'spotlight',
   /** Approved explanations. */
   solutions: 'solutions',
+  /** What people search for. */
+  search: 'search',
   /** One set's questions. */
   set: (setId: string) => `set:${setId}`,
   /** Everything cached for one student. */
