@@ -35,7 +35,8 @@ function Avatar({ name, src, size }: { name: string; src: string | null; size: n
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
-        alt=""
+        alt={name}
+        aria-hidden="true"
         width={size}
         height={size}
         referrerPolicy="no-referrer"
