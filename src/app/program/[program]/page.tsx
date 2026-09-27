@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const papers = subjects.reduce((sum, subject) => sum + subject.paperCount, 0)
   return pageMetadata({
     title: titles.program(program.program, subjects.length),
-    description: `${formatCount(papers)} previous year question papers for the IIT Madras ${program.program.name}: Qualifier, Quiz 1, Quiz 2 and End Term papers for every subject, Foundation to degree, with answers.`,
+    description: `${formatCount(papers)} IITM BS ${program.program.short_name ?? program.program.name} PYQs with solutions: Qualifier, Quiz 1, Quiz 2 and End Term papers for every course, with answer keys and video solutions.`,
     path: program.path,
   })
 }
@@ -71,13 +71,13 @@ export default async function ProgramHub({ params }: { params: Params }) {
         crumbs={[{ label: 'Home', href: '/' }, { label: name }]}
         icon={art ? <Art src={art} size={56} alt={name} /> : undefined}
         eyebrow={program.program.name}
-        title={titles.programHeading(program.program, subjects.length)}
+        title={titles.programHeading(program.program)}
         lead={
           <p>
             Previous year question papers for the IIT Madras {program.program.name}:{' '}
             <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> across{' '}
-            {plural(subjects.length, 'subject')}, {yearSpan(allYears)}, with {formatCount(questions)} questions and their
-            answer keys. {program.program.description ?? ''}
+            {plural(subjects.length, 'subject')}, {yearSpan(allYears)} — {formatCount(questions)} questions, each with its solution
+            from the answer key and a video solution on its own page. {program.program.description ?? ''}
           </p>
         }
         stats={[
