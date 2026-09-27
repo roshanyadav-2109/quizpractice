@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { TAG, refresh } from '@/lib/cache'
 import { getQuestionsWithAnswers } from '@/lib/queries'
+import { mayReadQuestion } from '@/lib/access'
 import { gradeQuestion } from '@/lib/scoring'
 import type { AnswerResponse } from '@/types/db'
 
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Sign in to keep a mistake bank.' }, { status: 401 })
+  // Only a question from a paper this student opened or answered (0034), so
+  // retries cannot be used to mark questions they were never shown.
+  if (!(await mayReadQuestion(questionId))) {
+    return Response.json({ error: 'That question is not in your papers.' }, { status: 403 })
+  }
 
   const [question] = await getQuestionsWithAnswers([questionId])
   if (!question) return Response.json({ error: 'That question does not exist.' }, { status: 404 })
