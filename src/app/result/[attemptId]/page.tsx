@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getPeerStats, getSetContext } from '@/lib/queries'
+import { watermark } from '@/lib/watermark'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { responseValue, selectedOptionIds } from '@/lib/scoring'
@@ -72,7 +73,10 @@ export default async function ResultPage({ params }: { params: Params }) {
   ])
   if (!context) notFound()
 
-  const { questions, subject, examType, paper, set } = context
+  const { subject, examType, paper, set } = context
+  // The whole paper, answers and all, as the student sat it — carrying their
+  // account's invisible mark, like every full paper (src/lib/watermark.ts).
+  const questions = watermark(context.questions, attempt.user_id)
   const answerBy = new Map((answers ?? []).map((answer) => [answer.question_id, answer]))
 
   const analysed = questions.map((question) =>
