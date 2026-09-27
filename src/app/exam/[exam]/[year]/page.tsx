@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.examYear(data.examType, data.year),
     description: `IITM BS ${data.examType.name} PYQ ${data.year} with solutions: all ${formatCount(data.papers.length)} papers — ${listOf(
       termsIn(data.papers).map((term) => term.short),
-    )} terms — across ${subjects} subjects, with answer keys and video solutions.`,
+    )} terms — across ${subjects} subjects, with answer keys.`,
     path: paths.examYear(data.examType.slug, data.year),
   })
 }
@@ -90,7 +90,7 @@ export default async function ExamYearPage({ params }: { params: Params }) {
       a: (
         <>
           All {plural(papers.length, `${examType.name} paper`)} from {year} are on this page, by term: {listOf(terms.map((term) => term.label))}. Each
-          opens with its questions and answer key, and each question&rsquo;s page has its video solution.
+          opens with its first questions; sign in with Google to see it whole with the answer key.
         </>
       ),
     },
@@ -156,7 +156,7 @@ export default async function ExamYearPage({ params }: { params: Params }) {
             <p>
               <strong>{plural(papers.length, `IITM BS ${examType.name} paper`)}</strong> from {year} — the{' '}
               {listOf(terms.map((term) => term.label))} — across {plural(subjects.length, 'subject')}, with{' '}
-              {formatCount(questions)} questions, their answer keys and a video solution on each question&rsquo;s page.{' '}
+              {formatCount(questions)} questions and their answer keys, open with a free Google sign-in.{' '}
               {fact ? fact.scope : ''}
             </p>
           }
