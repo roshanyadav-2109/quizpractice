@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!data) return { title: 'Not found', robots: { index: false } }
   return pageMetadata({
     title: titles.year(data.year),
-    description: `IITM BS PYQ ${data.year} with solutions, answer keys and video solutions: ${listOf(
+    description: `IITM BS PYQ ${data.year} with solutions and answer keys: ${listOf(
       data.exams.map(({ examType, papers }) => `${formatCount(papers.length)} ${examType.name}`),
     )} papers.`,
     path: paths.year(data.year),
@@ -100,8 +100,8 @@ export default async function YearPage({ params }: { params: Params }) {
             <p>
               <strong>{plural(papers.length, 'IITM BS paper')}</strong> from the {year} terms, across{' '}
               {plural(subjects, 'subject')}: {listOf(exams.map(({ examType, papers: list }) => `${formatCount(list.length)} ${examType.name}`))}.
-              Every question has its answer key and a video solution on its own page, and every paper can be taken as a
-              timed mock test.
+              Every paper shows its first questions to anyone; sign in with Google to see whole papers with their answer
+              keys, or take them as timed mock tests.
             </p>
           }
           statsTitle={`IITM BS PYQ ${year} at a glance`}
