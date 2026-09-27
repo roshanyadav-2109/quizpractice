@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { paths } from '@/lib/seo/paths'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import {
@@ -362,7 +363,7 @@ export default async function StudentDashboard() {
             label: s.name,
             accuracy: s.percentage,
             note: `average over ${s.attempts} ${s.attempts === 1 ? 'paper' : 'papers'}`,
-            href: `/subject/${s.slug}`,
+            href: paths.subject(s.slug),
           }))
 
   const activity = new Map<string, number>()
