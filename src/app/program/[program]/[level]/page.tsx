@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.level(level.level, program.program, subjects.map((subject) => subject.subject)),
     description: `IITM BS ${level.level.name} PYQs with solutions for ${listOf(
       subjects.slice(0, 5).map((subject) => shortName(subject.subject)),
-    )}${subjects.length > 5 ? ' and more' : ''}: ${formatCount(subjects.reduce((sum, subject) => sum + subject.paperCount, 0))} papers with answer keys and video solutions.`,
+    )}${subjects.length > 5 ? ' and more' : ''}: ${formatCount(subjects.reduce((sum, subject) => sum + subject.paperCount, 0))} papers with answer keys and free mock tests.`,
     path: level.path,
   })
 }
@@ -102,8 +102,8 @@ export default async function LevelHub({ params }: { params: Params }) {
             <p>
               {plural(subjects.length, `${level.level.name} subject`)} of the IIT Madras {program.program.name} with previous
               year papers — <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> and{' '}
-              {formatCount(questions)} questions with solutions and answer keys, a video solution on each question&rsquo;s page,
-              and every paper free to read or take as a timed mock test.
+              {formatCount(questions)} questions with solutions and answer keys, every paper free with a Google sign-in to
+              read whole or take as a timed mock test.
             </p>
           }
           statsTitle={`${name} ${level.level.name} PYQ at a glance`}
