@@ -1,4 +1,5 @@
 import 'server-only'
+import { paths, programSlug } from '@/lib/seo/paths'
 import { publicClient, memoise } from '@/lib/supabase/public'
 import { TAG, shared } from '@/lib/cache'
 import { getCurrentProfile } from '@/lib/supabase/server'
@@ -23,6 +24,12 @@ export interface SpotlightContext {
   focus?: { id: string; slug: string; name: string } | null
   /** The branch a page is filtered to. */
   programSlug?: string | null
+  /**
+   * The page is rendered once for everyone and served from the CDN, so the
+   * session is not read: nothing personal is chosen here, and a banner meant
+   * only for visitors is marked so the browser can hide it from students.
+   */
+  shared?: boolean
 }
 
 const MAX = 4
@@ -131,7 +138,7 @@ export async function getSpotlights(context: SpotlightContext): Promise<Spotligh
   try {
     const today = todayIst()
     const [profile, examTypes, index, calendar, banners, programs] = await Promise.all([
-      getCurrentProfile(),
+      context.shared ? Promise.resolve(null) : getCurrentProfile(),
       getExamTypes(),
       getPaperIndex(),
       loadCalendar(),
@@ -141,7 +148,11 @@ export async function getSpotlights(context: SpotlightContext): Promise<Spotligh
     const programId =
       context.subject?.programId ?? programs.find((program) => program.slug === context.programSlug)?.id ?? null
 
-    const personal = profile ? await mistakesSpotlight(context, today) : tourSpotlight(context)
+    const personal = context.shared
+      ? withAudience(tourSpotlight(context))
+      : profile
+        ? await mistakesSpotlight(context, today)
+        : tourSpotlight(context)
 
     return [
       examSpotlight(context, today, programId, calendar, examTypes, index, programs),
@@ -184,7 +195,7 @@ function examSpotlight(
   const scope =
     candidate && index.some((row) => row.exam_type_id === exam.id && row.subject_id === candidate.id) ? candidate : null
   const when = days === 0 ? 'is today' : days === 1 ? 'is tomorrow' : `in ${days} days`
-  const allHref = `/papers?exam=${exam.slug}${program ? `&program=${program.slug}` : ''}`
+  const allHref = `${paths.exam(exam.slug)}${program ? `#p-${programSlug(program)}` : ''}`
 
   return {
     id: `exam-${next.id.slice(0, 8)}`,
@@ -193,7 +204,7 @@ function examSpotlight(
     title: `${exam.name} ${when}`,
     body: next.note ?? `${examDay.format(new Date(`${next.exam_date}T00:00:00Z`))}. Sit the past papers first.`,
     cta: scope
-      ? { label: `Practise ${scope.name}`, href: `/subject/${scope.slug}?exam=${exam.slug}` }
+      ? { label: `Practise ${scope.name}`, href: paths.subjectExam(scope.slug, exam.slug) }
       : { label: `Past ${exam.name} papers`, href: allHref },
     screens: SCREENS.exam,
   }
@@ -230,7 +241,7 @@ function releaseSpotlight(
     title: subject ? `New ${exam.name} paper is here` : `New ${exam.name} papers are in`,
     body: `${term.label}, sat ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}.`,
     cta: subject
-      ? { label: 'Sit the new paper', href: `/subject/${subject.slug}?${filter}` }
+      ? { label: 'Sit the new paper', href: paths.paper(subject.slug, exam.slug, `${term.season}-${term.year}`) }
       : { label: 'See the new papers', href: `/papers?${filter}` },
     screens: SCREENS.release,
   }
@@ -259,6 +270,10 @@ async function mistakesSpotlight(context: SpotlightContext, today: string): Prom
     },
     screens: SCREENS.insights,
   }
+}
+
+function withAudience(item: Spotlight | null): Spotlight | null {
+  return item ? { ...item, audience: 'signed-out' } : null
 }
 
 /** For a visitor: what signing in adds, beyond sitting papers. */
