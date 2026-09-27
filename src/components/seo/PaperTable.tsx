@@ -46,18 +46,17 @@ export function PaperTable({
             <tr key={paper.setId} className="border-b border-rule last:border-b-0 hover:bg-surface-2/60">
               <td className="px-4 py-3">
                 <Link href={paper.path} className="text-ink underline-offset-4 hover:underline">
+                  {/* Seen: the date. Read by crawlers and screen readers: which paper. */}
+                  <span className="sr-only">
+                    {shortName(paper.subject)} {paper.examType.name}{' '}
+                  </span>
                   {sittingDate(paper.sessionDate)}
                   {paper.setsInSitting > 1 ? <span className="text-ink-muted"> · Set {paper.setCode}</span> : null}
                 </Link>
                 <BestScore setId={paper.setId} className="mt-0.5 block" />
               </td>
-              {showSubject ? (
-                <td className="px-3 py-3 text-ink-muted">
-                  <Link href={paper.path} className="hover:text-ink" tabIndex={-1}>
-                    {shortName(paper.subject)}
-                  </Link>
-                </td>
-              ) : null}
+              {/* Plain text: the date in this row already links to the paper. */}
+              {showSubject ? <td className="px-3 py-3 text-ink-muted">{shortName(paper.subject)}</td> : null}
               {showExam ? <td className="px-3 py-3 text-ink-muted">{paper.examType.name}</td> : null}
               <td className="px-3 py-3 whitespace-nowrap text-ink-muted">{termName(paper.term)}</td>
               <td className="px-3 py-3 text-right text-ink-muted tabular-nums">{paper.questionCount}</td>
@@ -66,8 +65,14 @@ export function PaperTable({
                 {paper.durationMinutes ? `${paper.durationMinutes} min` : '—'}
               </td>
               <td className="px-4 py-3 text-right">
-                <Link href={`/paper/${paper.setId}`} rel="nofollow" className={buttonClass('outline', 'sm')}>
+                <Link href={`/paper/${paper.setId}`} className={buttonClass('outline', 'sm')}>
                   Mock test
+                  {/* Every row has one: the hidden words say which paper this one starts. */}
+                  <span className="sr-only">
+                    {' '}
+                    — {shortName(paper.subject)} {paper.examType.name} {sittingDate(paper.sessionDate)}
+                    {paper.setsInSitting > 1 ? ` set ${paper.setCode}` : ''}
+                  </span>
                   <ArrowRight size={14} aria-hidden="true" />
                 </Link>
               </td>
