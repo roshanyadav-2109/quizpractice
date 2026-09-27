@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"src/lib/**/*.test.ts\"",
     "db:validate": "tsx scripts/validate-sql.ts",
+    "watermark:find": "tsx scripts/find-watermark.ts",
     "paper:validate": "tsx scripts/validate-paper.ts",
     "paper:import": "tsx scripts/import-paper.ts",
     "paper:extract": "tsx scripts/extract-paper.ts",
