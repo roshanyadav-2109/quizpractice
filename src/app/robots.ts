@@ -19,8 +19,12 @@ import { ORIGIN } from '@/lib/seo/site'
  * anyway), the API, and internal search results — an endless space of
  * near-duplicate pages. /_next/ stays open: Googlebot and Applebot need the
  * scripts and styles to render.
+ *
+ * /all-questions is a trap: linked invisibly from every page and closed
+ * here, so only a scraper that ignores this file ever opens it
+ * (src/app/all-questions/route.ts).
  */
-const CLOSED = ['/api/', '/admin', '/auth/', '/login', '/dashboard', '/mistakes', '/result/', '/teach', '/search']
+const CLOSED = ['/api/', '/admin', '/auth/', '/login', '/dashboard', '/mistakes', '/result/', '/teach', '/search', '/all-questions']
 
 const AGENTS = [
   '*',
