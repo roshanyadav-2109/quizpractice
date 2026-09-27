@@ -21,7 +21,9 @@ export function Faq({ title = 'Frequently asked questions', items, className = '
         {items.map((item) => (
           <div key={item.q} className="px-5 py-4">
             <h3 className="text-ui font-medium text-ink">{item.q}</h3>
-            <div className="mt-1.5 max-w-[72ch] text-ui leading-relaxed text-ink-muted">{item.a}</div>
+            <div className="mt-1.5 max-w-[72ch] text-ui leading-relaxed text-ink-muted [&_a]:underline [&_a]:underline-offset-2">
+              {item.a}
+            </div>
           </div>
         ))}
       </div>
