@@ -10,9 +10,9 @@ import { SHELL } from '@/components/site/Page'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
-  title: 'All IITM BS Subjects — Previous Year Papers by Programme and Level',
+  title: 'All IITM BS Subjects: PYQs with Solutions & Answer Keys',
   description:
-    'Every IIT Madras BS degree subject with previous year question papers — Data Science and Electronic Systems, Foundation to degree level — with a search that understands the names students use.',
+    'Every IIT Madras BS subject with previous year question papers, solutions and video solutions — Data Science and Electronic Systems, Foundation to degree.',
   path: '/subjects',
 })
 
