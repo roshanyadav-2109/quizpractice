@@ -1,132 +1,204 @@
 import Link from 'next/link'
-import { Suspense, type ReactNode } from 'react'
-import {
-  getBrowseTree,
-  getCatalogueCounts,
-  getExamTypes,
-  getPaperIndex,
-  getPapers,
-  getQualifierSubjectIds,
-} from '@/lib/queries'
-import { getCurrentProfile } from '@/lib/supabase/server'
+import type { Metadata } from 'next'
+import { titles } from '@/lib/seo/titles'
+import type { ReactNode } from 'react'
 import { isSupabaseConfigured } from '@/lib/env'
 import { artFor } from '@/lib/art'
-import { formatSession } from '@/lib/format'
-import { termOf } from '@/lib/terms'
+import { formatCount } from '@/lib/format'
+import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
+import { pageMetadata } from '@/lib/seo/metadata'
+import { webPage } from '@/lib/seo/jsonld'
+import { listOf, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
+import { examFact } from '@/lib/seo/exam-facts'
+import { paths } from '@/lib/seo/paths'
+import { SITE } from '@/lib/seo/site'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { Spotlight } from '@/components/site/Spotlight'
 import { SHELL, Trail } from '@/components/site/Page'
 import { ProductBy } from '@/components/site/Brand'
 import { SignInButton } from '@/components/site/AuthDialog'
+import { SignedOut } from '@/components/site/Viewer'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
 import { MistakesCta } from '@/components/home/MistakesCta'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { Faq, type FaqItem } from '@/components/seo/Faq'
+import { BestScore } from '@/components/seo/BestScore'
 import { Art } from '@/components/ui/Art'
 import { buttonClass } from '@/components/ui/primitives'
 import { ArrowRight, MagnifyingGlass } from '@/components/ui/icons'
 
-export const dynamic = 'force-dynamic'
+/** The same page for everyone, from the CDN, refreshed within the hour. */
+export const revalidate = 3600
 
 const LATEST = 8
 
+export async function generateMetadata(): Promise<Metadata> {
+  if (!isSupabaseConfigured) return {}
+  const { papers, subjects } = await getSeoCatalogue()
+  const withPapers = subjects.filter((subject) => subject.paperCount > 0).length
+  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
+  return {
+    ...pageMetadata({
+      title: titles.home(),
+      description: `Free IIT Madras BS degree PYQs: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers with answer keys — ${formatCount(
+        questions,
+      )} questions across ${withPapers} Data Science and Electronic Systems subjects. Read or take as a timed mock test.`,
+      path: '/',
+    }),
+    // The home page carries the full brand whatever the length.
+    title: { absolute: `${titles.home()} | ${SITE.name}` },
+  }
+}
+
 /**
- * The front door, content first: a search, the exams, the latest papers, then
- * every subject by branch and stage — Qualifier, Foundation, the diplomas, the
- * degree. What the site is shows in what is on it.
+ * The front door, and the site's answer to "IITM BS PYQ": what is here in
+ * two sentences, a search, the exams, the newest papers, then every subject
+ * by branch and stage. Everything below the fold is plain links, so a
+ * crawler reaches every subject in one step.
  */
 export default async function HomePage() {
   if (!isSupabaseConfigured) return <SetupNotice />
 
-  const [profile, tree, counts, examTypes, index, papers, qualifierIds] = await Promise.all([
-    getCurrentProfile(),
-    getBrowseTree(),
-    getCatalogueCounts(),
-    getExamTypes(),
-    getPaperIndex(),
-    getPapers(),
-    getQualifierSubjectIds(),
-  ])
+  const catalogue = await getSeoCatalogue()
+  const { papers, programs, examTypes } = catalogue
+  const subjects = catalogue.subjects.filter((subject) => subject.paperCount > 0)
+  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
+  const allYears = [...new Set(papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))]
+  const updated = papers.map((paper) => paper.updatedAt).filter(Boolean).sort().at(-1) ?? null
 
-  // Only what leads to papers.
-  const exams = examTypes.filter((exam) => index.some((row) => row.exam_type_id === exam.id))
+  const exams = examTypes
+    .map((exam) => ({ exam, papers: papers.filter((paper) => paper.examType.id === exam.id) }))
+    .filter((entry) => entry.papers.length > 0)
 
-  // Each branch and its stages: the qualifier (the stage before Foundation)
-  // first, then its levels — only those with papers.
-  const branches: Branch[] = tree
+  // Each branch and its stages: the qualifier (the stage before Foundation) first, then its levels.
+  const branches: Branch[] = programs
     .map((program) => ({
       slug: program.slug,
-      label: program.short_name ?? program.name,
-      icon: artFor('programs', program.slug),
+      label: program.program.short_name ?? program.program.name,
+      icon: artFor('programs', program.program.slug),
       stages: [
         {
           slug: 'qualifier',
           name: 'Qualifier',
           icon: artFor('levels', 'qualifier'),
-          href: `/papers?exam=qualifier&program=${program.slug}`,
+          href: `${paths.exam('qualifier')}#p-${program.slug}`,
           subjects: program.levels.flatMap((level) =>
             level.subjects
-              .filter((subject) => qualifierIds.has(subject.id))
-              .map((subject) => ({
-                slug: subject.slug,
-                name: subject.name,
-                href: `/subject/${subject.slug}?exam=qualifier`,
-                icon: artFor('subjects', subject.slug),
+              .filter((node) => node.exams.some((exam) => exam.examType.slug === 'qualifier'))
+              .map((node) => ({
+                slug: node.subject.slug,
+                name: node.subject.name,
+                href: paths.subjectExam(node.subject.slug, 'qualifier'),
+                icon: artFor('subjects', node.subject.slug),
               })),
           ),
         },
         ...program.levels.map((level) => ({
-          slug: level.slug,
-          name: level.name,
-          icon: artFor('levels', level.slug),
-          href: `/subjects?program=${program.slug}&level=${level.slug}`,
+          slug: level.level.slug,
+          name: level.level.name,
+          icon: artFor('levels', level.level.slug),
+          href: level.path,
           subjects: level.subjects
-            .filter((subject) => (counts.bySubject.get(subject.id)?.papers ?? 0) > 0)
-            .map((subject) => ({
-              slug: subject.slug,
-              name: subject.name,
-              href: `/subject/${subject.slug}`,
-              icon: artFor('subjects', subject.slug),
+            .filter((node) => node.paperCount > 0)
+            .map((node) => ({
+              slug: node.subject.slug,
+              name: node.subject.name,
+              href: node.path,
+              icon: artFor('subjects', node.subject.slug),
             })),
         })),
       ].filter((stage) => stage.subjects.length > 0),
     }))
     .filter((branch) => branch.stages.length > 0)
 
-  // The newest sittings. A sitting with several sets opens on its exam's page,
-  // grouped by term, so the set can be chosen there.
-  const latest = papers.slice(0, LATEST).map((paper) => {
-    const term = termOf(paper.session_date)
-    const single = paper.sets.length === 1
-    return {
-      id: paper.id,
-      href: single
-        ? `/paper/${paper.sets[0].id}`
-        : `/subject/${paper.subject.slug}?exam=${paper.exam_type.slug}${
-            term ? `&year=${term.year}&term=${term.season}` : ''
-          }`,
-      subject: paper.subject.name,
-      icon: artFor('subjects', paper.subject.slug),
-      exam: paper.exam_type.name,
-      date: formatSession(paper.session_date),
-      sets: paper.sets.length,
-      facts: [
-        paper.total_marks ? `${Number(paper.total_marks)} marks` : '',
-        (paper.duration_minutes ?? paper.exam_type.default_duration_minutes)
-          ? `${paper.duration_minutes ?? paper.exam_type.default_duration_minutes} min`
-          : '',
-      ].filter(Boolean),
-    }
-  })
+  const latest = papers.filter((paper) => paper.questionCount > 0).slice(0, LATEST)
+
+  const faq: FaqItem[] = [
+    {
+      q: 'Where can I find IITM BS previous year question papers?',
+      a: (
+        <>
+          On Quiz Space: {formatCount(papers.length)} IIT Madras BS papers — Qualifier, Quiz 1, Quiz 2 and End Term — for{' '}
+          {subjects.length} subjects of the Data Science and Electronic Systems degrees, {yearSpan(allYears)}. Pick a
+          subject or an exam above; every paper opens with its questions and answer key.
+        </>
+      ),
+    },
+    {
+      q: 'Are the IITM BS PYQs free, with answers?',
+      a: (
+        <>
+          Yes. Every paper is free to read and to take as a mock test, and every question shows its answer key. A Google
+          sign-in is only needed to save your attempts, see your analysis and keep a mistake bank.
+        </>
+      ),
+    },
+    {
+      q: 'Can I take an IITM BS mock test here?',
+      a: (
+        <>
+          Any paper can be taken as a timed mock test on a screen laid out like the real IITM exam: the same question
+          palette, Save &amp; Next, Mark for Review and Clear Response. It is marked the moment you submit, with a
+          question-by-question analysis.
+        </>
+      ),
+    },
+    {
+      q: 'Which IITM BS exams have previous year papers here?',
+      a: <>{listOf(exams.map(({ exam, papers: list }) => `${exam.name} (${formatCount(list.length)} papers)`))}.</>,
+    },
+    ...(examFact('qualifier')
+      ? [
+          {
+            q: 'How do I prepare for the IITM BS Qualifier exam?',
+            a: (
+              <>
+                {examFact('qualifier')!.about}{' '}
+                <Link href={paths.exam('qualifier')} className="text-accent hover:underline">
+                  See every Qualifier paper
+                </Link>
+                .
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      q: 'Is Quiz Space an official IIT Madras website?',
+      a: (
+        <>
+          No. {SITE.name} is an independent study resource run by Unknown IITians, and it is not affiliated with IIT
+          Madras or with any other practice site of a similar name. Official information about the programme is at{' '}
+          <a href="https://study.iitm.ac.in/" rel="noopener" className="text-accent hover:underline">
+            study.iitm.ac.in
+          </a>
+          .
+        </>
+      ),
+    },
+  ]
 
   return (
     <>
+      <JsonLd
+        data={webPage({
+          path: '/',
+          name: 'IITM BS PYQ — previous year question papers with answers',
+          description: SITE.description,
+          crumbs: [{ name: 'Home', path: '/' }],
+        })}
+      />
+
       {/* ------------------------------------------------------------ Search */}
-      <section className={`${SHELL} pt-12 pb-14 text-center lg:pt-16`}>
+      <section className={`${SHELL} pt-12 pb-10 text-center lg:pt-16`}>
         <ProductBy className="mb-4" />
         <h1 className="mx-auto max-w-3xl text-[2rem] leading-[1.15] font-medium text-balance text-ink sm:text-[2.5rem]">
-          Previous year papers for the IIT Madras BS degree
+          {titles.homeHeading()}
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-body text-ink-muted">
-          Qualifier, Quiz 1, Quiz 2 and End Term papers from every term, with answers and explanations.
+          Every Qualifier, Quiz 1, Quiz 2 and End Term paper of the IIT Madras BS degree: {formatCount(papers.length)}{' '}
+          papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)}. Read each
+          with its answer key, or take it as a timed mock test. Free.
         </p>
 
         <form action="/search" method="get" role="search" className="mx-auto mt-7 flex max-w-2xl gap-2 text-left">
@@ -149,25 +221,38 @@ export default async function HomePage() {
           </button>
         </form>
 
-        {profile ? (
-          <Suspense fallback={null}>
-            <MistakesCta />
-          </Suspense>
-        ) : null}
+        <MistakesCta />
+
+        <dl className="mx-auto mt-8 flex max-w-2xl flex-wrap justify-center gap-x-10 gap-y-3">
+          {[
+            ['Papers', formatCount(papers.length)],
+            ['Questions', formatCount(questions)],
+            ['Subjects', String(subjects.length)],
+            ['Years', yearSpan(allYears)],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-meta text-ink-faint">{label}</dt>
+              <dd className="text-[1.25rem] text-ink tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* ------------------------------------------------------------- Exams */}
-      <Section title="Exams" link={{ href: '/papers', label: 'All papers' }}>
+      <Section title="PYQs by exam" link={{ href: '/papers', label: 'All papers' }}>
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {exams.map((exam) => (
+          {exams.map(({ exam, papers: list }) => (
             <li key={exam.id}>
               <Link
-                href={`/papers?exam=${exam.slug}`}
+                href={paths.exam(exam.slug)}
                 className="group flex h-full items-center gap-4 rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong"
               >
                 <Art src={artFor('exams', exam.slug)} size={48} />
-                <span className="text-card text-ink group-hover:underline group-hover:underline-offset-4">
-                  {exam.name}
+                <span className="min-w-0">
+                  <span className="block text-card text-ink group-hover:underline group-hover:underline-offset-4">
+                    {exam.name} PYQ
+                  </span>
+                  <span className="block text-meta text-ink-faint tabular-nums">{formatCount(list.length)} papers</span>
                 </span>
               </Link>
             </li>
@@ -179,33 +264,14 @@ export default async function HomePage() {
       <Section title="Latest papers" link={{ href: '/papers', label: 'All papers' }}>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {latest.map((paper) => (
-            <li key={paper.id}>
-              <article className="flex h-full flex-col rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong">
-                <div className="flex items-start gap-3">
-                  <Art src={paper.icon} size={40} />
-                  <div className="min-w-0">
-                    <h3 className="text-ui leading-snug text-ink">{paper.subject}</h3>
-                    <p className="mt-0.5 text-meta text-ink-faint tabular-nums">
-                      <Trail parts={[paper.exam, paper.date]} />
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-                  <p className="text-meta text-ink-muted tabular-nums">{paper.facts.join(' · ')}</p>
-                  <Link href={paper.href} className={buttonClass('primary', 'sm')}>
-                    {paper.sets > 1 ? 'Choose set' : 'Start'}
-                    <ArrowRight size={14} aria-hidden="true" />
-                  </Link>
-                </div>
-              </article>
-            </li>
+            <LatestCard key={paper.setId} paper={paper} />
           ))}
         </ul>
       </Section>
 
       {/* -------------------------------------------------------- Highlights */}
       <div className={SHELL}>
-        <Spotlight placement="home" className="pb-14" />
+        <Spotlight placement="home" shared className="pb-14" />
       </div>
 
       {/* ---------------------------------------------------------- Branches */}
@@ -213,21 +279,116 @@ export default async function HomePage() {
         <PreparingFor branches={branches} />
       </Section>
 
+      {/* ------------------------------------------------ Every subject, A–Z */}
+      <Section title="Every subject" link={{ href: '/subjects', label: 'Find a subject' }}>
+        <div className="grid gap-8 md:grid-cols-2">
+          {programs
+            .filter((program) => program.levels.some((level) => level.subjects.some((node) => node.paperCount > 0)))
+            .map((program) => (
+              <div key={program.program.id}>
+                <h3 className="text-ui font-medium text-ink">
+                  <Link href={program.path} className="hover:underline">
+                    {program.program.short_name ?? program.program.name} PYQs
+                  </Link>
+                </h3>
+                {program.levels
+                  .filter((level) => level.subjects.some((node) => node.paperCount > 0))
+                  .map((level) => (
+                    <div key={level.level.id} className="mt-3">
+                      <p className="text-meta text-ink-faint">
+                        <Link href={level.path} className="hover:text-ink hover:underline">
+                          {level.level.name}
+                        </Link>
+                      </p>
+                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-ui">
+                        {level.subjects
+                          .filter((node) => node.paperCount > 0)
+                          .map((node) => (
+                            <Link key={node.subject.id} href={node.path} className="text-accent hover:underline">
+                              {shortName(node.subject)}
+                            </Link>
+                          ))}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            ))}
+        </div>
+      </Section>
+
+      {/* ---------------------------------------------------------- Why here */}
+      <Section title="Why practise on Quiz Space">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ['Real questions, as text', 'Tables, code, equations and ER diagrams are drawn from data, not pasted as screenshots — searchable, sharp on a phone and correct in dark mode.'],
+            ['The exam screen you will sit', 'The same palette, timer and Save & Next / Mark for Review controls as the IITM exam portal, so nothing is new on the day.'],
+            ['Answers for every question', 'Every paper shows its answer key. Mock tests are marked the moment you submit, with where you lost time and marks.'],
+            ['Free, and every subject', `${subjects.length} subjects from Foundation to degree, Data Science and Electronic Systems, from ${Math.min(...allYears)} onwards. No paywall.`],
+          ].map(([title, body]) => (
+            <li key={title} className="rounded-card border border-rule bg-surface p-5">
+              <h3 className="text-ui font-medium text-ink">{title}</h3>
+              <p className="mt-1.5 text-meta leading-relaxed text-ink-muted">{body}</p>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <div className={`${SHELL} pb-14`}>
+        <Faq items={faq} />
+        {updated ? (
+          <p className="mt-4 text-meta text-ink-faint">
+            Papers last updated <time dateTime={updated.slice(0, 10)}>{sittingDate(updated.slice(0, 10))}</time>.
+          </p>
+        ) : null}
+      </div>
+
       {/* ------------------------------------------------------------ Sign in */}
-      {profile ? null : (
+      <SignedOut>
         <section className={`${SHELL} pb-16`}>
           <div className="flex flex-col gap-5 rounded-card bg-surface-2 px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
               <h2 className="text-section font-medium text-ink">Keep every attempt</h2>
-              <p className="mt-1 text-ui text-ink-muted">
-                Sign in to save your scores and see where the marks went.
-              </p>
+              <p className="mt-1 text-ui text-ink-muted">Sign in to save your scores and see where the marks went.</p>
             </div>
             <SignInButton className={buttonClass('primary', 'lg', 'shrink-0')}>Sign in</SignInButton>
           </div>
         </section>
-      )}
+      </SignedOut>
     </>
+  )
+}
+
+function LatestCard({ paper }: { paper: PaperEntry }) {
+  return (
+    <li>
+      <article className="flex h-full flex-col rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong">
+        <div className="flex items-start gap-3">
+          <Art src={artFor('subjects', paper.subject.slug)} size={40} />
+          <div className="min-w-0">
+            <h3 className="text-ui leading-snug text-ink">
+              <Link href={paper.path} className="hover:underline">
+                {shortName(paper.subject)} {paper.examType.name}
+              </Link>
+            </h3>
+            <p className="mt-0.5 text-meta text-ink-faint tabular-nums">
+              <Trail parts={[sittingDate(paper.sessionDate), termName(paper.term)]} />
+            </p>
+          </div>
+        </div>
+        <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+          <p className="text-meta text-ink-muted tabular-nums">
+            {[paper.questionCount ? `${paper.questionCount} questions` : '', paper.durationMinutes ? `${paper.durationMinutes} min` : '']
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          <BestScore setId={paper.setId} />
+          <Link href={paper.path} className={buttonClass('primary', 'sm')}>
+            Open
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      </article>
+    </li>
   )
 }
 
@@ -238,20 +399,22 @@ function Section({
   children,
 }: {
   title: string
-  link: { href: string; label: string }
+  link?: { href: string; label: string }
   children: ReactNode
 }) {
   return (
     <section className={`${SHELL} pb-14`}>
       <div className="mb-4 flex items-baseline justify-between gap-4">
         <h2 className="text-section font-medium text-ink">{title}</h2>
-        <Link
-          href={link.href}
-          className="flex shrink-0 items-center gap-1 text-meta text-ink-muted underline-offset-4 hover:text-ink hover:underline"
-        >
-          {link.label}
-          <ArrowRight size={14} aria-hidden="true" />
-        </Link>
+        {link ? (
+          <Link
+            href={link.href}
+            className="flex shrink-0 items-center gap-1 text-meta text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+          >
+            {link.label}
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
       {children}
     </section>
