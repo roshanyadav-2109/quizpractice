@@ -31,7 +31,30 @@ function areaOf(pathname: string): keyof typeof AREAS | null {
  *
  * Next 16 renamed `middleware` to `proxy`; the named export must be `proxy`.
  */
+/**
+ * The subject pages' old address, /subject/<slug>?exam=…&year=…&term=…, on
+ * to the new one — /pyq/<slug>/<exam>/<term>-<year> — as a real permanent
+ * redirect, answered here before any page streams. The new pages sort out
+ * a subject, exam or term that does not exist.
+ */
+function oldSubjectAddress(url: URL): URL | null {
+  const match = /^\/subject\/([a-z0-9-]+)\/?$/.exec(url.pathname)
+  if (!match) return null
+  const exam = url.searchParams.get('exam')
+  const year = url.searchParams.get('year')
+  const term = url.searchParams.get('term')
+  let path = `/pyq/${match[1]}`
+  if (exam && /^[a-z0-9-]+$/.test(exam)) {
+    path += `/${exam}`
+    if (year && /^\d{4}$/.test(year) && term && /^(jan|may|sep)$/.test(term)) path += `/${term}-${year}`
+  }
+  return new URL(path, url)
+}
+
 export async function proxy(request: NextRequest) {
+  const moved = oldSubjectAddress(request.nextUrl)
+  if (moved) return NextResponse.redirect(moved, 308)
+
   let response = NextResponse.next({ request })
 
   if (!publicEnv.supabaseUrl || !publicEnv.supabaseAnonKey) {
@@ -108,16 +131,36 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Everything except static assets and image files. Without an exclusion
-     * like this the proxy would run on every CSS and JS request too.
+     * Only the pages that read the session on the server, and the API routes
+     * that act as the signed-in user. Everything else — the home page, every
+     * subject, paper and question page, the sitemaps — is the same for every
+     * visitor and is served straight from the CDN, with nothing in front of
+     * it. On those pages the browser keeps its own session fresh and asks
+     * /api/me who is signed in.
      *
-     * Also not the explanations API, which needs no session and is cached by
-     * the CDN — a refreshed session cookie on it would stop that — nor the
+     * Not the explanations API, which needs no session and is cached by the
+     * CDN — a refreshed session cookie on it would stop that — nor the
      * cache-refresh endpoint, which scripts call with a secret. Nor the video
      * upload routes: the proxy buffers a request body before passing it on,
      * so every 4 MiB chunk would be held twice, and those routes check the
      * session themselves (a route handler can refresh its own cookie).
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/solutions|api/revalidate|api/teach/uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // Old addresses, redirected before anything renders.
+    '/subject/:path*',
+    '/admin/:path*',
+    '/teach/:path*',
+    '/teach',
+    '/dashboard/:path*',
+    '/mistakes/:path*',
+    '/result/:path*',
+    '/practice/:path*',
+    '/auth/:path*',
+    '/login',
+    '/api/me',
+    '/api/attempts/:path*',
+    '/api/import/:path*',
+    '/api/cloudinary/:path*',
+    '/api/reviews/:path*',
+    '/api/youtube/:path*',
   ],
 }
