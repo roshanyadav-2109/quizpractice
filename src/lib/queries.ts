@@ -104,16 +104,19 @@ const loadTaxonomy = memoise(
 export async function getBrowseTree(
   { withStats = false }: { withStats?: boolean } = {},
 ): Promise<ProgramWithLevels[]> {
-  const supabase = await createClient()
+  // A session client only for the stats: without them this reads nothing
+  // personal, and asking for cookies would make every page that shows the
+  // navigation render per request instead of once for everyone.
+  const supabase = withStats ? await createClient() : null
 
   const empty = { data: null, error: null }
 
   const [taxonomy, programStatsResult, subjectStatsResult] = await Promise.all([
     loadTaxonomy(),
-    withStats
+    supabase
       ? supabase.from('program_stats').select('*').returns<ProgramStats[]>()
       : Promise.resolve(empty as unknown as { data: ProgramStats[] | null; error: null }),
-    withStats
+    supabase
       ? supabase.from('subject_stats').select('*').returns<SubjectStats[]>()
       : Promise.resolve(empty as unknown as { data: SubjectStats[] | null; error: null }),
   ])
@@ -206,34 +209,47 @@ export interface SetCount {
  */
 const loadSetCounts = memoise(
   shared('set-counts', [TAG.catalogue], async (): Promise<SetCount[]> => {
-  try {
-    return await readAll((from, to) =>
+  // Each page re-runs the whole count (about a second), so under load one can
+  // brush the anonymous statement timeout. Try twice before falling back: a
+  // fallback that silently returned part of the bank used to be cached for an
+  // hour, hiding every set past the first thousand.
+  const viaRpc = () =>
+    readAll((from, to) =>
       publicClient
         .rpc('published_set_counts')
         .order('set_id')
         .range(from, to)
         .then(({ data, error }) => ({ data: data as SetCount[] | null, error })),
     )
-  } catch {
-    // The function is missing: fall back to reading the tables directly.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await viaRpc()
+    } catch (error) {
+      console.error(`published_set_counts failed — ${error instanceof Error ? error.message : error}`)
+    }
   }
 
+  // The function is missing or keeps failing: read the tables directly, a
+  // thousand sets at a time like everything else.
   const { createAdminClient } = await import('@/lib/supabase/admin')
-  const { data, error } = await createAdminClient()
-    .from('question_sets')
-    .select('id, paper_id, question_papers!inner(subject_id, status), questions(count)')
-    .eq('question_papers.status', 'published')
-    .eq('questions.status', 'published')
-
-  if (error) throw new Error(`set counts failed — ${error.message}`)
-
+  const admin = createAdminClient()
   type Raw = {
     id: string
     paper_id: string
     question_papers: { subject_id: string } | null
     questions: { count: number }[] | null
   }
-  return ((data ?? []) as unknown as Raw[]).map((row) => ({
+  const rows = await readAll((from, to) =>
+    admin
+      .from('question_sets')
+      .select('id, paper_id, question_papers!inner(subject_id, status), questions(count)')
+      .eq('question_papers.status', 'published')
+      .eq('questions.status', 'published')
+      .order('id')
+      .range(from, to)
+      .returns<Raw[]>(),
+  )
+  return rows.map((row) => ({
     set_id: row.id,
     paper_id: row.paper_id,
     subject_id: row.question_papers?.subject_id ?? '',
@@ -600,6 +616,129 @@ export const getSetOverview = cache(async (setId: string): Promise<SetOverview |
   }))
   return { set, paper, examType: paper.exam_type, ...subjectContext, questions }
 })
+
+export interface IndexedQuestion {
+  questionId: string
+  setId: string
+  number: number
+  /** The question's prose blocks, each cut at 400 characters: what its URL words come from. */
+  textBlocks: string[]
+  /** Characters of text and code in the question body. */
+  substance: number
+  /** The earliest sitting of the same question — itself, unless it is a repeat. */
+  canonicalId: string
+}
+
+/** How many sets one call reads — comfortably inside the anonymous statement timeout. */
+const INDEX_BATCH = 25
+
+/**
+ * Every published question of some sets, for the sitemaps (0030). Read in
+ * small batches, each cached for a day, so a sitemap costs Supabase a few
+ * hundred kilobytes once a day at most.
+ */
+export async function getQuestionIndex(setIds: string[]): Promise<IndexedQuestion[]> {
+  const batches: string[][] = []
+  for (let i = 0; i < setIds.length; i += INDEX_BATCH) batches.push(setIds.slice(i, i + INDEX_BATCH))
+
+  const read = unstable_cache(
+    async (ids: string[]) => {
+      const { data, error } = await publicClient.rpc('public_question_index', { p_sets: ids })
+      if (error) throw new Error(`public_question_index failed — ${error.message}`)
+      type Row = { question_id: string; set_id: string; number: number; text_blocks: string[] | null; substance: number; canonical_id: string }
+      return ((data ?? []) as Row[]).map((row) => ({
+        questionId: row.question_id,
+        setId: row.set_id,
+        number: row.number,
+        textBlocks: row.text_blocks ?? [],
+        substance: row.substance ?? 0,
+        canonicalId: row.canonical_id ?? row.question_id,
+      }))
+    },
+    ['qp-shared', 'question-index-v2'],
+    { tags: [TAG.catalogue], revalidate: 24 * 60 * 60 },
+  )
+
+  const rows: IndexedQuestion[] = []
+  // One batch at a time: a sitemap is not in a hurry, and the database is shared.
+  for (const batch of batches) rows.push(...(await read(batch)))
+  return rows
+}
+
+export interface QuestionCopy {
+  questionId: string
+  setId: string
+  number: number
+  sessionDate: string | null
+}
+
+export interface PublicSet {
+  questions: QuestionWithOptions[]
+  /** For each question, the same question in other published papers, earliest first. */
+  copies: Record<string, QuestionCopy[]>
+}
+
+/**
+ * A published set with its answer key and where each question was asked
+ * again, for the public paper and question pages. Anonymous reads only,
+ * through the shared cache — never the session — so a page built from it is
+ * the same for everyone and can be served from the CDN. A draft, or an id
+ * that is not a set, is simply null.
+ */
+export const getPublicSet = cache(async (setId: string): Promise<PublicSet | null> => {
+  if (!/^[0-9a-f-]{36}$/i.test(setId)) return null
+  const [rows, copies] = await Promise.all([readPublishedSet(setId, true), readQuestionCopies(setId)])
+  if (!rows) return null
+
+  type RawQuestion = Omit<QuestionWithOptions, 'body' | 'options'> & {
+    body: unknown
+    options: (Omit<QuestionOptionRow, 'content' | 'is_correct'> & { content: unknown; is_correct?: boolean })[] | null
+  }
+  const questions: QuestionWithOptions[] = (rows.questions as RawQuestion[]).map((question) => ({
+    ...question,
+    body: parseBlocks(question.body),
+    options: (question.options ?? [])
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label))
+      .map((option) => ({ ...option, content: parseBlocks(option.content), is_correct: option.is_correct ?? false })),
+  }))
+
+  const byQuestion: Record<string, QuestionCopy[]> = {}
+  for (const row of copies) {
+    ;(byQuestion[row.question_id] ??= []).push({
+      questionId: row.copy_question_id,
+      setId: row.copy_set_id,
+      number: row.copy_number,
+      sessionDate: row.copy_session_date,
+    })
+  }
+  return { questions, copies: byQuestion }
+})
+
+type CopyRow = {
+  question_id: string
+  copy_question_id: string
+  copy_set_id: string
+  copy_number: number
+  copy_session_date: string | null
+}
+
+/** Copies of a set's questions elsewhere (0029). A missing function or a failure reads as "no copies". */
+function readQuestionCopies(setId: string): Promise<CopyRow[]> {
+  return unstable_cache(
+    async (id: string) => {
+      const { data, error } = await publicClient.rpc('public_question_copies', { p_set: id })
+      // Thrown, not returned empty, so a blip is not cached for a day.
+      if (error) throw new Error(`public_question_copies failed — ${error.message}`)
+      return (data ?? []) as CopyRow[]
+    },
+    ['qp-shared', 'set-copies'],
+    { tags: [TAG.catalogue, TAG.set(setId)], revalidate: 24 * 60 * 60 },
+  )(setId).catch((error: Error) => {
+    console.error(error.message)
+    return []
+  })
+}
 
 async function getSubjectContextById(subjectId: string): Promise<SubjectContext | null> {
   // Almost always answered from the memoised taxonomy, with no round trip.
