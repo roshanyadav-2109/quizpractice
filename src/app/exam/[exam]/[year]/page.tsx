@@ -4,18 +4,22 @@ import type { Metadata } from 'next'
 import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage } from '@/lib/seo/jsonld'
-import { listOf, plural, shortName, sittingDate } from '@/lib/seo/names'
+import { listJoin, listOf, plural, shortName, sittingDate } from '@/lib/seo/names'
 import { paths } from '@/lib/seo/paths'
 import { titles } from '@/lib/seo/titles'
 import { examFact } from '@/lib/seo/exam-facts'
+import { getActiveStudents } from '@/lib/queries'
 import { formatCount } from '@/lib/format'
 import { SEASON_ORDER, type Term } from '@/lib/terms'
+import { artFor } from '@/lib/art'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { HubHeader } from '@/components/seo/HubHeader'
 import { PaperTable } from '@/components/seo/PaperTable'
 import { Faq, type FaqItem } from '@/components/seo/Faq'
-import { SHELL } from '@/components/site/Page'
-import { buttonClass } from '@/components/ui/primitives'
+import { SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
+import { ExamPaperBrowser } from '@/components/catalogue/ExamPaperBrowser'
+import { browserData } from '@/components/catalogue/browser-data'
+import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
+import { Art } from '@/components/ui/Art'
 
 export const revalidate = 3600
 
@@ -69,7 +73,11 @@ export default async function ExamYearPage({ params }: { params: Params }) {
   const { exam, year: yearParam } = await params
   const data = await load(exam, yearParam)
   if (!data) notFound()
-  const { examType, papers, year, years } = data
+  const { catalogue, examType, papers, year, years } = data
+  const browser = browserData(catalogue, papers, await getActiveStudents())
+  const examsThatYear = catalogue.examTypes.filter((exam) =>
+    catalogue.papers.some((paper) => paper.examType.id === exam.id && paper.term?.year === year),
+  )
   const terms = termsIn(papers)
   const subjects = [...new Map(papers.map((paper) => [paper.subject.id, paper.subject])).values()]
   const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
@@ -93,8 +101,10 @@ export default async function ExamYearPage({ params }: { params: Params }) {
     ...(fact ? [{ q: `What does the IITM BS ${examType.name} cover?`, a: <>{fact.scope}</> }] : []),
   ]
 
+  const art = artFor('exams', examType.slug)
+
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={collectionPage({
           path,
@@ -111,69 +121,98 @@ export default async function ExamYearPage({ params }: { params: Params }) {
           })),
         })}
       />
-      <HubHeader
+
+      <Breadcrumb
         crumbs={[
           { label: 'Home', href: '/' },
           { label: `${examType.name} PYQ`, href: paths.exam(examType.slug) },
           { label: String(year) },
         ]}
-        eyebrow="IIT Madras BS degree"
+      />
+      <TitleCard
+        back={paths.exam(examType.slug)}
+        icon={art ? <Art src={art} size={48} alt={`IITM BS ${examType.name}`} /> : undefined}
         title={titles.examYearHeading(examType, year)}
-        lead={
-          <p>
-            <strong className="font-medium text-ink">{plural(papers.length, `IITM BS ${examType.name} paper`)}</strong> from{' '}
-            {year} — the {listOf(terms.map((term) => term.label))} — across {plural(subjects.length, 'subject')}, with{' '}
-            {formatCount(questions)} questions, their answer keys and a video solution on each question&rsquo;s page.{' '}
-            {fact ? fact.scope : ''}
-          </p>
-        }
-        stats={[
-          { label: 'Papers', value: formatCount(papers.length) },
-          { label: 'Subjects', value: String(subjects.length) },
-          { label: 'Terms', value: String(terms.length) },
-        ]}
       />
 
-      {years.length > 1 ? (
-        <nav aria-label="Other years" className="mt-6 flex flex-wrap gap-2">
-          {years.map((other) =>
-            other === year ? (
-              <span key={other} aria-current="page" className={buttonClass('primary', 'sm')}>
-                {other}
-              </span>
-            ) : (
-              <Link key={other} href={paths.examYear(examType.slug, other)} className={buttonClass('outline', 'sm')}>
-                {examType.name} {other}
-              </Link>
-            ),
-          )}
-        </nav>
-      ) : null}
+      <ExamPaperBrowser
+        base={{ exam: examType.slug, year: String(year) }}
+        exam={{
+          value: examType.slug,
+          options: examsThatYear.map((exam) => ({ value: exam.slug, label: exam.name, href: paths.examYear(exam.slug, year) })),
+          allHref: paths.year(year),
+        }}
+        year={{
+          value: String(year),
+          options: years.map((other) => ({ value: String(other), label: String(other), href: paths.examYear(examType.slug, other) })),
+          allHref: paths.exam(examType.slug),
+        }}
+        {...browser}
+      />
 
-      {terms.map((term) => (
-        <section key={term.key} className="mt-10" aria-labelledby={`t-${term.key}`}>
-          <h2 id={`t-${term.key}`} className="mb-3 text-[1.375rem] leading-tight font-medium text-ink">
-            {examType.name} — {term.label}
-          </h2>
-          <PaperTable
-            papers={papers.filter((paper) => paper.term?.key === term.key)}
-            showSubject
-            caption={`${examType.name} papers from the ${term.label}`}
-          />
-        </section>
-      ))}
+      <SeoArticle title={`More on ${examType.name} PYQ ${year}`}>
+        <SeoIntro
+          lead={
+            <p>
+              <strong>{plural(papers.length, `IITM BS ${examType.name} paper`)}</strong> from {year} — the{' '}
+              {listOf(terms.map((term) => term.label))} — across {plural(subjects.length, 'subject')}, with{' '}
+              {formatCount(questions)} questions, their answer keys and a video solution on each question&rsquo;s page.{' '}
+              {fact ? fact.scope : ''}
+            </p>
+          }
+          statsTitle={`${examType.name} PYQ ${year} at a glance`}
+          stats={[
+            { label: 'Papers', value: formatCount(papers.length) },
+            { label: 'Subjects', value: String(subjects.length) },
+            { label: 'Terms', value: String(terms.length) },
+          ]}
+        />
 
-      <Faq className="mt-12" items={faq} />
+        {years.length > 1 ? (
+          <nav aria-label="Other years">
+            <p className="mt-6">
+              {examType.name} PYQs by year:{' '}
+              {years.map((other, index) => (
+                <span key={other}>
+                  {listJoin(index, years.length)}
+                  {other === year ? (
+                    <span aria-current="page" className="font-medium">
+                      {other}
+                    </span>
+                  ) : (
+                    <Link href={paths.examYear(examType.slug, other)}>
+                      {examType.name} {other}
+                    </Link>
+                  )}
+                </span>
+              ))}
+              .
+            </p>
+          </nav>
+        ) : null}
 
-      <p className="mt-10 text-meta text-ink-faint">
-        <Link href={paths.exam(examType.slug)} className="hover:text-ink hover:underline">
-          Every IITM BS {examType.name} paper, all years
-        </Link>
-        {' · '}
-        <Link href={paths.year(year)} className="hover:text-ink hover:underline">
-          Every IITM BS paper from {year}
-        </Link>
-      </p>
+        {terms.map((term) => (
+          <section key={term.key} aria-labelledby={`t-${term.key}`}>
+            <SeoHeading id={`t-${term.key}`}>
+              {examType.name} — {term.label}
+            </SeoHeading>
+            <PaperTable
+              variant="article"
+              papers={papers.filter((paper) => paper.term?.key === term.key)}
+              showSubject
+              caption={`${examType.name} papers from the ${term.label}`}
+            />
+          </section>
+        ))}
+
+        <Faq className="mt-12" items={faq} variant="accordion" />
+
+        <p className="mt-12 text-ui text-ink-muted">
+          Also see{' '}
+          <Link href={paths.exam(examType.slug)}>every IITM BS {examType.name} paper, all years</Link>, and{' '}
+          <Link href={paths.year(year)}>every IITM BS paper from {year}</Link>.
+        </p>
+      </SeoArticle>
     </div>
   )
 }

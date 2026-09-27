@@ -9,9 +9,11 @@ import { collectionPage } from '@/lib/seo/jsonld'
 import { plural, shortName, yearSpan } from '@/lib/seo/names'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
+import { getFinderPrograms, openingLevel } from '@/lib/subject-finder'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { HubHeader } from '@/components/seo/HubHeader'
-import { SHELL } from '@/components/site/Page'
+import { ArticleTable, SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
+import { SubjectFinder } from '@/components/site/SubjectFinder'
+import { Breadcrumb, SHELL } from '@/components/site/Page'
 import { Art } from '@/components/ui/Art'
 
 export const revalidate = 3600
@@ -32,12 +34,18 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const subjects = program.levels.flatMap((level) => level.subjects.filter((subject) => subject.paperCount > 0))
   const papers = subjects.reduce((sum, subject) => sum + subject.paperCount, 0)
   return pageMetadata({
-    title: titles.program(program.program, subjects.length),
+    title: titles.program(program.program),
     description: `${formatCount(papers)} IITM BS ${program.program.short_name ?? program.program.name} PYQs with solutions: Qualifier, Quiz 1, Quiz 2 and End Term papers for every course, with answer keys and video solutions.`,
     path: program.path,
   })
 }
 
+/**
+ * A programme, opening on the site's own subjects view — its levels down the
+ * side, Foundation chosen, the subjects as cards — with the reading half
+ * under it: the answer, the numbers, every level's subjects listed. One copy
+ * for everyone from the CDN.
+ */
 export default async function ProgramHub({ params }: { params: Params }) {
   const slug = (await params).program
   const found = await findProgram(slug)
@@ -51,10 +59,12 @@ export default async function ProgramHub({ params }: { params: Params }) {
   const papers = subjects.reduce((sum, subject) => sum + subject.paperCount, 0)
   const questions = subjects.reduce((sum, subject) => sum + subject.questionCount, 0)
   const allYears = [...new Set(subjects.flatMap((subject) => subject.years))]
+  const finderPrograms = await getFinderPrograms()
+  const finderProgram = finderPrograms.find((entry) => entry.slug === program.program.slug)
   const art = artFor('programs', program.program.slug)
 
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={collectionPage({
           path: program.path,
@@ -67,59 +77,65 @@ export default async function ProgramHub({ params }: { params: Params }) {
           items: subjects.map((subject) => ({ name: `${shortName(subject.subject)} PYQ`, path: subject.path })),
         })}
       />
-      <HubHeader
-        crumbs={[{ label: 'Home', href: '/' }, { label: name }]}
-        icon={art ? <Art src={art} size={56} alt={name} /> : undefined}
-        eyebrow={program.program.name}
+
+      <Breadcrumb crumbs={[{ label: 'Home', href: '/' }, { label: name }]} />
+      <SubjectFinder
+        programs={finderPrograms}
+        initialProgram={program.program.slug}
+        initialLevel={openingLevel(finderProgram)}
+        icon={art ? <Art src={art} size={48} alt={name} /> : undefined}
         title={titles.programHeading(program.program)}
-        lead={
-          <p>
-            Previous year question papers for the IIT Madras {program.program.name}:{' '}
-            <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> across{' '}
-            {plural(subjects.length, 'subject')}, {yearSpan(allYears)} — {formatCount(questions)} questions, each with its solution
-            from the answer key and a video solution on its own page. {program.program.description ?? ''}
-          </p>
-        }
-        stats={[
-          { label: 'Subjects', value: String(subjects.length) },
-          { label: 'Papers', value: formatCount(papers) },
-          { label: 'Questions', value: formatCount(questions) },
-        ]}
+        syncUrl={false}
       />
 
-      {levels.map((level) => (
-        <section key={level.level.id} className="mt-10" aria-labelledby={`l-${level.level.slug}`}>
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4">
-            <h2 id={`l-${level.level.slug}`} className="text-[1.375rem] leading-tight font-medium text-ink">
-              {level.level.name} PYQs
-            </h2>
-            <Link href={level.path} className="text-meta text-ink-muted hover:text-ink hover:underline">
-              {level.level.name} subjects →
-            </Link>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {level.subjects
-              .filter((subject) => subject.paperCount > 0)
-              .map((subject) => (
-                <li key={subject.subject.id}>
-                  <Link
-                    href={subject.path}
-                    className="flex items-center justify-between gap-3 rounded-card border border-rule bg-surface px-4 py-3 transition-colors hover:border-rule-strong"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-ui text-ink">{shortName(subject.subject)} PYQ</span>
-                      <span className="block truncate text-meta text-ink-faint">
-                        {subject.subject.name}
-                        {subject.subject.code ? ` · ${subject.subject.code}` : ''}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-meta text-ink-muted tabular-nums">{subject.paperCount}</span>
-                  </Link>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
+      <SeoArticle title={`More on ${name} PYQs`}>
+        <SeoIntro
+          lead={
+            <p>
+              Previous year question papers for the IIT Madras {program.program.name}:{' '}
+              <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> across{' '}
+              {plural(subjects.length, 'subject')}, {yearSpan(allYears)} — {formatCount(questions)} questions, each with its solution
+              from the answer key and a video solution on its own page. {program.program.description ?? ''}
+            </p>
+          }
+          statsTitle={`${name} PYQ at a glance`}
+          stats={[
+            { label: 'Subjects', value: String(subjects.length) },
+            { label: 'Papers', value: formatCount(papers) },
+            { label: 'Questions', value: formatCount(questions) },
+          ]}
+        />
+
+        {levels.map((level) => (
+          <section key={level.level.id} aria-labelledby={`l-${level.level.slug}`}>
+            <SeoHeading id={`l-${level.level.slug}`}>{level.level.name} PYQs</SeoHeading>
+            <ArticleTable
+              caption={`${name} ${level.level.name} subjects`}
+              head={['Subject', 'Course', 'Course code', 'Papers']}
+              widths={['28%', '44%', '16%', '12%']}
+              minWidth="36rem"
+              rows={level.subjects
+                .filter((subject) => subject.paperCount > 0)
+                .map((subject) => ({
+                  key: subject.subject.id,
+                  cells: [
+                    <Link key="subject" href={subject.path}>
+                      {shortName(subject.subject)} PYQ
+                    </Link>,
+                    subject.subject.name,
+                    subject.subject.code ?? '—',
+                    <span key="papers" className="tabular-nums">
+                      {subject.paperCount}
+                    </span>,
+                  ],
+                }))}
+            />
+            <p className="mt-3">
+              <Link href={level.path}>{level.level.name} subjects →</Link>
+            </p>
+          </section>
+        ))}
+      </SeoArticle>
     </div>
   )
 }

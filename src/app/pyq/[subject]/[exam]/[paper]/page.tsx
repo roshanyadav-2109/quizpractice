@@ -6,7 +6,7 @@ import { getPublicSet } from '@/lib/queries'
 import { getSeoCatalogue, type PaperEntry, type SeoCatalogue } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage, courseEntity, paperEntity } from '@/lib/seo/jsonld'
-import { plural, shortName, sittingDate, termName } from '@/lib/seo/names'
+import { listJoin, listOf, plural, shortName, sittingDate, termName } from '@/lib/seo/names'
 import { dateFromSlug, paths } from '@/lib/seo/paths'
 import { absolute } from '@/lib/seo/site'
 import { questionSlugOf, toQuizQuestion, TYPE_NAME, titleText } from '@/lib/seo/question-view'
@@ -19,7 +19,10 @@ import { HubHeader } from '@/components/seo/HubHeader'
 import { PaperTable } from '@/components/seo/PaperTable'
 import { PaperQuestion, type CopyLink } from '@/components/seo/PaperQuestion'
 import { BestScore } from '@/components/seo/BestScore'
-import { SHELL } from '@/components/site/Page'
+import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
+import { SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
+import { SubjectPaperFinder } from '@/components/catalogue/SubjectPaperFinder'
+import { toFinderPapers } from '@/components/catalogue/finder-papers'
 import { Art } from '@/components/ui/Art'
 import { ArrowLeft, ArrowRight, Clock } from '@/components/ui/icons'
 import { buttonClass } from '@/components/ui/primitives'
@@ -114,7 +117,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const first = resolved.papers[0]
     const short = shortName(first.subject)
     return pageMetadata({
-      title: titles.subjectExamYear(first.subject, first.examType, resolved.year, resolved.papers.length),
+      title: titles.subjectExamYear(first.subject, first.examType, resolved.year),
       description: `All ${resolved.papers.length} IITM BS ${short} ${first.examType.name} papers from ${resolved.year}, with solutions, answer keys and video solutions — free to read or take as timed mock tests.`,
       path: paths.subjectExamYear(subject, exam, resolved.year),
     })
@@ -463,7 +466,11 @@ function TermPage({ catalogue, papers, termKey }: { catalogue: SeoCatalogue; pap
   )
 }
 
-/** One subject's exam in one year, sat in several papers: each term's papers, and the way on to each. */
+/**
+ * One subject's exam in one year, sat in several papers, opening on the same
+ * paper finder as the subject's exam page — that year's papers as cards — with
+ * the reading half under it: the answer, the other years, every paper.
+ */
 function YearPage({ catalogue, papers, year }: { catalogue: SeoCatalogue; papers: PaperEntry[]; year: number }) {
   const first = papers[0]
   const short = shortName(first.subject)
@@ -476,9 +483,10 @@ function YearPage({ catalogue, papers, year }: { catalogue: SeoCatalogue; papers
     (a, b) => a.order - b.order,
   )
   const years = [...new Set(examNode.papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))].sort((a, b) => b - a)
+  const art = artFor('subjects', first.subject.slug)
 
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={collectionPage({
           path,
@@ -493,55 +501,72 @@ function YearPage({ catalogue, papers, year }: { catalogue: SeoCatalogue; papers
           items: papers.map((paper) => ({ name: paperName(paper), path: paper.path })),
         })}
       />
-      <HubHeader
+
+      <Breadcrumb
         crumbs={[
           { label: 'Home', href: '/' },
           { label: `${short} PYQ`, href: node.path },
           { label: examName, href: examNode.path },
           { label: String(year) },
         ]}
-        eyebrow={first.subject.name}
-        title={titles.subjectExamYearHeading(first.subject, first.examType, year)}
-        lead={
-          <p>
-            <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from {year}
-            {terms.length > 0 ? ` — the ${terms.map((term) => term.label).join(', ')}` : ''} — {formatCount(questions)} questions,
-            each with its solution from the answer key and a video solution on its own page. Read one, or take it as a timed
-            mock test.
-          </p>
-        }
-        stats={[
-          { label: 'Papers', value: String(papers.length) },
-          { label: 'Questions', value: formatCount(questions) },
-        ]}
       />
-      {years.length > 1 ? (
-        <nav aria-label="Other years" className="mt-6 flex flex-wrap gap-2">
-          {years.map((other) =>
-            other === year ? (
-              <span key={other} aria-current="page" className="inline-flex h-8 items-center rounded-control bg-ink px-3 text-meta text-white">
-                {other}
-              </span>
-            ) : (
-              <Link
-                key={other}
-                href={paths.subjectExamYear(first.subject.slug, first.examType.slug, other)}
-                className="inline-flex h-8 items-center rounded-control border border-rule px-3 text-meta text-ink hover:border-rule-strong"
-              >
-                {short} {examName} {other}
-              </Link>
-            ),
-          )}
-        </nav>
-      ) : null}
-      <div className="mt-8">
-        <PaperTable papers={papers} caption={`${short} ${examName} papers from ${year}`} />
-      </div>
-      <p className="mt-6">
-        <Link href={examNode.path} className="text-ui text-accent hover:underline">
-          ← Every {short} {examName} paper
-        </Link>
-      </p>
+      <TitleCard
+        back={examNode.path}
+        icon={art ? <Art src={art} size={48} alt={short} /> : undefined}
+        title={titles.subjectExamYearHeading(first.subject, first.examType, year)}
+      />
+      <SubjectPaperFinder papers={toFinderPapers(papers)} />
+
+      <SeoArticle title={`More on ${short} ${examName} PYQ ${year}`}>
+        <SeoIntro
+          lead={
+            <p>
+              <strong>{plural(papers.length, `${short} ${examName} paper`)}</strong> from {year}
+              {terms.length > 0 ? ` — the ${listOf(terms.map((term) => term.label))}` : ''} — {formatCount(questions)} questions,
+              each with its solution from the answer key and a video solution on its own page. Read one, or take it as a timed
+              mock test.
+            </p>
+          }
+          statsTitle={`${short} ${examName} PYQ ${year} at a glance`}
+          stats={[
+            { label: 'Subject', value: first.subject.name },
+            { label: 'Papers', value: String(papers.length) },
+            { label: 'Questions', value: formatCount(questions) },
+          ]}
+        />
+
+        {years.length > 1 ? (
+          <nav aria-label="Other years">
+            <p className="mt-6">
+              {short} {examName} PYQs by year:{' '}
+              {years.map((other, index) => (
+                <span key={other}>
+                  {listJoin(index, years.length)}
+                  {other === year ? (
+                    <span aria-current="page" className="font-medium">
+                      {other}
+                    </span>
+                  ) : (
+                    <Link href={paths.subjectExamYear(first.subject.slug, first.examType.slug, other)}>
+                      {short} {examName} {other}
+                    </Link>
+                  )}
+                </span>
+              ))}
+              .
+            </p>
+          </nav>
+        ) : null}
+
+        <SeoHeading>
+          {short} {examName} {year} papers
+        </SeoHeading>
+        <PaperTable variant="article" papers={papers} caption={`${short} ${examName} papers from ${year}`} />
+
+        <p className="mt-6">
+          <Link href={examNode.path}>← Every {short} {examName} paper</Link>
+        </p>
+      </SeoArticle>
     </div>
   )
 }

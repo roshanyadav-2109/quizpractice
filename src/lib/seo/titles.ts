@@ -62,10 +62,10 @@ export const titles = {
   home: () => 'IITM BS PYQs with Video Solutions & Answer Keys',
   homeHeading: () => 'IITM BS PYQs with solutions: Quiz 1, Quiz 2, End Term, Qualifier',
 
-  program(program: Pick<Program, 'name' | 'short_name'>, courses: number): string {
+  program(program: Pick<Program, 'name' | 'short_name'>): string {
     const short = /electronic/i.test(programShort(program)) ? 'Electronic Systems' : programShort(program)
     return fit([
-      `IITM BS ${short} PYQs with Solutions: All ${courses} Courses`,
+      `IITM BS ${short} PYQs with Solutions: All Courses`,
       `IITM BS ${short} PYQs with Solutions`,
       `IITM BS ${short} PYQs`,
     ])
@@ -108,12 +108,9 @@ export const titles = {
     )
   },
 
-  subjectExam: (subject: Named, exam: Pick<ExamType, 'name'>, count: number) => {
+  subjectExam: (subject: Named, exam: Pick<ExamType, 'name'>) => {
     const short = shortName(subject)
-    const papers = `${count} IITM BS ${count === 1 ? 'Paper' : 'Papers'}`
     return fit([
-      `${short} ${exam.name} PYQ with Video Solutions: ${papers}`,
-      `${short} ${exam.name} PYQ with Solutions: ${papers}`,
       `${short} ${exam.name} PYQ with Solutions | IITM BS`,
       `${short} ${exam.name} PYQ | IITM BS`,
     ])
@@ -190,10 +187,9 @@ export const titles = {
   examYearHeading: (exam: Pick<ExamType, 'name'>, year: number) => `IITM BS ${exam.name} ${year} question papers with solutions`,
   year: (year: number) => fit([`IITM BS PYQ ${year} with Solutions: Quiz, End Term & Qualifier`, `IITM BS PYQ ${year} with Solutions`]),
   yearHeading: (year: number) => `IITM BS ${year} previous year papers with solutions`,
-  subjectExamYear: (subject: Named, exam: Pick<ExamType, 'name'>, year: number, count: number) => {
+  subjectExamYear: (subject: Named, exam: Pick<ExamType, 'name'>, year: number) => {
     const short = shortName(subject)
     return fit([
-      `${short} ${exam.name} PYQ ${year} with Solutions: ${count} IITM BS Papers`,
       `${short} ${exam.name} PYQ ${year} with Solutions`,
       `${short} ${exam.name} PYQ ${year} | IITM BS`,
     ])
@@ -201,5 +197,5 @@ export const titles = {
   subjectExamYearHeading: (subject: Named, exam: Pick<ExamType, 'name'>, year: number) =>
     `${shortName(subject)} ${exam.name} ${year} question papers with solutions`,
 
-  subjects: (count: number) => `All IITM BS Subjects: PYQs with Solutions for ${count} Courses`,
+  subjects: () => `All IITM BS Subjects: PYQs with Solutions for Every Course`,
 }

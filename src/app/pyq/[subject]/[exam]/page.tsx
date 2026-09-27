@@ -5,7 +5,7 @@ import { titles } from '@/lib/seo/titles'
 import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
-import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
+import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan, listJoin } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
 import { getVideoIndex } from '@/lib/seo/video-solutions'
@@ -13,11 +13,15 @@ import { VideoSolutionList } from '@/components/seo/VideoSolutionList'
 import { absolute } from '@/lib/seo/site'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
+import { getActiveStudents } from '@/lib/queries'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { HubHeader } from '@/components/seo/HubHeader'
 import { PaperTable } from '@/components/seo/PaperTable'
 import { Faq, type FaqItem } from '@/components/seo/Faq'
-import { SHELL } from '@/components/site/Page'
+import { ArticleTable, SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
+import { SubjectPaperFinder } from '@/components/catalogue/SubjectPaperFinder'
+import { toFinderPapers } from '@/components/catalogue/finder-papers'
+import { ActiveCount } from '@/components/site/ActiveCount'
+import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
 import { Art } from '@/components/ui/Art'
 import { buttonClass } from '@/components/ui/primitives'
 
@@ -51,7 +55,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const count = exam.papers.length
   const span = yearSpan(yearsOf(exam.papers))
   return pageMetadata({
-    title: titles.subjectExam(node.subject, exam.examType, count),
+    title: titles.subjectExam(node.subject, exam.examType),
     description: `All ${count} IITM BS ${short} ${exam.examType.name} PYQs with solutions, ${span}: ${formatCount(
       exam.papers.reduce((sum, paper) => sum + paper.questionCount, 0),
     )} questions with answer keys and video solutions, plus free ${exam.examType.name} mock tests.`,
@@ -59,10 +63,18 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   })
 }
 
+/**
+ * One exam of a subject, laid out as the site always had it: the title, the
+ * year / term / order / attempted dropdowns and the paper cards. Under that,
+ * the reading half — the answer, the papers year by year as tables, related
+ * exams, questions answered. One copy for everyone from the CDN; the
+ * dropdowns and best scores work in the browser.
+ */
 export default async function SubjectExamHub({ params }: { params: Params }) {
   const { subject: subjectSlug, exam: examSlug } = await params
   const data = await load(subjectSlug, examSlug)
   if (!data) notFound()
+  const active = await getActiveStudents()
   const { catalogue, node, exam } = data
   const { subject, level, program } = node
   const short = shortName(subject)
@@ -169,7 +181,7 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
   const art = artFor('subjects', subject.slug)
 
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={collectionPage({
           path: exam.path,
@@ -191,135 +203,151 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
         })}
       />
 
-      <HubHeader
-        crumbs={crumbs}
-        icon={art ? <Art src={art} size={56} alt={short} /> : undefined}
-        eyebrow={[subject.name, subject.code].filter(Boolean).join(' · ')}
+      <Breadcrumb crumbs={crumbs} />
+      <TitleCard
+        back={node.path}
+        icon={art ? <Art src={art} size={48} alt={short} /> : undefined}
         title={titles.subjectExamHeading(subject, exam.examType)}
-        lead={
-          <p>
-            <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from the
-            IIT Madras BS {programLabel} programme, {yearSpan(years)} — {formatCount(questions)} questions, each with its
-            solution from the answer key and a video solution on its own page. {fact ? `${fact.scope} ` : ''}Read any
-            paper with solutions, or take it as a timed {examName} mock test.
-          </p>
-        }
-        stats={[
-          { label: 'Papers', value: formatCount(papers.length) },
-          { label: 'Questions', value: formatCount(questions) },
-          { label: 'Years', value: yearSpan(years) },
-          ...(latest ? [{ label: 'Latest', value: sittingDate(latest.sessionDate) }] : []),
-        ]}
-        updated={updated}
+        subtitle={active[subject.id] ? <ActiveCount count={active[subject.id]} /> : undefined}
       />
 
-      {years.length > 1 ? (
-        <nav aria-label="Years" className="mt-6 flex flex-wrap gap-2">
-          {years.map((year) => (
-            <a key={year} href={`#y${year}`} className={buttonClass('outline', 'sm')}>
-              {year}
-            </a>
-          ))}
-        </nav>
-      ) : null}
+      <SubjectPaperFinder papers={toFinderPapers(papers)} />
 
-      {years.map((year) => {
-        const inYear = papers.filter((paper) => paper.term?.year === year)
-        const multiSetTerms = [...new Map(inYear.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].filter(
-          (term) => (setsByTerm.get(term.key) ?? 0) > 1,
-        )
-        return (
-          <section key={year} id={`y${year}`} className="mt-10 scroll-mt-20" aria-labelledby={`h${year}`}>
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4">
-              <h2 id={`h${year}`} className="text-[1.375rem] leading-tight font-medium text-ink">
+      <SeoArticle title={`More on ${short} ${examName} PYQs`}>
+        <SeoIntro
+          lead={
+            <p>
+              <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from the
+              IIT Madras BS {programLabel} programme, {yearSpan(years)} — {formatCount(questions)} questions, each with its
+              solution from the answer key and a video solution on its own page. {fact ? `${fact.scope} ` : ''}Read any
+              paper with solutions, or take it as a timed {examName} mock test.
+            </p>
+          }
+          statsTitle={`${short} ${examName} PYQ at a glance`}
+          stats={[
+            { label: 'Subject', value: subject.name },
+            ...(subject.code ? [{ label: 'Course code', value: subject.code }] : []),
+            { label: 'Papers', value: formatCount(papers.length) },
+            { label: 'Questions', value: formatCount(questions) },
+            { label: 'Years', value: yearSpan(years) },
+            ...(latest ? [{ label: 'Latest', value: sittingDate(latest.sessionDate) }] : []),
+          ]}
+          updated={updated}
+        />
+
+        {years.length > 1 ? (
+          <nav aria-label="Years" className="mt-8 flex flex-wrap gap-2">
+            {years.map((year) => (
+              <a key={year} href={`#y${year}`} className={buttonClass('outline', 'sm')}>
+                {year}
+              </a>
+            ))}
+          </nav>
+        ) : null}
+
+        {years.map((year) => {
+          const inYear = papers.filter((paper) => paper.term?.year === year)
+          const multiSetTerms = [...new Map(inYear.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].filter(
+            (term) => (setsByTerm.get(term.key) ?? 0) > 1,
+          )
+          return (
+            <section key={year} id={`y${year}`} className="scroll-mt-20" aria-labelledby={`h${year}`}>
+              <SeoHeading id={`h${year}`}>
                 {short} {examName} {year} papers
-              </h2>
+              </SeoHeading>
+              <PaperTable variant="article" papers={inYear} caption={`${short} ${examName} papers from ${year}`} />
               {inYear.length > 1 ? (
-                <Link
-                  href={paths.subjectExamYear(subject.slug, exam.examType.slug, year)}
-                  className="text-meta text-ink-muted hover:text-ink hover:underline"
-                >
-                  {short} {examName} PYQ {year} →
-                </Link>
+                <p className="mt-3">
+                  <Link href={paths.subjectExamYear(subject.slug, exam.examType.slug, year)}>
+                    {short} {examName} PYQ {year} →
+                  </Link>
+                </p>
               ) : null}
-            </div>
-            <PaperTable papers={inYear} caption={`${short} ${examName} papers from ${year}`} />
-            {multiSetTerms.length > 0 ? (
-              <p className="mt-3 text-meta text-ink-muted">
-                By term:{' '}
-                {multiSetTerms.map((term, index) => (
-                  <span key={term.key}>
-                    {index > 0 ? ' · ' : ''}
-                    <Link href={paths.paper(subject.slug, exam.examType.slug, `${term.season}-${term.year}`)} className="text-accent hover:underline">
-                      {short} {examName} {term.short} ({setsByTerm.get(term.key)} sets)
-                    </Link>
-                  </span>
-                ))}
-              </p>
+              {multiSetTerms.length > 0 ? (
+                <p className="mt-3">
+                  By term:{' '}
+                  {multiSetTerms.map((term, index) => (
+                    <span key={term.key}>
+                      {listJoin(index, multiSetTerms.length)}
+                      <Link href={paths.paper(subject.slug, exam.examType.slug, `${term.season}-${term.year}`)}>
+                        {short} {examName} {term.short} ({setsByTerm.get(term.key)} sets)
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+            </section>
+          )
+        })}
+
+        {otherExams.length > 0 || sameExamElsewhere.length > 0 ? (
+          <section aria-label="Related papers">
+            {otherExams.length > 0 ? (
+              <div>
+                <SeoHeading>Other {short} exams</SeoHeading>
+                <ArticleTable
+                  caption={`Other ${short} exams`}
+                  head={['Exam', 'Papers']}
+                  minWidth="20rem"
+                  rows={otherExams.map((entry) => ({
+                    key: entry.examType.id,
+                    cells: [
+                      <Link key="exam" href={entry.path}>
+                        {short} {entry.examType.name} PYQ
+                      </Link>,
+                      <span key="papers" className="tabular-nums">
+                        {entry.papers.length}
+                      </span>,
+                    ],
+                  }))}
+                />
+              </div>
+            ) : null}
+            {sameExamElsewhere.length > 0 ? (
+              <div>
+                <SeoHeading>
+                  {examName} papers for other {level.name} subjects
+                </SeoHeading>
+                <ArticleTable
+                  caption={`${examName} papers for other ${level.name} subjects`}
+                  head={['Subject', 'Course', 'Papers']}
+                  minWidth="30rem"
+                  rows={sameExamElsewhere.map(({ node: other, exam: entry }) => ({
+                    key: other.subject.id,
+                    cells: [
+                      <Link key="subject" href={entry.path}>
+                        {shortName(other.subject)} {examName} PYQ
+                      </Link>,
+                      other.subject.name,
+                      <span key="papers" className="tabular-nums">
+                        {entry.papers.length}
+                      </span>,
+                    ],
+                  }))}
+                />
+              </div>
             ) : null}
           </section>
-        )
-      })}
+        ) : null}
 
-      {otherExams.length > 0 || sameExamElsewhere.length > 0 ? (
-        <section className="mt-12 grid gap-8 lg:grid-cols-2" aria-label="Related papers">
-          {otherExams.length > 0 ? (
-            <div>
-              <h2 className="text-[1.25rem] font-medium text-ink">Other {short} exams</h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                {otherExams.map((entry) => (
-                  <li key={entry.examType.id}>
-                    <Link href={entry.path} className="text-ui text-accent hover:underline">
-                      {short} {entry.examType.name} PYQ
-                    </Link>{' '}
-                    <span className="text-meta text-ink-faint">· {plural(entry.papers.length, 'paper')}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {sameExamElsewhere.length > 0 ? (
-            <div>
-              <h2 className="text-[1.25rem] font-medium text-ink">
-                {examName} papers for other {level.name} subjects
-              </h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                {sameExamElsewhere.map(({ node: other, exam: entry }) => (
-                  <li key={other.subject.id}>
-                    <Link href={entry.path} className="text-ui text-accent hover:underline">
-                      {shortName(other.subject)} {examName} PYQ
-                    </Link>{' '}
-                    <span className="text-meta text-ink-faint">· {plural(entry.papers.length, 'paper')}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+        {videos.length > 0 ? (
+          <section aria-labelledby="video-solutions">
+            <SeoHeading id="video-solutions">
+              {short} {examName} video solutions
+            </SeoHeading>
+            <p>{plural(videos.length, 'question')} with a video solution, each playing on its own page:</p>
+            <VideoSolutionList videos={videos} />
+          </section>
+        ) : null}
 
-      {videos.length > 0 ? (
-        <section className="mt-12" aria-labelledby="video-solutions">
-          <h2 id="video-solutions" className="text-[1.375rem] leading-tight font-medium text-ink">
-            {short} {examName} video solutions
-          </h2>
-          <p className="mt-2 text-ui text-ink-muted">
-            {plural(videos.length, 'question')} with a video solution, each playing on its own page:
-          </p>
-          <VideoSolutionList videos={videos} />
-        </section>
-      ) : null}
+        <Faq className="mt-12" items={faq} variant="accordion" />
 
-      <Faq className="mt-12" items={faq} />
-
-      <p className="mt-10 text-meta text-ink-faint">
-        {listOf([subject.name, subject.code ?? ''].filter(Boolean))} — {level.name}, IIT Madras {program.name}. Quiz Space
-        by Unknown IITians is independent and not affiliated with IIT Madras.{' '}
-        <Link href={paths.exam(exam.examType.slug)} className="hover:text-ink hover:underline">
-          Every {examName} paper, all subjects
-        </Link>
-        .
-      </p>
+        <p className="mt-12 text-ui text-ink-muted">
+          {listOf([subject.name, subject.code ?? ''].filter(Boolean))} — {level.name}, IIT Madras {program.name}. Quiz Space
+          by Unknown IITians is independent and not affiliated with IIT Madras.{' '}
+          <Link href={paths.exam(exam.examType.slug)}>Every {examName} paper, all subjects</Link>.
+        </p>
+      </SeoArticle>
     </div>
   )
 }

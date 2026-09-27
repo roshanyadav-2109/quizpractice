@@ -6,12 +6,14 @@ import { getSeoCatalogue } from '@/lib/seo/catalogue'
 import { findProgram, levelWithPapers } from '@/lib/seo/program'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage } from '@/lib/seo/jsonld'
-import { listOf, plural, shortName, sittingDate, yearSpan } from '@/lib/seo/names'
+import { listOf, plural, shortName, sittingDate, yearSpan, listJoin } from '@/lib/seo/names'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
+import { getFinderPrograms } from '@/lib/subject-finder'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { HubHeader } from '@/components/seo/HubHeader'
-import { SHELL } from '@/components/site/Page'
+import { ArticleTable, SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
+import { SubjectFinder } from '@/components/site/SubjectFinder'
+import { Breadcrumb, SHELL } from '@/components/site/Page'
 import { Art } from '@/components/ui/Art'
 
 export const revalidate = 3600
@@ -48,6 +50,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   })
 }
 
+/**
+ * A level of a programme, opening on the site's own subjects view — the
+ * levels down the side, this one chosen, its subjects as cards — with the
+ * reading half under it: the answer, the numbers, every subject as a table.
+ * One copy for everyone from the CDN.
+ */
 export default async function LevelHub({ params }: { params: Params }) {
   const { program: programSlug, level: levelSlug } = await params
   const data = await load(programSlug, levelSlug)
@@ -59,10 +67,11 @@ export default async function LevelHub({ params }: { params: Params }) {
   const subjects = level.subjects.filter((subject) => subject.paperCount > 0)
   const papers = subjects.reduce((sum, subject) => sum + subject.paperCount, 0)
   const questions = subjects.reduce((sum, subject) => sum + subject.questionCount, 0)
+  const finderPrograms = await getFinderPrograms()
   const art = artFor('levels', level.level.slug)
 
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={collectionPage({
           path: level.path,
@@ -76,86 +85,82 @@ export default async function LevelHub({ params }: { params: Params }) {
           items: subjects.map((subject) => ({ name: `${shortName(subject.subject)} PYQ`, path: subject.path })),
         })}
       />
-      <HubHeader
-        crumbs={[{ label: 'Home', href: '/' }, { label: name, href: program.path }, { label: level.level.name }]}
-        icon={art ? <Art src={art} size={56} alt={level.level.name} /> : undefined}
-        eyebrow={program.program.name}
+
+      <Breadcrumb crumbs={[{ label: 'Home', href: '/' }, { label: name, href: program.path }, { label: level.level.name }]} />
+      <SubjectFinder
+        programs={finderPrograms}
+        initialProgram={program.program.slug}
+        initialLevel={level.level.slug}
+        icon={art ? <Art src={art} size={48} alt={level.level.name} /> : undefined}
         title={titles.levelHeading(level.level, program.program)}
-        lead={
-          <p>
-            {plural(subjects.length, `${level.level.name} subject`)} of the IIT Madras {program.program.name} with previous
-            year papers — <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> and{' '}
-            {formatCount(questions)} questions with solutions and answer keys, a video solution on each question&rsquo;s page,
-            and every paper free to read or take as a timed mock test.
-          </p>
-        }
-        stats={[
-          { label: 'Subjects', value: String(subjects.length) },
-          { label: 'Papers', value: formatCount(papers) },
-          { label: 'Questions', value: formatCount(questions) },
-        ]}
+        syncUrl={false}
       />
 
-      <div className="mt-8 overflow-x-auto rounded-card border border-rule bg-surface">
-        <table className="w-full min-w-[40rem] border-collapse text-left text-ui">
-          <caption className="sr-only">{level.level.name} subjects and their papers</caption>
-          <thead>
-            <tr className="border-b border-rule text-meta text-ink-faint">
-              <th scope="col" className="px-4 py-2.5 font-normal">Subject</th>
-              <th scope="col" className="px-3 py-2.5 font-normal">Exams</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-normal">Papers</th>
-              <th scope="col" className="px-3 py-2.5 font-normal">Years</th>
-              <th scope="col" className="px-4 py-2.5 font-normal">Latest</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subjects.map((subject) => (
-              <tr key={subject.subject.id} className="border-b border-rule last:border-b-0">
-                <td className="px-4 py-3">
-                  <Link href={subject.path} className="text-ink underline-offset-4 hover:underline">
-                    {shortName(subject.subject)} PYQ
-                  </Link>
-                  <span className="block text-meta text-ink-faint">
-                    {subject.subject.name}
-                    {subject.subject.code ? ` · ${subject.subject.code}` : ''}
-                  </span>
-                </td>
-                <td className="px-3 py-3 text-meta text-ink-muted">
-                  {subject.exams.map((exam, index) => (
-                    <span key={exam.examType.id}>
-                      {index > 0 ? ' · ' : ''}
-                      <Link href={exam.path} className="hover:text-ink hover:underline">
-                        <span className="sr-only">{shortName(subject.subject)} </span>
-                        {exam.examType.name}
-                      </Link>
-                    </span>
-                  ))}
-                </td>
-                <td className="px-3 py-3 text-right text-ink-muted tabular-nums">{subject.paperCount}</td>
-                <td className="px-3 py-3 whitespace-nowrap text-ink-muted tabular-nums">{yearSpan(subject.years)}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-ink-muted tabular-nums">
-                  {subject.latest ? (
-                    <Link href={subject.latest.path} className="hover:text-ink hover:underline">
-                      <span className="sr-only">
-                        {shortName(subject.subject)} {subject.latest.examType.name}{' '}
-                      </span>
-                      {sittingDate(subject.latest.sessionDate)}
-                    </Link>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SeoArticle title={`More on ${level.level.name} PYQs`}>
+        <SeoIntro
+          lead={
+            <p>
+              {plural(subjects.length, `${level.level.name} subject`)} of the IIT Madras {program.program.name} with previous
+              year papers — <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> and{' '}
+              {formatCount(questions)} questions with solutions and answer keys, a video solution on each question&rsquo;s page,
+              and every paper free to read or take as a timed mock test.
+            </p>
+          }
+          statsTitle={`${name} ${level.level.name} PYQ at a glance`}
+          stats={[
+            { label: 'Subjects', value: String(subjects.length) },
+            { label: 'Papers', value: formatCount(papers) },
+            { label: 'Questions', value: formatCount(questions) },
+          ]}
+        />
 
-      <p className="mt-6">
-        <Link href={program.path} className="text-ui text-accent hover:underline">
-          ← Every {name} level
-        </Link>
-      </p>
+        <SeoHeading>{level.level.name} subjects and their papers</SeoHeading>
+        <ArticleTable
+          caption={`${level.level.name} subjects and their papers`}
+          head={['Subject', 'Exams', 'Papers', 'Years', 'Latest']}
+          rows={subjects.map((subject) => ({
+            key: subject.subject.id,
+            cells: [
+              <>
+                <Link href={subject.path}>{shortName(subject.subject)} PYQ</Link>
+                <span className="block text-meta text-ink-muted">
+                  {subject.subject.name}
+                  {subject.subject.code ? ` (${subject.subject.code})` : ''}
+                </span>
+              </>,
+              subject.exams.map((exam, index) => (
+                <span key={exam.examType.id}>
+                  {listJoin(index, subject.exams.length)}
+                  <Link href={exam.path}>
+                    <span className="sr-only">{shortName(subject.subject)} </span>
+                    {exam.examType.name}
+                  </Link>
+                </span>
+              )),
+              <span key="papers" className="tabular-nums">
+                {subject.paperCount}
+              </span>,
+              <span key="years" className="whitespace-nowrap tabular-nums">
+                {yearSpan(subject.years)}
+              </span>,
+              subject.latest ? (
+                <Link key="latest" href={subject.latest.path} className="whitespace-nowrap">
+                  <span className="sr-only">
+                    {shortName(subject.subject)} {subject.latest.examType.name}{' '}
+                  </span>
+                  {sittingDate(subject.latest.sessionDate)}
+                </Link>
+              ) : (
+                '—'
+              ),
+            ],
+          }))}
+        />
+
+        <p className="mt-6">
+          <Link href={program.path}>← Every {name} level</Link>
+        </p>
+      </SeoArticle>
     </div>
   )
 }

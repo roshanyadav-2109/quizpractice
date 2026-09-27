@@ -71,3 +71,9 @@ export function listOf(items: string[]): string {
   if (items.length <= 1) return items[0] ?? ''
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
+
+/** What goes before item `index` of `count` when a list of links is written out: "", ", " or " and ". */
+export function listJoin(index: number, count: number): string {
+  if (index === 0) return ''
+  return index === count - 1 ? ' and ' : ', '
+}

@@ -48,6 +48,10 @@ export async function SiteFooter() {
   const programs = catalogue
     ? catalogue.programs.filter((program) => program.levels.some((level) => level.subjects.some((subject) => subject.paperCount > 0)))
     : []
+  // Every year with papers, newest first: the only link to each year's page from every page.
+  const years = catalogue
+    ? [...new Set(catalogue.papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))].sort((a, b) => b - a)
+    : []
   // The first level of the first programme: the Foundation courses nearly every student sits.
   const foundation = programs[0]?.levels.find((level) => level.subjects.some((subject) => subject.paperCount > 0))
 
@@ -55,23 +59,39 @@ export async function SiteFooter() {
     <footer className="border-t border-rule bg-surface">
       <div className={`${SHELL} grid gap-8 py-10 text-meta sm:grid-cols-2 lg:grid-cols-4`}>
         {exams.length > 0 ? (
-          <nav aria-label="PYQs by exam">
-            <p className="text-ui font-medium text-ink">PYQs by exam</p>
-            <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
-              {exams.map((exam) => (
-                <li key={exam.id}>
-                  <Link href={paths.exam(exam.slug)} className={link}>
-                    IITM BS {exam.name} PYQ
+          <div>
+            <nav aria-label="PYQs by exam">
+              <p className="text-ui font-medium text-ink">PYQs by exam</p>
+              <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
+                {exams.map((exam) => (
+                  <li key={exam.id}>
+                    <Link href={paths.exam(exam.slug)} className={link}>
+                      IITM BS {exam.name} PYQ
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <Link href="/papers" className={link}>
+                    All papers, newest first
                   </Link>
                 </li>
-              ))}
-              <li>
-                <Link href="/papers" className={link}>
-                  All papers, newest first
-                </Link>
-              </li>
-            </ul>
-          </nav>
+              </ul>
+            </nav>
+            {years.length > 0 ? (
+              <nav aria-label="PYQs by year" className="mt-6">
+                <p className="text-ui font-medium text-ink">PYQs by year</p>
+                <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
+                  {years.map((year) => (
+                    <li key={year}>
+                      <Link href={paths.year(year)} className={link}>
+                        IITM BS PYQ {year}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
+          </div>
         ) : null}
 
         {programs.length > 0 ? (

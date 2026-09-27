@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { paths } from '@/lib/seo/paths'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -67,10 +67,19 @@ export function SubjectFinder({
   programs,
   initialProgram,
   initialLevel,
+  title = 'Previous year papers',
+  icon,
+  syncUrl = true,
 }: {
   programs: FinderProgram[]
   initialProgram: string
   initialLevel: string
+  /** The page's heading; a programme or level page passes its own. */
+  title?: ReactNode
+  /** Shown before the heading, e.g. the programme's or level's icon. */
+  icon?: ReactNode
+  /** Mirror the choice into /subjects?program=…&level=…; off on pages with their own address. */
+  syncUrl?: boolean
 }) {
   const router = useRouter()
   const isMac = useIsMac()
@@ -100,6 +109,7 @@ export function SubjectFinder({
 
   /** Keep the selection in the URL — reloadable and linkable, no round trip. */
   function remember(nextProgram: string, nextLevel: string) {
+    if (!syncUrl) return
     const params = new URLSearchParams()
     if (nextProgram !== programs[0]?.slug) params.set('program', nextProgram)
     if (nextLevel) params.set('level', nextLevel)
@@ -142,7 +152,7 @@ export function SubjectFinder({
 
   return (
     <>
-      <TitleCard title="Previous year papers">
+      <TitleCard icon={icon} title={title}>
         <form
           role="search"
           onSubmit={(event) => {

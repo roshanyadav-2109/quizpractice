@@ -32,6 +32,31 @@ export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
+
+  function choose(slug: string | null) {
+    const query = new URLSearchParams(params.toString())
+    if (slug) query.set('subject', slug)
+    else query.delete('subject')
+    query.delete('page')
+    const suffix = query.toString()
+    router.push(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
+  }
+
+  return <SubjectPanel groups={groups} value={value} scope={scope} onChoose={choose} />
+}
+
+/** The same button and panel, for a page that decides for itself what choosing a subject does. */
+export function SubjectPanel({
+  groups,
+  value,
+  scope,
+  onChoose,
+}: {
+  groups: SubjectGroup[]
+  value: string | null
+  scope: string
+  onChoose: (slug: string | null) => void
+}) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const input = useRef<HTMLInputElement>(null)
@@ -45,12 +70,7 @@ export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]
   }
 
   function choose(slug: string | null) {
-    const query = new URLSearchParams(params.toString())
-    if (slug) query.set('subject', slug)
-    else query.delete('subject')
-    query.delete('page')
-    const suffix = query.toString()
-    router.push(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
+    onChoose(slug)
     setOpen(false)
   }
 
