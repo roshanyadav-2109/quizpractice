@@ -139,10 +139,7 @@ export default async function ExamHub({ params }: { params: Params }) {
         crumbs={[{ label: 'Home', href: '/' }, { label: `${examType.name} PYQ` }]}
         icon={art ? <Art src={art} size={56} alt={`IITM BS ${examType.name}`} /> : undefined}
         eyebrow="IIT Madras BS degree"
-        title={titles.examHeading(
-          examType,
-          [...new Set(papers.map((paper) => shortName(paper.subject)))].filter((name) => !/\(ES\)/.test(name)),
-        )}
+        title={titles.examHeading(examType)}
         lead={
           <p>
             <strong className="font-medium text-ink">{formatCount(papers.length)} {examType.name} papers</strong> across{' '}
