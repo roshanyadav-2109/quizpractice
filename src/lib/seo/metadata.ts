@@ -11,18 +11,20 @@ import { SITE, absolute } from './site'
  * the words a student searched for matter more than the name after them.
  */
 
-/** About what Google shows before cutting a title off. */
-const TITLE_ROOM = 65
+/**
+ * About what a results page shows before cutting a title off — 580 pixels,
+ * roughly 60 characters. The short brand is added only when it still fits;
+ * the full name is in og:site_name and the structured data either way.
+ */
+const TITLE_ROOM = 62
 
 export function withBrand(title: string): string {
-  const full = `${title} | ${SITE.name}`
-  if (full.length <= TITLE_ROOM + 10) return full
   const short = `${title} | ${SITE.shortName}`
-  return short.length <= TITLE_ROOM + 10 ? short : title
+  return short.length <= TITLE_ROOM ? short : title
 }
 
-/** Cut a description at a word near 158 characters. */
-export function clipDescription(text: string, max = 158): string {
+/** Cut a description at a word near 155 characters — about what results pages show. */
+export function clipDescription(text: string, max = 155): string {
   const flat = text.replace(/\s+/g, ' ').trim()
   if (flat.length <= max) return flat
   return `${flat.slice(0, max - 1).replace(/[\s,;:.–—-]+\S*$/, '')}…`
