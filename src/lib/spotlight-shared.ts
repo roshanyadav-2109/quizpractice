@@ -25,4 +25,9 @@ export interface Spotlight {
   secondary?: SpotlightAction
   /** Real screens of the site, shown in a laptop and a phone. */
   screens?: { desktop: string; mobile: string }
+  /**
+   * Only for visitors who are not signed in. On a page served the same to
+   * everyone the server cannot tell, so the carousel drops it in the browser.
+   */
+  audience?: 'signed-out'
 }
