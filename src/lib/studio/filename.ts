@@ -116,7 +116,7 @@ export function videoDescription(
   if (copies && copies > 1) {
     lines.push('', `The same question appears in ${copies} papers; this explanation covers all of them.`)
   }
-  const tail = ['', 'QuizPractice — previous year papers of the IIT Madras BS degree, with explanations.', 'An independent study resource, not affiliated with IIT Madras.']
+  const tail = ['', 'Quiz Space — previous year papers of the IIT Madras BS degree, with explanations.', 'An independent study resource, not affiliated with IIT Madras.']
 
   const text = snippet?.replace(/\s+/g, ' ').trim()
   if (text) {

@@ -354,7 +354,7 @@ export function youtubeConnectMessage(reason: string | null | undefined): string
     case 'state':
       return 'The sign-in took too long or came back to a different address. Start again from this page, on the site’s main address.'
     case 'no-refresh-token':
-      return 'Google did not hand over a lasting permission. Remove “QuizPractice” at myaccount.google.com/permissions (for the account that owns the channel), then connect again.'
+      return 'Google did not hand over a lasting permission. Remove “Quiz Space” at myaccount.google.com/permissions (for the account that owns the channel), then connect again.'
     case 'scope':
       return 'Both permissions are needed: upload videos, and view the channel. Connect again and leave both boxes ticked.'
     case 'no-channel':

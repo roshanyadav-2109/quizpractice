@@ -6,7 +6,7 @@ import { publicEnv } from '@/lib/env'
 
 export const metadata: Metadata = {
   title: 'Privacy',
-  description: 'What QuizPractice collects, why, who it is shared with, and how to have it deleted.',
+  description: 'What Quiz Space collects, why, who it is shared with, and how to have it deleted.',
 }
 
 const UPDATED = '27 September 2026'
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
 
       <article className="max-w-[68ch] text-body text-ink">
         <Lead>
-          QuizPractice is a site for practising previous year papers of the IIT Madras BS degree. This page explains
+          Quiz Space is a site for practising previous year papers of the IIT Madras BS degree. This page explains
           what we collect when you use it, why, who else handles it, and how to have it removed. We do not sell your
           data and we do not show advertising.
         </Lead>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
 
         <Heading id="youtube">YouTube API Services</Heading>
         <P>
-          QuizPractice uses YouTube API Services. By watching explanation videos on the site, or uploading through
+          Quiz Space uses YouTube API Services. By watching explanation videos on the site, or uploading through
           it, you are also bound by the{' '}
           <External href={YOUTUBE_TERMS}>YouTube Terms of Service</External>, and Google handles data from those
           services under the <External href={GOOGLE_PRIVACY}>Google Privacy Policy</External>.
@@ -134,7 +134,7 @@ export default function PrivacyPage() {
           Explanation videos play in YouTube’s player, which YouTube serves. It loads only when you open an
           explanation with a video, and once you play it YouTube may collect information and set cookies under the{' '}
           <External href={GOOGLE_PRIVACY}>Google Privacy Policy</External>. No third party serves advertising on
-          QuizPractice.
+          Quiz Space.
         </P>
 
         <Heading>Cookies and storage on your device</Heading>

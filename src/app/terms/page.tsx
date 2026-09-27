@@ -6,7 +6,7 @@ import { publicEnv } from '@/lib/env'
 
 export const metadata: Metadata = {
   title: 'Terms of use',
-  description: 'The terms for using QuizPractice, including the YouTube Terms of Service that apply to its videos.',
+  description: 'The terms for using Quiz Space, including the YouTube Terms of Service that apply to its videos.',
 }
 
 const UPDATED = '27 September 2026'
@@ -29,15 +29,15 @@ export default function TermsPage() {
 
       <article className="max-w-[68ch] text-body text-ink">
         <p className="text-ink-muted">
-          QuizPractice is a free site for practising previous year papers of the IIT Madras BS degree. By using it you
+          Quiz Space is a free site for practising previous year papers of the IIT Madras BS degree. By using it you
           agree to these terms. If you do not agree, please do not use the site.
         </p>
 
         <Heading id="youtube">YouTube</Heading>
         <P>
-          QuizPractice uses YouTube API Services to show explanation videos and to publish teachers’ recordings.{' '}
+          Quiz Space uses YouTube API Services to show explanation videos and to publish teachers’ recordings.{' '}
           <strong className="font-medium">
-            By using QuizPractice you agree to be bound by the{' '}
+            By using Quiz Space you agree to be bound by the{' '}
             <External href={YOUTUBE_TERMS}>YouTube Terms of Service</External>.
           </strong>{' '}
           How the site handles data from YouTube is set out in the{' '}
@@ -64,14 +64,14 @@ export default function TermsPage() {
         <Heading>What you post</Heading>
         <P>
           Discussion posts and error reports must be your own words, relevant, and respectful. You keep ownership of
-          what you write and allow QuizPractice to show it on the site. We may remove anything that breaks these
+          what you write and allow Quiz Space to show it on the site. We may remove anything that breaks these
           terms.
         </P>
 
         <Heading>Teachers</Heading>
         <P>
           Teachers write explanations and record videos for the subjects an admin assigns them. By submitting one, a
-          teacher confirms it is their own work and allows QuizPractice to publish it on the site, with their name,
+          teacher confirms it is their own work and allows Quiz Space to publish it on the site, with their name,
           and on the site’s YouTube channel. Videos must follow YouTube’s{' '}
           <External href={YOUTUBE_GUIDELINES}>Community Guidelines</External>. Uploading through the site means
           agreeing to the <External href={YOUTUBE_TERMS}>YouTube Terms of Service</External> for that video.

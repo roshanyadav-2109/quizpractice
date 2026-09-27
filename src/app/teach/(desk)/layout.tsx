@@ -10,7 +10,7 @@ import { ChalkboardTeacher } from '@/components/ui/icons'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: { default: 'Teaching', template: '%s — Teaching — QuizPractice' },
+  title: { default: 'Teaching', template: '%s — Teaching — Quiz Space' },
   robots: { index: false, follow: false },
 }
 

@@ -252,7 +252,7 @@ export default async function StudentDashboard() {
 
   type BoardSpec = Omit<Board, 'rows'> & { scope: LeaderboardScope; scopeKey: string | null }
   const boardSpecs: BoardSpec[] = [
-    { key: 'overall', label: 'Overall', note: 'Every paper on QuizPractice', scope: 'overall', scopeKey: null },
+    { key: 'overall', label: 'Overall', note: 'Every paper on Quiz Space', scope: 'overall', scopeKey: null },
     ...(topSubject
       ? [
           { key: 'subject', label: topSubject.subject.name, note: `${topSubject.subject.name} papers`, scope: 'subject' as const, scopeKey: topSubject.subject.slug },

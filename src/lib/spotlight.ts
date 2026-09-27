@@ -277,7 +277,7 @@ function tourSpotlight(context: SpotlightContext): Spotlight | null {
 
 const EYEBROW: Record<BannerRow['kind'], string> = {
   announcement: 'Announcement',
-  feature: 'New on QuizPractice',
+  feature: 'New on Quiz Space',
   release: 'Just added',
 }
 const KIND_SCREENS: Record<BannerRow['kind'], Spotlight['screens']> = {

@@ -16,6 +16,7 @@ import { termOf } from '@/lib/terms'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { Spotlight } from '@/components/site/Spotlight'
 import { SHELL, Trail } from '@/components/site/Page'
+import { ProductBy } from '@/components/site/Brand'
 import { SignInButton } from '@/components/site/AuthDialog'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
 import { MistakesCta } from '@/components/home/MistakesCta'
@@ -120,6 +121,7 @@ export default async function HomePage() {
     <>
       {/* ------------------------------------------------------------ Search */}
       <section className={`${SHELL} pt-12 pb-14 text-center lg:pt-16`}>
+        <ProductBy className="mb-4" />
         <h1 className="mx-auto max-w-3xl text-[2rem] leading-[1.15] font-medium text-balance text-ink sm:text-[2.5rem]">
           Previous year papers for the IIT Madras BS degree
         </h1>

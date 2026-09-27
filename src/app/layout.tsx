@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.siteUrl),
   title: {
     default: 'Previous year papers — IIT Madras BS Degree',
-    template: '%s — QuizPractice',
+    template: '%s — Quiz Space',
   },
   description:
     'Previous quiz, end term and OPPE question papers from the IIT Madras BS degree, taken under exam conditions.',

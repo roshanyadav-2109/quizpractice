@@ -25,7 +25,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
           <img src="/art/states/server-error.webp" alt="" width={220} height={220} />
           <h1 style={{ fontSize: 22, fontWeight: 400, margin: '16px 0 8px' }}>Something went wrong</h1>
           <p style={{ color: '#57534e', fontWeight: 300, lineHeight: 1.5, margin: 0 }}>
-            QuizPractice couldn’t load. Try again in a moment.
+            Quiz Space couldn’t load. Try again in a moment.
           </p>
           {error.digest ? <p style={{ color: '#78716c', fontSize: 12, fontFamily: 'monospace' }}>{error.digest}</p> : null}
           <button

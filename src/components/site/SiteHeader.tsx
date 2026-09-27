@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from '@/lib/env'
 import { artFor } from '@/lib/art'
 import { termsOf } from '@/lib/terms'
 import { SHELL } from '@/components/site/Page'
+import { BrandLogo } from '@/components/site/Brand'
 import { MagnifyingGlass } from '@/components/ui/icons'
 import type { ExamType } from '@/types/db'
 import { MegaNav, MobileMenu, type MenuItem } from './MegaNav'
@@ -92,9 +93,8 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-surface">
       <div className={`${SHELL} flex h-16 items-center gap-2`}>
-        <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="QuizPractice home">
-          <Mark />
-          <span className="text-[1.125rem] font-medium text-ink">QuizPractice</span>
+        <Link href="/" className="flex shrink-0 items-center" aria-label="Quiz Space home">
+          <BrandLogo />
         </Link>
         <span aria-hidden className="mx-3 hidden h-7 w-px bg-rule lg:block" />
 
@@ -180,10 +180,3 @@ function examMenu(examTypes: ExamType[], index: PaperIndexRow[], tree: ProgramWi
  * The mark: an answer bubble, filled. It is the one glyph every student in the
  * programme has looked at hundreds of times.
  */
-function Mark() {
-  return (
-    <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-ink">
-      <span className="h-3 w-3 rounded-full bg-ink" />
-    </span>
-  )
-}
