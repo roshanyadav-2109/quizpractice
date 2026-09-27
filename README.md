@@ -217,6 +217,7 @@ Its README has the steps.
 | `npm run media:orphans` | Lists unreferenced Cloudinary assets. `--delete` removes them |
 | `npm run demo:users` | Creates or resets the demo student and admin accounts |
 | `npm run db:push` | Applies the migrations to a hosted Supabase project via the Management API (needs `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`; no Docker or database password) |
+| `npm run seo:indexnow` | Submits the live sitemaps' URLs to IndexNow (Bing, Copilot and others). `--since <date>` for new papers only. See `docs/seo.md` |
 
 `npm run db:validate` is worth knowing about: it applies the migrations to a
 real Postgres compiled to WebAssembly, so SQL errors surface locally instead of
@@ -273,9 +274,13 @@ before students can.
 ```
 src/
   app/
-    page.tsx                  home — branches and live counts
-    browse/                   Branch → Level → Subject → Exam → Year
-    subject/[slug]/           papers for one subject
+    page.tsx                  home — the exams, the newest papers, every subject
+    pyq/[subject]/            a subject's papers; [exam]/ one exam's; [paper]/ a paper
+                              with every question and answer; [question]/ one question
+    exam/[exam]/              one exam across every subject (Qualifier, Quiz 1, …)
+    program/[program]/        a programme; [level]/ one of its levels
+    sitemap.xml, sitemaps/    the sitemap index and its parts; robots.ts; llms.txt
+    paper/[setId]/            the instructions before a mock test
     practice/[setId]/         the exam runner
     result/[attemptId]/       review of a saved attempt
     search/                   full-text search across question content
@@ -302,6 +307,7 @@ src/
     import-paper.ts           JSON → database
     extract.ts                scan → JSON
     queries.ts                every read the public site makes
+    seo/                      addresses, titles, structured data, sitemaps — docs/seo.md
   proxy.ts                    session refresh + /admin and /teach gates
 supabase/migrations/          schema, functions, RLS, seed taxonomy
 schema/                       the canonical JSON Schema and an example paper
