@@ -150,7 +150,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
               </span>
             </span>
           </span>
-          <span className="flex items-center px-0.5 text-ui leading-tight font-semibold text-ink group-hover:text-accent" style={{ minHeight: textH }}>
+          <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-ink group-hover:text-accent" style={{ minHeight: textH }}>
             Watch the solution
           </span>
         </button>
