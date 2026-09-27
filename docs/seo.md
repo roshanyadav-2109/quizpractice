@@ -89,6 +89,19 @@ How the questions are protected from copying:
   in `robots.txt`; a visit is a scraper ignoring it, and is logged.
 - **Signals.** Refused openings and trap visits land in `scrape_signals`, for
   staff to review with the IP, browser and account.
+- **The edge.** Three Vercel Firewall rules on the quizdesk project (the plan's
+  limit is three), set 28 September 2026:
+  - `/all-questions` → the IP is denied site-wide for an hour. The firewall
+    now answers before the trap route runs, so these visits show in Vercel's
+    firewall log rather than `scrape_signals`.
+  - `/api/solutions/…`, `/api/attempts`, `/api/reviews` → 120 requests a minute
+    per IP, then 429.
+  - `/practice/…`, `/paper/…` → 240 a minute per IP, then 429.
+
+  The public pages are deliberately not rate-limited: they show only the free
+  preview, and a 429 to Googlebot slows its crawl of the whole site. The
+  limits are high because many students share one IP (hostel Wi-Fi, mobile
+  carriers' NAT); the per-account limit is the precise control.
 
 ## What each page says
 
