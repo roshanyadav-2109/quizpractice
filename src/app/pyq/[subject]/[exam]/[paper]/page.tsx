@@ -13,6 +13,7 @@ import { questionSlugOf, toQuizQuestion, TYPE_NAME, titleText } from '@/lib/seo/
 import { formatCount } from '@/lib/format'
 import { termFromKey } from '@/lib/terms'
 import { artFor } from '@/lib/art'
+import { getVideoIndex } from '@/lib/seo/video-solutions'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { HubHeader } from '@/components/seo/HubHeader'
 import { PaperTable } from '@/components/seo/PaperTable'
@@ -44,6 +45,7 @@ export async function generateStaticParams() {
 type Resolved =
   | { kind: 'paper'; catalogue: SeoCatalogue; paper: PaperEntry }
   | { kind: 'term'; catalogue: SeoCatalogue; papers: PaperEntry[]; termKey: string }
+  | { kind: 'year'; catalogue: SeoCatalogue; papers: PaperEntry[]; year: number }
   | { kind: 'redirect'; to: string }
   | null
 
@@ -64,6 +66,15 @@ async function resolve(subject: string, exam: string, slug: string): Promise<Res
     if (papers.length === 1) return { kind: 'redirect', to: papers[0].path }
     if (papers.length > 1) return { kind: 'term', catalogue, papers, termKey: key }
     // A term this exam was not sat in: the exam's own page has every term it was.
+    return { kind: 'redirect', to: examNode.path }
+  }
+
+  // A year: "2025" — the year's papers when there are several, the paper when there is one.
+  if (/^\d{4}$/.test(slug)) {
+    const year = Number(slug)
+    const papers = examNode.papers.filter((entry) => entry.term?.year === year)
+    if (papers.length === 1) return { kind: 'redirect', to: papers[0].path }
+    if (papers.length > 1) return { kind: 'year', catalogue, papers, year }
     return { kind: 'redirect', to: examNode.path }
   }
 
@@ -93,9 +104,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const term = termFromKey(resolved.termKey)
     const short = shortName(first.subject)
     return pageMetadata({
-      title: `${short} ${first.examType.name} ${term?.short ?? ''} Question Papers — ${resolved.papers.length} Sets with Answers`,
-      description: `IITM BS ${short} (${first.subject.name}) ${first.examType.name} papers from the ${termName(term)}: all ${resolved.papers.length} sets with answer keys, free to read or take as a timed mock test.`,
+      title: `${short} ${first.examType.name} ${term?.short ?? ''} PYQ: ${resolved.papers.length} Sets with Solutions`,
+      description: `IITM BS ${short} ${first.examType.name} papers from the ${termName(term)}: all ${resolved.papers.length} sets with solutions, answer keys and video solutions, free as timed mock tests.`,
       path: paths.paper(subject, exam, slug),
+    })
+  }
+
+  if (resolved.kind === 'year') {
+    const first = resolved.papers[0]
+    const short = shortName(first.subject)
+    return pageMetadata({
+      title: titles.subjectExamYear(first.subject, first.examType, resolved.year, resolved.papers.length),
+      description: `All ${resolved.papers.length} IITM BS ${short} ${first.examType.name} papers from ${resolved.year}, with solutions, answer keys and video solutions — free to read or take as timed mock tests.`,
+      path: paths.subjectExamYear(subject, exam, resolved.year),
     })
   }
 
@@ -108,7 +129,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.paper(paper),
     description: `${plural(paper.questionCount, 'question')}${paper.totalMarks ? ` · ${paper.totalMarks} marks` : ''}${
       paper.durationMinutes ? ` · ${paper.durationMinutes} min` : ''
-    }. The IITM BS ${short} ${paper.examType.name} paper sat on ${sittingDate(paper.sessionDate)} (${termName(paper.term)})${setPart}, with answers — read it or take it as a timed mock test.${
+    }. IITM BS ${short} ${paper.examType.name} PYQ, ${sittingDate(paper.sessionDate)} (${termName(paper.term)})${setPart}, with solutions, answer key and video solutions.${
       first ? ` Q${first.number}: ${titleText(first, 70)}` : ''
     }`,
     path: paper.path,
@@ -123,9 +144,10 @@ export default async function PaperPage({ params }: { params: Params }) {
   if (!resolved) notFound()
   if (resolved.kind === 'redirect') permanentRedirect(resolved.to)
   if (resolved.kind === 'term') return <TermPage catalogue={resolved.catalogue} papers={resolved.papers} termKey={resolved.termKey} />
+  if (resolved.kind === 'year') return <YearPage catalogue={resolved.catalogue} papers={resolved.papers} year={resolved.year} />
 
   const { catalogue, paper } = resolved
-  const set = await getPublicSet(paper.setId)
+  const [set, videos] = await Promise.all([getPublicSet(paper.setId), getVideoIndex()])
   if (!set) notFound()
 
   const node = catalogue.subjectBySlug.get(paper.subject.slug)!
@@ -230,7 +252,8 @@ export default async function PaperPage({ params }: { params: Params }) {
                   {plural(questions.length, 'question')} for {formatCount(Number(marks))} marks
                 </strong>
                 {paper.durationMinutes ? ` in ${paper.durationMinutes} minutes` : ''}. Every question is below with its
-                answer. Take it as a timed mock test to be marked, or read it through first.
+                solution from the answer key; each question&rsquo;s own page has its video solution. Take the paper as a
+                timed mock test to be marked, or read it through first.
               </p>
             }
             stats={[
@@ -271,6 +294,7 @@ export default async function PaperPage({ params }: { params: Params }) {
                 question={question}
                 href={paths.question(paper.subject.slug, paper.examType.slug, paper.slug, questionSlugOf(question))}
                 copies={copyLinks(question.id)}
+                hasVideo={videos.byQuestion.has(question.id)}
               />
             ))}
           </div>
@@ -429,6 +453,89 @@ function TermPage({ catalogue, papers, termKey }: { catalogue: SeoCatalogue; pap
       />
       <div className="mt-8">
         <PaperTable papers={papers} caption={`${short} ${examName} ${term?.short ?? ''} sets`} />
+      </div>
+      <p className="mt-6">
+        <Link href={examNode.path} className="text-ui text-accent hover:underline">
+          ← Every {short} {examName} paper
+        </Link>
+      </p>
+    </div>
+  )
+}
+
+/** One subject's exam in one year, sat in several papers: each term's papers, and the way on to each. */
+function YearPage({ catalogue, papers, year }: { catalogue: SeoCatalogue; papers: PaperEntry[]; year: number }) {
+  const first = papers[0]
+  const short = shortName(first.subject)
+  const examName = first.examType.name
+  const node = catalogue.subjectBySlug.get(first.subject.slug)!
+  const examNode = node.exams.find((entry) => entry.examType.id === first.examType.id)!
+  const path = paths.subjectExamYear(first.subject.slug, first.examType.slug, year)
+  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
+  const terms = [...new Map(papers.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].sort(
+    (a, b) => a.order - b.order,
+  )
+  const years = [...new Set(examNode.papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))].sort((a, b) => b - a)
+
+  return (
+    <div className={`${SHELL} py-6 sm:py-8`}>
+      <JsonLd
+        data={collectionPage({
+          path,
+          name: titles.subjectExamYearHeading(first.subject, first.examType, year),
+          description: `${short} ${examName} papers from ${year}, with solutions.`,
+          crumbs: [
+            { name: 'Home', path: '/' },
+            { name: `${short} PYQ`, path: node.path },
+            { name: `${short} ${examName}`, path: examNode.path },
+            { name: String(year), path },
+          ],
+          items: papers.map((paper) => ({ name: paperName(paper), path: paper.path })),
+        })}
+      />
+      <HubHeader
+        crumbs={[
+          { label: 'Home', href: '/' },
+          { label: `${short} PYQ`, href: node.path },
+          { label: examName, href: examNode.path },
+          { label: String(year) },
+        ]}
+        eyebrow={first.subject.name}
+        title={titles.subjectExamYearHeading(first.subject, first.examType, year)}
+        lead={
+          <p>
+            <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from {year}
+            {terms.length > 0 ? ` — the ${terms.map((term) => term.label).join(', ')}` : ''} — {formatCount(questions)} questions,
+            each with its solution from the answer key and a video solution on its own page. Read one, or take it as a timed
+            mock test.
+          </p>
+        }
+        stats={[
+          { label: 'Papers', value: String(papers.length) },
+          { label: 'Questions', value: formatCount(questions) },
+        ]}
+      />
+      {years.length > 1 ? (
+        <nav aria-label="Other years" className="mt-6 flex flex-wrap gap-2">
+          {years.map((other) =>
+            other === year ? (
+              <span key={other} aria-current="page" className="inline-flex h-8 items-center rounded-control bg-ink px-3 text-meta text-white">
+                {other}
+              </span>
+            ) : (
+              <Link
+                key={other}
+                href={paths.subjectExamYear(first.subject.slug, first.examType.slug, other)}
+                className="inline-flex h-8 items-center rounded-control border border-rule px-3 text-meta text-ink hover:border-rule-strong"
+              >
+                {short} {examName} {other}
+              </Link>
+            ),
+          )}
+        </nav>
+      ) : null}
+      <div className="mt-8">
+        <PaperTable papers={papers} caption={`${short} ${examName} papers from ${year}`} />
       </div>
       <p className="mt-6">
         <Link href={examNode.path} className="text-ui text-accent hover:underline">
