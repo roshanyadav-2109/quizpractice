@@ -48,6 +48,8 @@ export interface Subject {
   level_id: string
   slug: string
   name: string
+  /** What students search it by: "Maths 1", "PDSA" (0031). */
+  short_name?: string | null
   code: string | null
   aliases: string[]
   has_programming: boolean
@@ -78,6 +80,8 @@ export interface QuestionPaper {
   status: ContentStatus
   notes: string | null
   created_at: string
+  /** Set by the importer and every admin edit; the sitemap's lastmod. */
+  updated_at?: string | null
 }
 
 export interface QuestionSet {
