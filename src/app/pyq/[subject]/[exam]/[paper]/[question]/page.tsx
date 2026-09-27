@@ -134,8 +134,9 @@ export default async function QuestionPage({ params }: { params: Params }) {
   })
 
   const substantial = isSubstantial(question)
+  // Kept to about 70 characters; the question itself is in full just below.
   const title = substantial
-    ? `Question ${question.number}: ${headline(question)}`
+    ? `Question ${question.number}: ${headline(question, 70 - `Question ${question.number}: `.length)}`
     : `${short} ${examName} ${sittingDate(paper.sessionDate)} — Question ${question.number}`
   const paperLabel = `${short} ${examName} ${sittingDate(paper.sessionDate)}${paper.setsInSitting > 1 ? ` Set ${paper.setCode}` : ''}`
 
