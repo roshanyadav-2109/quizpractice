@@ -39,7 +39,7 @@ function programShort(program: Pick<Program, 'name' | 'short_name'>): string {
 export const titles = {
   // Under 60 characters with " | Quiz Space": the whole title shows in results.
   home: () => 'IITM BS PYQ: Quiz, End Term & Qualifier Papers',
-  homeHeading: () => 'IITM BS PYQs — every Quiz 1, Quiz 2, End Term and Qualifier paper, with answers',
+  homeHeading: () => 'IITM BS PYQs with answers: Quiz 1, Quiz 2, End Term, Qualifier',
 
   program(program: Pick<Program, 'name' | 'short_name'>, courses: number): string {
     const short = programShort(program)
@@ -90,7 +90,11 @@ export const titles = {
   },
   paperHeading(paper: PaperEntry): string {
     const set = paper.setsInSitting > 1 ? `, Set ${paper.setCode}` : ''
-    return `${paper.subject.name} ${paper.examType.name}: ${longDate(paper.sessionDate)}${set} (${paper.term?.label ?? 'undated'})`
+    const heading = (name: string) =>
+      `${name} ${paper.examType.name}: ${longDate(paper.sessionDate)}${set} (${paper.term?.label ?? 'undated'})`
+    // The full course name when the heading stays readable; the short one past 70 characters.
+    const full = heading(paper.subject.name)
+    return full.length <= 70 ? full : heading(shortName(paper.subject))
   },
 
   question(stem: string, paper: PaperEntry, number: number): string {
@@ -116,9 +120,8 @@ export const titles = {
         return `IITM BS ${exam.name} PYQ: Previous Year Papers, All Subjects`
     }
   },
-  examHeading(exam: Pick<ExamType, 'name' | 'slug'>, qualifierSubjects: string[]): string {
-    if (exam.slug === 'qualifier')
-      return `IIT Madras BS Qualifier exam: previous year papers${qualifierSubjects.length ? ` (${qualifierSubjects.slice(0, 4).join(', ')})` : ''}`
+  examHeading(exam: Pick<ExamType, 'name' | 'slug'>): string {
+    if (exam.slug === 'qualifier') return 'IIT Madras BS Qualifier exam: previous year papers'
     if (exam.slug === 'diploma-qualifier') return 'IIT Madras Diploma (direct entry) Qualifier: previous year papers'
     return `IITM BS ${exam.name} previous year papers for every course`
   },
