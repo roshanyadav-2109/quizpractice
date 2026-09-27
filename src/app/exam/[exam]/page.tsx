@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.exam(examType, years(papers)),
     description: `IITM BS ${examType.name} PYQs with solutions: ${formatCount(papers.length)} papers across ${subjects} subjects, ${yearSpan(
       years(papers),
-    )}, with answer keys, video solutions and free ${examType.name} mock tests.`,
+    )}, with answer keys and free ${examType.name} mock tests.`,
     path: `/exam/${examType.slug}`,
   })
 }
@@ -118,8 +118,9 @@ export default async function ExamHub({ params }: { params: Params }) {
       q: `Are there IITM BS ${examType.name} PYQs with solutions?`,
       a: (
         <>
-          Yes — every question shows its answer key, and each question has its own page where its video solution plays.
-          Every paper can also be taken as a free, timed {examType.name} mock test on a screen laid out like the real exam.
+          Yes — every question has its answer key and, where one has been written, its explanation. Each paper shows its
+          first questions to anyone; with a free Google sign-in you see it whole, and can take it as a timed{' '}
+          {examType.name} mock test on a screen laid out like the real exam.
         </>
       ),
     },
@@ -182,7 +183,7 @@ export default async function ExamHub({ params }: { params: Params }) {
                 {formatCount(papers.length)} {examType.name} papers
               </strong>{' '}
               across {plural(subjectIds.size, 'subject')} of the IIT Madras BS degree, {yearSpan(years(papers))} —{' '}
-              {formatCount(questions)} questions, each with its answer key and a video solution on its own page.{' '}
+              {formatCount(questions)} questions, each with its answer key, open with a free Google sign-in.{' '}
               {fact ? fact.scope : ''} Choose a subject or a year, or start with the latest papers below.
             </p>
           }
