@@ -8,6 +8,8 @@ import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
 import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
+import { getVideoIndex } from '@/lib/seo/video-solutions'
+import { VideoSolutionList } from '@/components/seo/VideoSolutionList'
 import { absolute } from '@/lib/seo/site'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
@@ -50,9 +52,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const span = yearSpan(yearsOf(exam.papers))
   return pageMetadata({
     title: titles.subjectExam(node.subject, exam.examType, count),
-    description: `All ${count} IITM BS ${short} ${exam.examType.name} previous year question papers (${node.subject.name}) from ${span}: ${formatCount(
+    description: `All ${count} IITM BS ${short} ${exam.examType.name} PYQs with solutions, ${span}: ${formatCount(
       exam.papers.reduce((sum, paper) => sum + paper.questionCount, 0),
-    )} questions with answer keys. Read each paper or take it as a free timed mock test.`,
+    )} questions with answer keys and video solutions, plus free ${exam.examType.name} mock tests.`,
     path: exam.path,
   })
 }
@@ -71,6 +73,7 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
   const fact = examFact(exam.examType.slug)
 
   const papers = exam.papers
+  const videos = ((await getVideoIndex()).bySubject.get(subject.id) ?? []).filter((video) => video.paper.examType.id === exam.examType.id)
   const years = yearsOf(papers)
   const terms = [...new Map(papers.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].sort(
     (a, b) => a.order - b.order,
@@ -143,6 +146,15 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
         ]
       : []),
     {
+      q: `Where are the ${short} ${examName} solutions and video solutions?`,
+      a: (
+        <>
+          Open any paper above: every question shows its solution from the official answer key, and each
+          question&rsquo;s own page plays its video solution under the answer.
+        </>
+      ),
+    },
+    {
       q: `Can I take a ${short} ${examName} mock test?`,
       a: (
         <>
@@ -188,7 +200,8 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
           <p>
             <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from the
             IIT Madras BS {programLabel} programme, {yearSpan(years)} — {formatCount(questions)} questions, each with its
-            answer key. {fact ? `${fact.scope} ` : ''}Read any paper with answers, or take it as a timed mock test.
+            solution from the answer key and a video solution on its own page. {fact ? `${fact.scope} ` : ''}Read any
+            paper with solutions, or take it as a timed {examName} mock test.
           </p>
         }
         stats={[
@@ -217,9 +230,19 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
         )
         return (
           <section key={year} id={`y${year}`} className="mt-10 scroll-mt-20" aria-labelledby={`h${year}`}>
-            <h2 id={`h${year}`} className="mb-3 text-[1.375rem] leading-tight font-medium text-ink">
-              {short} {examName} {year} papers
-            </h2>
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4">
+              <h2 id={`h${year}`} className="text-[1.375rem] leading-tight font-medium text-ink">
+                {short} {examName} {year} papers
+              </h2>
+              {inYear.length > 1 ? (
+                <Link
+                  href={paths.subjectExamYear(subject.slug, exam.examType.slug, year)}
+                  className="text-meta text-ink-muted hover:text-ink hover:underline"
+                >
+                  {short} {examName} PYQ {year} →
+                </Link>
+              ) : null}
+            </div>
             <PaperTable papers={inYear} caption={`${short} ${examName} papers from ${year}`} />
             {multiSetTerms.length > 0 ? (
               <p className="mt-3 text-meta text-ink-muted">
@@ -272,6 +295,18 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
               </ul>
             </div>
           ) : null}
+        </section>
+      ) : null}
+
+      {videos.length > 0 ? (
+        <section className="mt-12" aria-labelledby="video-solutions">
+          <h2 id="video-solutions" className="text-[1.375rem] leading-tight font-medium text-ink">
+            {short} {examName} video solutions
+          </h2>
+          <p className="mt-2 text-ui text-ink-muted">
+            {plural(videos.length, 'question')} with a video solution, each playing on its own page:
+          </p>
+          <VideoSolutionList videos={videos} />
         </section>
       ) : null}
 
