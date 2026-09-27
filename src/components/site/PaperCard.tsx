@@ -4,6 +4,8 @@ import { Badge, buttonClass } from '@/components/ui/primitives'
 
 export interface PaperCardProps {
   setId: string
+  /** The paper's own page, with its questions and answers; the title links there. */
+  href?: string
   /** The line that identifies this sitting in context. */
   title: string
   /** Small tags above the title: exam type, set code. */
@@ -22,11 +24,19 @@ export interface PaperCardProps {
  * "Start paper" opens the paper's instructions rather than the runner — the
  * clock starts there, deliberately, not on a stray click here.
  */
-export function PaperCard({ setId, title, tags, date, facts, best }: PaperCardProps) {
+export function PaperCard({ setId, href, title, tags, date, facts, best }: PaperCardProps) {
   return (
     <article className="flex h-full flex-col rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[1.0625rem] leading-snug text-ink">{title}</h3>
+        <h3 className="text-[1.0625rem] leading-snug text-ink">
+          {href ? (
+            <Link href={href} className="hover:underline hover:underline-offset-4">
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
+        </h3>
         <p className="shrink-0 text-meta text-ink-muted tabular-nums">{date}</p>
       </div>
 
@@ -53,7 +63,7 @@ export function PaperCard({ setId, title, tags, date, facts, best }: PaperCardPr
         )}
 
         <div className="flex items-center gap-2">
-          <Link href={`/paper/${setId}`} className={buttonClass('primary', 'sm')}>
+          <Link href={`/paper/${setId}`} rel="nofollow" className={buttonClass('primary', 'sm')}>
             {best ? 'Re-attempt' : 'Start paper'}
             <ArrowRight size={14} aria-hidden="true" />
           </Link>
