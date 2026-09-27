@@ -110,25 +110,25 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
 
   return (
     <div
-      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[6px] border border-[#0f766e]/25 bg-[#e6f4f1] text-ink transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
+      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[6px] border border-[#134e4a] bg-[#115e59] text-white transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
       style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight }}
     >
       {open ? (
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 items-center gap-3 px-4" style={{ height: HEADER_H }}>
-            <span className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-[#0f766e] text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-white/15 text-white">
               <Play size={12} weight="fill" aria-hidden="true" />
             </span>
             <p className="min-w-0 flex-1 truncate">
               <span className="text-ui font-semibold">Video solution</span>
-              <span className="ml-2 hidden text-meta text-ink-muted sm:inline">Esc to fold away</span>
+              <span className="ml-2 hidden text-meta text-white/60 sm:inline">Esc to fold away</span>
             </p>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Fold the video away"
               title="Fold away (Esc)"
-              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-[#0f766e]/10 hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <CornersIn size={18} aria-hidden="true" />
             </button>
@@ -152,7 +152,7 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
           style={{ padding: PAD, gap: PAD }}
         >
           <BoardThumbnail caption={caption} height={frameH} />
-          <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-ink group-hover:text-[#0f766e]" style={{ minHeight: textH }}>
+          <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-white group-hover:text-[#ccfbf1]" style={{ minHeight: textH }}>
             Watch the solution
           </span>
         </button>
@@ -174,7 +174,7 @@ function BoardThumbnail({ caption, height }: { caption: Caption; height: number 
   return (
     <span
       aria-hidden="true"
-      className="relative block w-full shrink-0 overflow-hidden rounded-[4px] bg-white ring-1 ring-[#0f766e]/20"
+      className="relative block w-full shrink-0 overflow-hidden rounded-[4px] bg-white ring-1 ring-white/20"
       style={{
         height,
         backgroundImage: `linear-gradient(to right, rgba(15,118,110,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,118,110,0.08) 1px, transparent 1px)`,
