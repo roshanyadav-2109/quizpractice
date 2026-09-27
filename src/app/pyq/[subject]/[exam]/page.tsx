@@ -5,7 +5,7 @@ import { titles } from '@/lib/seo/titles'
 import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
-import { listOf, plural, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
+import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
 import { absolute } from '@/lib/seo/site'
@@ -104,8 +104,8 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
       q: `How many ${short} ${examName} previous year papers are there?`,
       a: (
         <>
-          {plural(papers.length, `${short} ${examName} paper`)}, from the {terms[0] ? termName(terms[0]) : 'first term'} to
-          the {terms.at(-1) ? termName(terms.at(-1)!) : 'latest term'}, with {formatCount(questions)} questions in all.
+          {plural(papers.length, `${short} ${examName} paper`)}, sat {termRange(terms)}, with {formatCount(questions)}{' '}
+          questions in all.
           Each is listed above by year.
         </>
       ),
