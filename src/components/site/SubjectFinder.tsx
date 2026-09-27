@@ -257,7 +257,7 @@ function SubjectRow({ subject, context }: { subject: FinderSubject; context?: st
       href={subject.href ?? paths.subject(subject.slug)}
       className="group flex h-full items-center gap-3.5 rounded-card border border-rule bg-surface p-3.5 transition-colors hover:border-rule-strong"
     >
-      <Art src={artFor('subjects', subject.slug)} size={52} />
+      <Art src={artFor('subjects', subject.slug)} size={52} alt={subject.name} />
       <span className="min-w-0 flex-1">
         <span className="block text-[1.0625rem] leading-snug text-ink">{subject.name}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-faint tabular-nums">
