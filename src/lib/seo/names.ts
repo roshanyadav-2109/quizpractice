@@ -42,6 +42,17 @@ export function sittingDate(date: string | null): string {
   return formatSession(date)
 }
 
+/**
+ * When some papers were sat, as a phrase: "in the May 2024 term", or
+ * "between the May 2024 term and the September 2025 term". Terms oldest first.
+ */
+export function termRange(terms: Term[]): string {
+  const first = terms[0]
+  const last = terms[terms.length - 1]
+  if (!first || !last) return ''
+  return first.key === last.key ? `in the ${first.label}` : `between the ${first.label} and the ${last.label}`
+}
+
 /** "2022–2026", or one year. */
 export function yearSpan(years: number[]): string {
   if (years.length === 0) return ''
