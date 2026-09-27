@@ -9,7 +9,7 @@ export function BrandLogo() {
   return (
     <span className="flex items-center">
       <Image
-        src="/brand/quizspace-mark.png"
+        src="/brand/quizspace-mark.webp"
         alt="Q"
         width={34}
         height={34}
@@ -17,7 +17,8 @@ export function BrandLogo() {
         priority
         className="h-[2.125rem] w-[2.125rem] shrink-0"
       />
-      <span className="-ml-2 -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink">
+      {/* A letter's gap between the mark and the u, so the two read apart. */}
+      <span className="ml-[0.1875rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink">
         uiz Space
       </span>
     </span>
