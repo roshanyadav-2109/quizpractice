@@ -189,6 +189,11 @@ export async function SiteFooter() {
           </ul>
         </div>
       </div>
+      {/* The scraper trap: invisible, out of the tab order, closed in robots.txt — a
+          plain <a>, never next/link, whose prefetch would spring it for real visitors. */}
+      <a href="/all-questions" rel="nofollow" tabIndex={-1} aria-hidden="true" hidden>
+        All questions
+      </a>
     </footer>
   )
 }
