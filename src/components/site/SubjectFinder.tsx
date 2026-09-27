@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { paths } from '@/lib/seo/paths'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CaretRight, MagnifyingGlass } from '@/components/ui/icons'
@@ -253,7 +254,7 @@ export function SubjectFinder({
 function SubjectRow({ subject, context }: { subject: FinderSubject; context?: string }) {
   return (
     <Link
-      href={subject.href ?? `/subject/${subject.slug}`}
+      href={subject.href ?? paths.subject(subject.slug)}
       className="group flex h-full items-center gap-3.5 rounded-card border border-rule bg-surface p-3.5 transition-colors hover:border-rule-strong"
     >
       <Art src={artFor('subjects', subject.slug)} size={52} />
