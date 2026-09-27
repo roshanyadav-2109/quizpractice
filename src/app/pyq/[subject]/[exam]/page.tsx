@@ -8,8 +8,6 @@ import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
 import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan, listJoin } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
-import { getVideoIndex } from '@/lib/seo/video-solutions'
-import { VideoSolutionList } from '@/components/seo/VideoSolutionList'
 import { absolute } from '@/lib/seo/site'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
@@ -58,7 +56,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.subjectExam(node.subject, exam.examType),
     description: `All ${count} IITM BS ${short} ${exam.examType.name} PYQs with solutions, ${span}: ${formatCount(
       exam.papers.reduce((sum, paper) => sum + paper.questionCount, 0),
-    )} questions with answer keys and video solutions, plus free ${exam.examType.name} mock tests.`,
+    )} questions with answer keys, plus free ${exam.examType.name} mock tests with a Google sign-in.`,
     path: exam.path,
   })
 }
@@ -85,7 +83,6 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
   const fact = examFact(exam.examType.slug)
 
   const papers = exam.papers
-  const videos = ((await getVideoIndex()).bySubject.get(subject.id) ?? []).filter((video) => video.paper.examType.id === exam.examType.id)
   const years = yearsOf(papers)
   const terms = [...new Map(papers.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].sort(
     (a, b) => a.order - b.order,
@@ -158,11 +155,11 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
         ]
       : []),
     {
-      q: `Where are the ${short} ${examName} solutions and video solutions?`,
+      q: `Where are the ${short} ${examName} solutions?`,
       a: (
         <>
-          Open any paper above: every question shows its solution from the official answer key, and each
-          question&rsquo;s own page plays its video solution under the answer.
+          Open any paper above and sign in with Google: every question shows its solution from the official answer
+          key, with its explanation where one has been written, in learning mode or after a mock test.
         </>
       ),
     },
@@ -171,8 +168,8 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
       a: (
         <>
           Yes. Every paper here opens as a timed mock test on a screen laid out like the real IITM exam — the same
-          question palette, Save &amp; Next and Mark for Review — and is marked the moment you submit. It is free; sign
-          in only if you want to keep your score.
+          question palette, Save &amp; Next and Mark for Review — and is marked the moment you submit. It is free with a
+          Google sign-in, which also keeps your score.
         </>
       ),
     },
@@ -219,8 +216,8 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
             <p>
               <strong className="font-medium text-ink">{plural(papers.length, `${short} ${examName} paper`)}</strong> from the
               IIT Madras BS {programLabel} programme, {yearSpan(years)} — {formatCount(questions)} questions, each with its
-              solution from the answer key and a video solution on its own page. {fact ? `${fact.scope} ` : ''}Read any
-              paper with solutions, or take it as a timed {examName} mock test.
+              solution from the answer key. {fact ? `${fact.scope} ` : ''}Every paper shows its first questions; sign in
+              with Google to read it whole with solutions, or take it as a timed {examName} mock test.
             </p>
           }
           statsTitle={`${short} ${examName} PYQ at a glance`}
@@ -327,16 +324,6 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
                 />
               </div>
             ) : null}
-          </section>
-        ) : null}
-
-        {videos.length > 0 ? (
-          <section aria-labelledby="video-solutions">
-            <SeoHeading id="video-solutions">
-              {short} {examName} video solutions
-            </SeoHeading>
-            <p>{plural(videos.length, 'question')} with a video solution, each playing on its own page:</p>
-            <VideoSolutionList videos={videos} />
           </section>
         ) : null}
 
