@@ -50,7 +50,7 @@ export default async function AboutPage() {
           type: 'AboutPage',
         })}
       />
-      <article className="mx-auto max-w-[46rem]">
+      <article className="mx-auto max-w-[46rem] [&_p_a]:underline [&_p_a]:underline-offset-2">
         <Breadcrumb crumbs={[{ label: 'Home', href: '/' }, { label: 'About' }]} />
         <h1 className="mt-3 text-[1.75rem] leading-tight font-medium text-ink sm:text-[2rem]">About {SITE.name}</h1>
 
