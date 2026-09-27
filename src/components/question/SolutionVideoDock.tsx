@@ -5,10 +5,14 @@ import { CornersIn, Play } from '@/components/ui/icons'
 import { parseYouTubeUrl, youTubeEmbedUrl, type YouTubeRef } from '@/lib/youtube/url'
 import { loadSolutions } from './LazySolutionPanel'
 
-/** The folded card. */
-const FOLDED_W = 400
-const FOLDED_H = 104
-const PAD = 12
+/** The question column's width (max-w-4xl): the white margin beside it is the card's home. */
+const COLUMN_W = 896
+/** The folded card: as wide as that margin, within these bounds. */
+const MIN_CARD_W = 112
+const MAX_CARD_W = 280
+const PAD = 8
+/** Where there is no margin (tablet, phone): a slip of this width over the corner. */
+const SLIP_W = 260
 /** The open frame's own strip above the player. */
 const HEADER_H = 48
 /** Room kept between the frame and the edges of the question pane. */
@@ -68,7 +72,15 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  const foldedWidth = Math.max(0, Math.min(FOLDED_W, room.width - GAP * 2))
+  // Folded, the card is exactly as wide as the white margin left of the
+  // question column: the frame on top, "Watch the solution" under it.
+  const margin = Math.floor((room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2)
+  const inMargin = margin >= MIN_CARD_W
+  const foldedWidth = inMargin ? Math.min(margin, MAX_CARD_W) : Math.max(0, Math.min(SLIP_W, room.width - GAP * 2))
+  const frameH = Math.round(((foldedWidth - PAD * 2) * 9) / 16)
+  // The words take two lines on a narrow card, one on a wide one.
+  const textH = foldedWidth - PAD * 2 < 170 ? 40 : 22
+  const foldedHeight = frameH + PAD * 3 + textH
   // As wide as the pane allows, and short enough that the player never runs
   // off the top: 16:9 under the strip.
   const openWidth = Math.max(
@@ -82,7 +94,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
   return (
     <div
       className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[14px] border border-white/10 text-white shadow-[0_22px_48px_-20px_rgba(12,10,9,0.7),0_2px_6px_-2px_rgba(12,10,9,0.25)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
-      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : FOLDED_H, background: SCREEN }}
+      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight, background: SCREEN }}
     >
       {open ? (
         <div className="flex h-full flex-col">
@@ -119,10 +131,13 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
           onClick={() => setOpen(true)}
           aria-expanded={false}
           aria-label="Watch the video solution"
-          className="group flex h-full w-full items-center gap-4 text-left"
-          style={{ padding: PAD }}
+          className="group flex h-full w-full flex-col text-left"
+          style={{ padding: PAD, gap: PAD }}
         >
-          <span className="relative aspect-video h-full shrink-0 overflow-hidden rounded-[10px] bg-black ring-1 ring-white/15">
+          <span
+            className="relative w-full shrink-0 overflow-hidden rounded-[8px] bg-black ring-1 ring-white/15"
+            style={{ height: frameH }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element -- YouTube's own thumbnail, not a site image */}
             <img
               src={thumbnail}
@@ -132,18 +147,13 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
               className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
             />
             <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-lg transition-transform duration-200 group-hover:scale-110">
-                <Play size={15} weight="fill" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink shadow-lg transition-transform duration-200 group-hover:scale-110">
+                <Play size={14} weight="fill" />
               </span>
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 flex-col items-start">
-            <span className="text-[0.6875rem] font-semibold tracking-[0.1em] text-white/55 uppercase">Video solution</span>
-            <span className="mt-0.5 text-card leading-tight font-semibold">Watch the solution</span>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-meta font-medium text-white transition-colors group-hover:bg-accent-hover">
-              <Play size={11} weight="fill" aria-hidden="true" />
-              Play here
-            </span>
+          <span className="flex items-center gap-1.5 px-0.5 text-ui leading-tight font-semibold text-white" style={{ minHeight: textH }}>
+            Watch the solution
           </span>
         </button>
       )}
