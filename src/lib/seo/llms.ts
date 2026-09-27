@@ -44,7 +44,7 @@ function header(data: Awaited<ReturnType<typeof summary>>): string[] {
     '',
     `Key facts (generated ${new Date().toISOString().slice(0, 10)}):`,
     `- ${formatCount(catalogue.papers.length)} papers, ${formatCount(questions)} questions, ${subjects.length} subjects; ${yearSpan(years)}.`,
-    `- By exam: ${exams.map(({ exam, count }) => `${exam.name} ${formatCount(count)}`).join(', ')}.`,
+    `- By exam: ${exams.map(({ exam, count }) => `${exam.name}: ${formatCount(count)} papers`).join(', ')}.`,
     ...(newest ? [`- Newest paper: ${shortName(newest.subject)} ${newest.examType.name}, sat ${sittingDate(newest.sessionDate)} (${termName(newest.term)}).`] : []),
     '- Free to read and to take as mock tests. A Google sign-in is only needed to save attempts and see analysis.',
     '- Papers come from the answer-key papers IIT Madras releases after each exam; questions, options and the correct options are read from those papers, not retyped. Questions are rendered as text, tables, code and equations rather than screenshots.',
@@ -79,7 +79,7 @@ export async function llmsTxt(): Promise<string> {
           line(
             name,
             subject.path,
-            `${subject.paperCount} papers — ${listOf(subject.exams.map((exam) => `${exam.examType.name} ${exam.papers.length}`))}, ${yearSpan(subject.years)}${
+            `${subject.paperCount} papers (${subject.exams.map((exam) => `${exam.examType.name}: ${exam.papers.length}`).join(', ')}), ${yearSpan(subject.years)}${
               subject.subject.code ? `; course code ${subject.subject.code}` : ''
             }`,
           ),
