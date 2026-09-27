@@ -5,7 +5,7 @@ import { titles } from '@/lib/seo/titles'
 import { getSeoCatalogue } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
-import { listOf, plural, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
+import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
 import { formatCount } from '@/lib/format'
@@ -68,8 +68,6 @@ export default async function SubjectHub({ params }: { params: Params }) {
   const terms = [...new Map(allPapers.flatMap((paper) => (paper.term ? [[paper.term.key, paper.term]] : []))).values()].sort(
     (a, b) => a.order - b.order,
   )
-  const first = terms[0]
-  const last = terms[terms.length - 1]
   const updated = allPapers.map((paper) => paper.updatedAt).filter(Boolean).sort().at(-1) ?? null
 
   const crumbs = [
@@ -79,7 +77,16 @@ export default async function SubjectHub({ params }: { params: Params }) {
     { label: `${short} PYQ` },
   ]
 
-  const examCounts = node.exams.map((exam) => `${exam.papers.length} ${exam.examType.name}`)
+  // "5 Quiz 1 papers and 3 End Term papers": the noun on every count, or a
+  // bare "5 Quiz 1" reads as a garbled number.
+  const examCounts = node.exams.map((exam) => plural(exam.papers.length, `${exam.examType.name} paper`))
+  // With one exam the list would only repeat the total: say which exam instead.
+  const onlyExam = node.exams.length === 1 ? node.exams[0].examType.name : null
+  const breakdown = onlyExam
+    ? node.paperCount === 1
+      ? `a ${onlyExam} paper`
+      : `all of them ${onlyExam} papers`
+    : listOf(examCounts)
   // Every other name the course goes by, so the page matches however it is typed.
   const aliases = [...new Set([subject.name, ...subject.aliases].map((name) => name.trim()))].filter(
     (name) => name && name.toLowerCase() !== short.toLowerCase(),
@@ -87,8 +94,7 @@ export default async function SubjectHub({ params }: { params: Params }) {
   const lead = (
     <p>
       Quiz Space has <strong className="font-medium text-ink">{plural(node.paperCount, `${short} previous year paper`)}</strong>{' '}
-      from the IIT Madras BS {programLabel} programme — {listOf(examCounts)} — from the{' '}
-      {first ? termName(first) : 'first term'} to the {last ? termName(last) : 'latest term'}. Every paper
+      from the IIT Madras BS {programLabel} programme — {breakdown} — sat {termRange(terms)}. Every paper
       shows its questions with the answer key, and each can be taken as a timed mock test on the real exam
       screen. Free, no sign-up needed.
       {aliases.length > 0 ? (
@@ -108,8 +114,12 @@ export default async function SubjectHub({ params }: { params: Params }) {
       q: `Where can I find ${short} previous year question papers?`,
       a: (
         <>
-          All {plural(node.paperCount, `${subject.name} paper`)} are on this page, grouped by exam:{' '}
-          {listOf(node.exams.map((exam) => `${exam.papers.length} ${exam.examType.name}`))}. Open any paper to read
+          {node.paperCount === 1
+            ? `The one ${subject.name} paper, ${breakdown}, is on this page.`
+            : `All ${plural(node.paperCount, `${subject.name} paper`)} are on this page${
+                onlyExam ? ` — ${breakdown}` : `, grouped by exam: ${breakdown}`
+              }.`}{' '}
+          Open any paper to read
           it with answers, or start it as a timed mock test.
         </>
       ),
