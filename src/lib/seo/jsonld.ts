@@ -265,6 +265,7 @@ export function questionPage({
   paperName,
   educationalLevel,
   modified,
+  video,
 }: {
   path: string
   crumbs: Crumb[]
@@ -274,6 +275,8 @@ export function questionPage({
   paperName: string
   educationalLevel: string
   modified: string | null
+  /** The question's video solution, which plays on this page. */
+  video?: QuestionVideo
 }): Json {
   const url = absolute(path)
   return {
@@ -294,10 +297,40 @@ export function questionPage({
         publisher: { '@id': IDS.organization },
         breadcrumb: { '@id': `${url}#breadcrumb` },
         hasPart: [questionEntity(question)],
+        ...(video ? { video: { '@id': `${url}#video` } } : {}),
       },
       { ...breadcrumbList(crumbs), '@id': `${url}#breadcrumb` },
+      ...(video
+        ? [
+            {
+              '@type': 'VideoObject',
+              '@id': `${url}#video`,
+              name: video.name,
+              description: video.description,
+              thumbnailUrl: [video.thumbnailUrl],
+              uploadDate: video.uploadDate,
+              ...(video.embedUrl ? { embedUrl: video.embedUrl } : {}),
+              contentUrl: video.contentUrl,
+              inLanguage: SITE.language,
+              isFamilyFriendly: true,
+              isAccessibleForFree: true,
+              // The page the video plays on — the question it solves.
+              mainEntityOfPage: url,
+              publisher: { '@id': IDS.organization },
+            },
+          ]
+        : []),
     ],
   }
+}
+
+export interface QuestionVideo {
+  name: string
+  description: string
+  thumbnailUrl: string
+  uploadDate: string
+  embedUrl: string | null
+  contentUrl: string
 }
 
 /** A plain page (about, a guide). */
