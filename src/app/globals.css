@@ -302,21 +302,3 @@ mark {
     scroll-behavior: auto !important;
   }
 }
-
-/* Print: the worksheet route drops the app chrome and lays the paper out for
-   A4. This is how "save as PDF" works without a PDF library. */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  html,
-  body {
-    background: #ffffff;
-    color: #000000;
-    font-size: 11pt;
-  }
-  .print-question {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-}

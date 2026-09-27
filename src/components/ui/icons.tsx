@@ -58,7 +58,6 @@ export {
   Notebook,
   SealCheck,
   PencilSimpleLine,
-  Printer,
   Play,
   Check,
   CheckCircle,
@@ -80,6 +79,40 @@ export {
   Image as ImageIcon,
   Database,
 
+  // teaching: the desk, the studio and the recorder
+  ChalkboardTeacher,
+  Microphone,
+  MicrophoneSlash,
+  // Aliased, because a bare `Record` would shadow TypeScript's Record<K, V>.
+  Record as RecordIcon,
+  Stop,
+  VideoCameraSlash,
+  UploadSimple,
+  DownloadSimple,
+  YoutubeLogo,
+  LinkSimple,
+  Copy,
+  Shuffle,
+
+  // the whiteboard
+  PencilSimple,
+  Highlighter,
+  Eraser,
+  HandPointing,
+  LineSegment,
+  Square,
+  Circle,
+  TextT,
+  Scribble,
+  Palette,
+  GridFour,
+  DotsNine,
+  PushPin,
+  ArrowUUpLeft,
+  ArrowUUpRight,
+  Broom,
+  FilePlus,
+
   // admin
   Upload,
   Tree,
@@ -91,5 +124,9 @@ export {
   EyeSlash,
   FloppyDisk,
   ArrowCounterClockwise,
+  ArrowsClockwise,
   Sparkle,
+  Users,
+  UserPlus,
+  UserMinus,
 } from '@phosphor-icons/react/ssr'

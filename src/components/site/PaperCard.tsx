@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Printer } from '@/components/ui/icons'
+import { ArrowRight } from '@/components/ui/icons'
 import { Badge, buttonClass } from '@/components/ui/primitives'
 
 export interface PaperCardProps {
@@ -53,14 +53,6 @@ export function PaperCard({ setId, title, tags, date, facts, best }: PaperCardPr
         )}
 
         <div className="flex items-center gap-2">
-          <Link
-            href={`/print/${setId}`}
-            title="Printable worksheet"
-            aria-label={`Printable worksheet: ${title}`}
-            className={buttonClass('outline', 'sm', 'w-9 !px-0')}
-          >
-            <Printer size={16} aria-hidden="true" />
-          </Link>
           <Link href={`/paper/${setId}`} className={buttonClass('primary', 'sm')}>
             {best ? 'Re-attempt' : 'Start paper'}
             <ArrowRight size={14} aria-hidden="true" />

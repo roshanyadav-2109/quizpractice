@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getCurrentProfile, isStaff } from '@/lib/supabase/server'
+import { getCurrentProfile, isStaff, isTeacher } from '@/lib/supabase/server'
 import {
   getBrowseTree,
   getCatalogueCounts,
@@ -90,7 +90,7 @@ export async function SiteHeader() {
   const items = examItem ? [...programItems, examItem] : programItems
 
   return (
-    <header className="no-print sticky top-0 z-40 border-b border-rule bg-surface">
+    <header className="sticky top-0 z-40 border-b border-rule bg-surface">
       <div className={`${SHELL} flex h-16 items-center gap-2`}>
         <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="QuizPractice home">
           <Mark />
@@ -114,6 +114,7 @@ export async function SiteHeader() {
               email={profile.email}
               avatarUrl={profile.avatarUrl}
               staff={isStaff(profile)}
+              teacher={isTeacher(profile)}
             />
           ) : (
             <SignInButton className="inline-flex h-10 items-center justify-center rounded-full bg-ink px-5 text-ui text-white transition-colors hover:bg-ink/85">

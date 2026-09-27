@@ -7,28 +7,39 @@ import type { ActionState } from '@/app/admin/actions'
  * A button that runs a server action and reports what happened. Used for the
  * one-click operations — publish, approve, dismiss — where a whole form would
  * be overkill.
+ *
+ * `prompt` asks for a short note first (a rejection reason, say) and hands it
+ * to the action; cancelling the prompt cancels the action.
  */
 export function ActionButton({
   action,
   label,
   pendingLabel,
   confirm,
+  prompt,
   tone = 'neutral',
 }: {
-  action: () => Promise<ActionState>
+  action: (note?: string) => Promise<ActionState>
   label: string
   pendingLabel?: string
   confirm?: string
+  prompt?: { message: string; defaultValue?: string }
   tone?: 'neutral' | 'primary' | 'positive' | 'danger'
 }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
   function run() {
+    let note: string | undefined
+    if (prompt) {
+      const answer = window.prompt(prompt.message, prompt.defaultValue ?? '')
+      if (answer === null) return
+      note = answer.trim() || undefined
+    }
     if (confirm && !window.confirm(confirm)) return
     setError(null)
     startTransition(async () => {
-      const result = await action()
+      const result = await (prompt ? action(note) : action())
       if (result?.error) setError(result.error)
     })
   }

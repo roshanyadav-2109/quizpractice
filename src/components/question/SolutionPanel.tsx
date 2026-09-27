@@ -1,6 +1,13 @@
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import type { SolutionRow } from '@/types/db'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { parseYouTubeUrl, youTubeEmbedUrl } from '@/lib/youtube/url'
+
+/** What the panel needs of an explanation: the student API's rows, or a full row in the admin review. */
+export type SolutionView = Pick<SolutionRow, 'id' | 'kind' | 'body' | 'video_url'> & {
+  author_name?: string | null
+  shared?: boolean
+}
 
 /**
  * The worked solution for one question, as the Solution sheet in the exam
@@ -8,8 +15,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
  *
  * Text first, then the video in its own card — and the card only exists when
  * there is a video. An empty "video coming soon" box would be a placeholder.
+ *
+ * One explanation serves every copy of a question across papers and years,
+ * so an explanation written on another copy says so, quietly: a teacher who
+ * mentions "this paper" was talking about that one.
  */
-export function SolutionPanel({ solutions }: { solutions: SolutionRow[] }) {
+export function SolutionPanel({ solutions }: { solutions: SolutionView[] }) {
   if (!solutions.length) {
     return (
       <EmptyState framed={false} size="sm" art="no-solution" title="No explanation yet">
@@ -22,7 +33,15 @@ export function SolutionPanel({ solutions }: { solutions: SolutionRow[] }) {
     <div className="flex flex-col gap-4">
       {solutions.map((solution) => (
         <section key={solution.id} aria-label={kindLabel(solution.kind)}>
-          <p className="label mb-2">{kindLabel(solution.kind)}</p>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <p className="label">{kindLabel(solution.kind)}</p>
+            {solution.author_name ? (
+              <p className="text-meta text-ink-muted">Explained by {solution.author_name}</p>
+            ) : null}
+          </div>
+          {solution.shared ? (
+            <p className="mb-2 text-meta text-ink-faint">Recorded for the same question in another paper.</p>
+          ) : null}
 
           {solution.body?.length ? (
             <div className="paper text-ink">
@@ -44,7 +63,7 @@ export function SolutionPanel({ solutions }: { solutions: SolutionRow[] }) {
   )
 }
 
-function kindLabel(kind: SolutionRow['kind']): string {
+function kindLabel(kind: SolutionView['kind']): string {
   switch (kind) {
     case 'official':
       return 'Explanation'
@@ -73,6 +92,8 @@ function VideoEmbed({ url }: { url: string }) {
     )
   }
 
+  // YouTube's player must get at least 200 x 200 px and nothing laid over
+  // it, so on a narrow phone the frame keeps its height rather than its ratio.
   return (
     <div className="bg-black">
       <iframe
@@ -82,7 +103,7 @@ function VideoEmbed({ url }: { url: string }) {
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
-        className="aspect-video w-full"
+        className="aspect-video min-h-[200px] w-full min-w-[200px]"
       />
     </div>
   )
@@ -90,6 +111,10 @@ function VideoEmbed({ url }: { url: string }) {
 
 /** Recognises the hosts we support; anything else falls back to a plain link. */
 function toEmbedUrl(raw: string): string | null {
+  // Every YouTube form — youtu.be, watch, shorts, live, embed — and its start time.
+  const youtube = parseYouTubeUrl(raw)
+  if (youtube) return youTubeEmbedUrl(youtube)
+
   let url: URL
   try {
     url = new URL(raw)
@@ -98,22 +123,6 @@ function toEmbedUrl(raw: string): string | null {
   }
 
   const host = url.hostname.replace(/^www\./, '')
-
-  if (host === 'youtu.be') {
-    const id = url.pathname.slice(1)
-    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null
-  }
-
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
-    if (url.pathname === '/watch') {
-      const id = url.searchParams.get('v')
-      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null
-    }
-    if (url.pathname.startsWith('/embed/')) {
-      return `https://www.youtube-nocookie.com${url.pathname}`
-    }
-    return null
-  }
 
   if (host === 'vimeo.com') {
     const id = url.pathname.split('/').filter(Boolean)[0]

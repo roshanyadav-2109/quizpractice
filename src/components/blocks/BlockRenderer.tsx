@@ -8,6 +8,7 @@ import { ErBlockView } from './ErBlockView'
 import { GraphBlockView } from './GraphBlockView'
 import { ChartBlockView } from './ChartBlockView'
 import { ImageBlockView } from './ImageBlockView'
+import { SketchBlockView } from './SketchBlockView'
 
 export type BlockContext = 'question' | 'option' | 'solution' | 'compact'
 
@@ -15,7 +16,8 @@ export type BlockContext = 'question' | 'option' | 'solution' | 'compact'
  * Draws a question body. Every block type is rendered from its structured data,
  * so tables stay selectable, equations stay sharp at any zoom, code keeps its
  * highlighting and everything is correct in both themes. Only `image` blocks
- * are pictures, and those carry required alt text.
+ * are pictures, and those carry required alt text; a `sketch` (a teacher's
+ * board page) is redrawn from its strokes.
  */
 export function BlockRenderer({
   blocks,
@@ -55,6 +57,8 @@ function BlockView({ block, context }: { block: Block; context: BlockContext }) 
       return <ChartBlockView block={block} />
     case 'image':
       return <ImageBlockView block={block} context={context} />
+    case 'sketch':
+      return <SketchBlockView block={block} context={context} />
     default:
       return null
   }

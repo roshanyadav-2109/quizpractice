@@ -5,16 +5,19 @@ import {
   type Block,
   type CloudinaryRef,
   type ImportPaper,
+  type ImportQuestion,
 } from '@/lib/blocks/schema'
 import { buildPublicId } from '@/lib/cloudinary'
+import { canonicalYouTubeUrl, parseYouTubeUrl } from '@/lib/youtube/url'
 
 /**
  * Loads one question paper from JSON into the database.
  *
  * Shared by the CLI (`npm run paper:import`) and the admin importer so both
  * behave identically. Re-importing the same subject + exam + date + set
- * replaces that set's questions rather than duplicating them, which is what
- * makes a bulk load safe to re-run after a fix.
+ * updates that set's questions in place rather than duplicating them, which
+ * is what makes a bulk load safe to re-run after a fix — and keeps every
+ * question's explanations, attempts and discussions attached through it.
  */
 
 export interface ImportOptions {
@@ -143,10 +146,7 @@ export async function importPaper(
   let setId = (existingSet as { id?: string } | null)?.id
   const replacedExisting = Boolean(setId)
 
-  if (setId) {
-    // Replace, don't append. Options and solutions cascade from questions.
-    await supabase.from('questions').delete().eq('set_id', setId)
-  } else {
+  if (!setId) {
     const { data, error } = await supabase
       .from('question_sets')
       .insert({ paper_id: paperId, set_code: setCode })
@@ -160,73 +160,101 @@ export async function importPaper(
   }
 
   // ---- questions ---------------------------------------------------------
+  //
+  // A re-import updates the set in place rather than deleting and inserting
+  // it again. Question and option ids stay the same, so explanations,
+  // attempts (which store the chosen option ids), discussions and reports all
+  // survive a fix to the JSON. Each incoming question is matched to an
+  // existing one by identical content first — which follows a question the
+  // new file renumbers — then by number, which is a correction in place. The
+  // database re-checks every changed question's fingerprint and sends its
+  // live explanations back to review if the question no longer matches them
+  // (saveSolutions puts the file's own solution straight back).
+  const numbers = new Set<number>()
+  for (const question of paper.questions) {
+    if (numbers.has(question.number)) {
+      throw new ImportError(`Question ${question.number} appears twice in the file.`)
+    }
+    numbers.add(question.number)
+  }
+
+  const existing = replacedExisting ? await loadSetQuestions(supabase, setId) : []
+  const plan = matchQuestions(paper.questions, existing)
+
+  // Removed questions go first, freeing their numbers. Their explanations are
+  // kept, unanchored, and re-attach to any question with the same fingerprint.
+  const removed = existing.filter((row) => !plan.matched.has(row.id))
+  if (removed.length) {
+    const { error } = await supabase.from('questions').delete().in('id', removed.map((row) => row.id))
+    if (error) throw new ImportError(`Could not remove old questions: ${error.message}`)
+    const list = removed.map((row) => row.number).join(', ')
+    warnings.push(
+      removed.length === 1
+        ? `Removed question ${list}, which is not in the new file. Its attempts and discussions went with it; its explanations were kept.`
+        : `Removed questions ${list}, which are not in the new file. Their attempts and discussions went with them; their explanations were kept.`,
+    )
+  }
+
+  // Renumbered questions step aside to unused negative numbers first, so two
+  // that swap places never collide on (set_id, number).
+  const moving = [...plan.pairs].filter(([question, row]) => question.number !== row.number)
+  for (const [index, [, row]] of moving.entries()) {
+    const { error } = await supabase.from('questions').update({ number: -1 - index }).eq('id', row.id)
+    if (error) throw new ImportError(`Could not renumber question ${row.number}: ${error.message}`)
+  }
+
   let optionCount = 0
-  let solutionCount = 0
+  const questionIds = new Map<number, string>()
 
   for (const question of paper.questions) {
-    const { data: inserted, error } = await supabase
-      .from('questions')
-      .insert({
-        set_id: setId,
-        number: question.number,
-        type: question.type,
-        body: question.body,
-        schema_version: paper.schema_version ?? SCHEMA_VERSION,
-        marks: question.marks ?? 1,
-        negative_marks: question.negative_marks ?? 0,
-        correct_answer:
-          question.correct_answer === undefined ? null : String(question.correct_answer),
-        answer_tolerance: question.answer_tolerance ?? null,
-        topics: question.topics ?? [],
-        difficulty: question.difficulty ?? null,
-        status: 'published',
-      })
-      .select('id')
-      .single()
+    const fields = questionFields(question, paper.schema_version ?? SCHEMA_VERSION)
+    const row = plan.pairs.get(question)
+    let questionId: string
 
-    if (error || !inserted) {
-      throw new ImportError(
-        `Could not insert question ${question.number}: ${error?.message ?? 'unknown error'}`,
-      )
-    }
+    if (row) {
+      questionId = row.id
+      const changes = changedFields(fields, row, moving.some(([, moved]) => moved.id === row.id))
+      if (Object.keys(changes).length) {
+        const { error } = await supabase.from('questions').update(changes).eq('id', row.id)
+        if (error) throw new ImportError(`Could not update question ${question.number}: ${error.message}`)
+      }
+      await syncOptions(supabase, question, row)
+    } else {
+      const { data: inserted, error } = await supabase
+        .from('questions')
+        .insert({ set_id: setId, ...fields, status: 'published' })
+        .select('id')
+        .single()
 
-    const questionId = inserted.id as string
-
-    if (question.options?.length) {
-      const rows = question.options.map((option, index) => ({
-        question_id: questionId,
-        label: option.label,
-        content: option.content,
-        is_correct: option.is_correct ?? false,
-        sort_order: index,
-      }))
-      const { error: optionError } = await supabase.from('question_options').insert(rows)
-      if (optionError) {
+      if (error || !inserted) {
         throw new ImportError(
-          `Could not insert options for question ${question.number}: ${optionError.message}`,
+          `Could not insert question ${question.number}: ${error?.message ?? 'unknown error'}`,
         )
       }
-      optionCount += rows.length
+      questionId = inserted.id as string
+
+      if (question.options?.length) {
+        const rows = question.options.map((option, index) => ({
+          question_id: questionId,
+          label: option.label,
+          content: option.content,
+          is_correct: option.is_correct ?? false,
+          sort_order: index,
+        }))
+        const { error: optionError } = await supabase.from('question_options').insert(rows)
+        if (optionError) {
+          throw new ImportError(
+            `Could not insert options for question ${question.number}: ${optionError.message}`,
+          )
+        }
+      }
     }
 
-    if (question.solution && (question.solution.body?.length || question.solution.video_url)) {
-      const { error: solutionError } = await supabase.from('solutions').insert({
-        question_id: questionId,
-        kind: question.solution.kind ?? 'authored',
-        body: question.solution.body ?? [],
-        video_url: question.solution.video_url ?? null,
-        author_id: options.createdBy ?? null,
-        status: 'approved',
-      })
-      if (solutionError) {
-        warnings.push(
-          `Question ${question.number}: solution not saved (${solutionError.message}).`,
-        )
-      } else {
-        solutionCount += 1
-      }
-    }
+    optionCount += question.options?.length ?? 0
+    questionIds.set(question.number, questionId)
   }
+
+  const solutionCount = await saveSolutions(supabase, paper, questionIds, options.createdBy ?? null, warnings)
 
   // ---- media registry ----------------------------------------------------
   const referenced = collectRefs(paper)
@@ -257,6 +285,323 @@ export async function importPaper(
     replacedExisting,
     warnings,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Re-import: matching incoming questions to the ones already in the set
+// ---------------------------------------------------------------------------
+
+interface ExistingOption {
+  id: string
+  label: string
+  content: unknown
+  is_correct: boolean
+  sort_order: number
+}
+
+interface ExistingQuestion {
+  id: string
+  number: number
+  type: string
+  body: unknown
+  schema_version: number
+  marks: number
+  negative_marks: number
+  correct_answer: string | null
+  answer_tolerance: number | null
+  topics: string[]
+  difficulty: string | null
+  question_options: ExistingOption[]
+}
+
+async function loadSetQuestions(supabase: SupabaseClient, setId: string): Promise<ExistingQuestion[]> {
+  const { data, error } = await supabase
+    .from('questions')
+    .select(
+      'id, number, type, body, schema_version, marks, negative_marks, correct_answer, answer_tolerance, topics, difficulty, ' +
+        'question_options(id, label, content, is_correct, sort_order)',
+    )
+    .eq('set_id', setId)
+  if (error) throw new ImportError(`Could not read the existing set: ${error.message}`)
+
+  return ((data ?? []) as unknown as ExistingQuestion[]).map((row) => ({
+    ...row,
+    question_options: [...(row.question_options ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+  }))
+}
+
+/**
+ * Pairs each incoming question with the existing row it replaces:
+ *   1. same content, same number   — untouched
+ *   2. same content, other number  — the file renumbered it
+ *   3. same number, other content  — a correction in place
+ * Anything left is inserted (incoming) or removed (existing).
+ */
+function matchQuestions(incoming: ImportQuestion[], existing: ExistingQuestion[]) {
+  const pairs = new Map<ImportQuestion, ExistingQuestion>()
+  const matched = new Set<string>()
+
+  const existingKey = new Map(
+    existing.map((row) => [
+      row.id,
+      stableStringify({
+        type: row.type,
+        body: row.body,
+        answer: row.correct_answer,
+        options: row.question_options.map((option) => [option.content, option.is_correct]),
+      }),
+    ]),
+  )
+  const incomingKey = new Map(
+    incoming.map((question) => [
+      question,
+      stableStringify({
+        type: question.type,
+        body: question.body,
+        answer: question.correct_answer === undefined ? null : String(question.correct_answer),
+        options: (question.options ?? []).map((option) => [option.content, option.is_correct ?? false]),
+      }),
+    ]),
+  )
+
+  const passes: Array<(question: ImportQuestion, row: ExistingQuestion) => boolean> = [
+    (question, row) => row.number === question.number && existingKey.get(row.id) === incomingKey.get(question),
+    (question, row) => existingKey.get(row.id) === incomingKey.get(question),
+    (question, row) => row.number === question.number,
+  ]
+  for (const fits of passes) {
+    for (const question of incoming) {
+      if (pairs.has(question)) continue
+      const row = existing.find((candidate) => !matched.has(candidate.id) && fits(question, candidate))
+      if (row) {
+        pairs.set(question, row)
+        matched.add(row.id)
+      }
+    }
+  }
+
+  return { pairs, matched }
+}
+
+/** The question columns an import sets. */
+function questionFields(question: ImportQuestion, schemaVersion: number) {
+  return {
+    number: question.number,
+    type: question.type,
+    body: question.body,
+    schema_version: schemaVersion,
+    marks: question.marks ?? 1,
+    negative_marks: question.negative_marks ?? 0,
+    correct_answer: question.correct_answer === undefined ? null : String(question.correct_answer),
+    answer_tolerance: question.answer_tolerance ?? null,
+    topics: question.topics ?? [],
+    difficulty: question.difficulty ?? null,
+  }
+}
+
+/**
+ * Only the columns that differ, so an unchanged question is not written at
+ * all: no trigger runs, no fingerprint is recomputed, updated_at stays put.
+ * A renumbered row always gets its number back from the temporary one.
+ */
+function changedFields(
+  fields: ReturnType<typeof questionFields>,
+  row: ExistingQuestion,
+  renumbered: boolean,
+): Partial<ReturnType<typeof questionFields>> {
+  const changes: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(fields)) {
+    const current = (row as unknown as Record<string, unknown>)[key]
+    if (stableStringify(value ?? null) !== stableStringify(current ?? null)) changes[key] = value
+  }
+  if (renumbered) changes.number = fields.number
+  return changes as Partial<ReturnType<typeof questionFields>>
+}
+
+/**
+ * Brings a kept question's options in line with the file, keeping option ids:
+ * attempts store the ids a student chose. Options pair up by identical
+ * content, then by label, then by position, so an option the file merely
+ * reorders or relabels keeps its id and its content — a student's recorded
+ * choice still shows what they chose, and no content passes through another
+ * option on the way, which would briefly change the question's fingerprint.
+ * Only real differences are written.
+ */
+async function syncOptions(supabase: SupabaseClient, question: ImportQuestion, row: ExistingQuestion) {
+  const incoming = question.options ?? []
+  const existing = row.question_options
+  const used = new Set<string>()
+  const pairedWith: (ExistingOption | undefined)[] = incoming.map(() => undefined)
+  const label = (value: string) => value.trim().toLowerCase()
+
+  const passes: Array<(option: (typeof incoming)[number], index: number, candidate: ExistingOption) => boolean> = [
+    (option, _, candidate) => stableStringify(candidate.content) === stableStringify(option.content),
+    (option, _, candidate) => label(candidate.label) === label(option.label),
+    (_, index, candidate) => candidate.sort_order === index,
+  ]
+  for (const fits of passes) {
+    incoming.forEach((option, index) => {
+      if (pairedWith[index]) return
+      const hit = existing.find((candidate) => !used.has(candidate.id) && fits(option, index, candidate))
+      if (hit) {
+        pairedWith[index] = hit
+        used.add(hit.id)
+      }
+    })
+  }
+
+  const gone = existing.filter((option) => !used.has(option.id)).map((option) => option.id)
+  if (gone.length) {
+    const { error } = await supabase.from('question_options').delete().in('id', gone)
+    if (error) throw new ImportError(`Could not update options for question ${question.number}: ${error.message}`)
+  }
+
+  const added: Record<string, unknown>[] = []
+  for (const [index, option] of incoming.entries()) {
+    const wanted = {
+      label: option.label,
+      content: option.content,
+      is_correct: option.is_correct ?? false,
+      sort_order: index,
+    }
+    const current = pairedWith[index]
+    if (!current) {
+      added.push({ question_id: row.id, ...wanted })
+      continue
+    }
+    const changes = Object.fromEntries(
+      Object.entries(wanted).filter(
+        ([key, value]) => stableStringify(value) !== stableStringify((current as unknown as Record<string, unknown>)[key]),
+      ),
+    )
+    if (Object.keys(changes).length) {
+      const { error } = await supabase.from('question_options').update(changes).eq('id', current.id)
+      if (error) throw new ImportError(`Could not update options for question ${question.number}: ${error.message}`)
+    }
+  }
+
+  if (added.length) {
+    const { error } = await supabase.from('question_options').insert(added)
+    if (error) throw new ImportError(`Could not insert options for question ${question.number}: ${error.message}`)
+  }
+}
+
+/**
+ * Saves the file's own solutions. One already on the question with the same
+ * kind, body and video is kept, so re-importing never stacks copies; a
+ * changed one replaces the file's earlier version. Either stays live even
+ * when this import changed its question. Video links must be YouTube, stored
+ * in their canonical form.
+ */
+async function saveSolutions(
+  supabase: SupabaseClient,
+  paper: ImportPaper,
+  questionIds: Map<number, string>,
+  createdBy: string | null,
+  warnings: string[],
+): Promise<number> {
+  const wanted = paper.questions.filter(
+    (question) => question.solution && (question.solution.body?.length || question.solution.video_url),
+  )
+  if (!wanted.length) return 0
+
+  const ids = wanted.map((question) => questionIds.get(question.number)).filter((id): id is string => Boolean(id))
+  const { data, error } = await supabase
+    .from('solutions')
+    .select('id, question_id, kind, body, video_url, author_id, status')
+    .in('question_id', ids)
+  if (error) {
+    warnings.push(`Solutions not saved: ${error.message}`)
+    return 0
+  }
+  const present = (data ?? []) as {
+    id: string
+    question_id: string
+    kind: string
+    body: unknown
+    video_url: string | null
+    author_id: string | null
+    status: string
+  }[]
+
+  // Changing a question sends the explanations written for it back to review
+  // (0025). The file's own solution came in with that change, so the file
+  // vouches for it and it goes live again. A teacher's authored explanation
+  // is not the file's to approve, and a rejected one stays down: that was an
+  // admin's decision.
+  const republish = (row: (typeof present)[number]) =>
+    row.status === 'pending' && (row.kind !== 'authored' || row.author_id === createdBy)
+      ? { status: 'approved', review_note: null }
+      : {}
+
+  let count = 0
+  for (const question of wanted) {
+    const questionId = questionIds.get(question.number)
+    const solution = question.solution
+    if (!questionId || !solution) continue
+
+    let videoUrl: string | null = null
+    if (solution.video_url) {
+      const ref = parseYouTubeUrl(solution.video_url)
+      if (ref) {
+        videoUrl = canonicalYouTubeUrl(ref)
+      } else {
+        warnings.push(`Question ${question.number}: the solution video is not a YouTube link and was left out.`)
+      }
+    }
+    const body = solution.body ?? []
+    if (!body.length && !videoUrl) continue
+
+    const kind = solution.kind ?? 'authored'
+    const sameKind = present.filter((row) => row.question_id === questionId && row.kind === kind)
+    const identical = sameKind.find(
+      (row) => stableStringify(row.body) === stableStringify(body) && row.video_url === videoUrl,
+    )
+    if (identical) {
+      const restore = republish(identical)
+      if ('status' in restore) {
+        const { error: restoreError } = await supabase.from('solutions').update(restore).eq('id', identical.id)
+        if (restoreError) {
+          warnings.push(`Question ${question.number}: solution left in review (${restoreError.message}).`)
+        }
+      }
+      count += 1
+      continue
+    }
+
+    const earlier = sameKind.find((row) => row.author_id === createdBy)
+    const { error: saveError } = earlier
+      ? await supabase
+          .from('solutions')
+          .update({ body, video_url: videoUrl, ...republish(earlier) })
+          .eq('id', earlier.id)
+      : await supabase.from('solutions').insert({
+          question_id: questionId,
+          kind,
+          body,
+          video_url: videoUrl,
+          author_id: createdBy,
+          status: 'approved',
+        })
+    if (saveError) {
+      warnings.push(`Question ${question.number}: solution not saved (${saveError.message}).`)
+    } else {
+      count += 1
+    }
+  }
+  return count
+}
+
+/** JSON with object keys sorted, so equal content compares equal whatever order it was written in. */
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(',')}}`
+  }
+  return JSON.stringify(value ?? null)
 }
 
 // ---------------------------------------------------------------------------

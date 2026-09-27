@@ -3,11 +3,31 @@ import { createServerClient } from '@supabase/ssr'
 import { publicEnv } from '@/lib/env'
 
 /**
+ * The two gated areas and who may enter each: /admin for staff (admins and
+ * contributors), /teach for teachers (teachers and admins — a contributor
+ * edits papers and is not a teacher).
+ */
+const AREAS: Record<'admin' | 'teach', readonly string[]> = {
+  admin: ['admin', 'contributor'],
+  teach: ['teacher', 'admin'],
+}
+
+function areaOf(pathname: string): keyof typeof AREAS | null {
+  if (pathname.startsWith('/admin')) return 'admin'
+  if (pathname === '/teach' || pathname.startsWith('/teach/')) return 'teach'
+  return null
+}
+
+/**
  * Runs before every matched request.
  *
  * Two jobs: keep the Supabase session cookie fresh (server components cannot
  * write cookies, so without this a session would silently expire mid-visit),
- * and bounce anonymous visitors away from /admin before any admin code runs.
+ * and bounce visitors away from /admin and /teach before any of their code
+ * runs: signed out, to the sign-in dialog; signed in without the role, home.
+ *
+ * The teaching API (/api/teach) is not gated here: its routes answer 401 or
+ * 403 as JSON themselves, which a script can read and a redirect is not.
  *
  * Next 16 renamed `middleware` to `proxy`; the named export must be `proxy`.
  */
@@ -42,27 +62,43 @@ export async function proxy(request: NextRequest) {
   const { data: auth } = await supabase.auth.getClaims()
   const userId = auth?.claims?.sub ?? null
 
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  // A redirect is a new response: carry over whatever cookie getClaims() just
+  // refreshed (or cleared), or the browser keeps the spent token and the next
+  // request has to refresh it all over again.
+  const redirectTo = (url: URL) => {
+    const redirect = NextResponse.redirect(url)
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie)
+    return redirect
+  }
+
+  const area = areaOf(request.nextUrl.pathname)
+  if (area) {
     if (!userId) {
-      // Sign-in is a dialog: land on the home page with it open.
+      // Sign-in is a dialog: land on the home page with it open, and come
+      // back to the same page — a teacher's queue keeps its filters.
       const loginUrl = new URL('/', request.url)
       loginUrl.searchParams.set('login', '1')
-      loginUrl.searchParams.set('next', request.nextUrl.pathname)
-      return NextResponse.redirect(loginUrl)
+      loginUrl.searchParams.set(
+        'next',
+        area === 'teach' ? request.nextUrl.pathname + request.nextUrl.search : request.nextUrl.pathname,
+      )
+      return redirectTo(loginUrl)
     }
 
-    // The role check itself is enforced again in the admin layout and by RLS.
-    // This is only here to avoid rendering the admin shell to a signed-in
-    // student who typed the URL.
+    // The role check itself is enforced again in each area's layout and pages,
+    // and by RLS. This is only here to avoid rendering the shell to a signed-in
+    // student who typed the URL. The role is read fresh on every request, not
+    // from the profile cache, so a teacher an admin has just demoted is turned
+    // away at once.
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .maybeSingle()
 
-    const role = (profile as { role?: string } | null)?.role
-    if (role !== 'admin' && role !== 'contributor') {
-      return NextResponse.redirect(new URL('/', request.url))
+    const role = (profile as { role?: string } | null)?.role ?? ''
+    if (!AREAS[area].includes(role)) {
+      return redirectTo(new URL('/', request.url))
     }
   }
 
@@ -77,8 +113,11 @@ export const config = {
      *
      * Also not the explanations API, which needs no session and is cached by
      * the CDN — a refreshed session cookie on it would stop that — nor the
-     * cache-refresh endpoint, which scripts call with a secret.
+     * cache-refresh endpoint, which scripts call with a secret. Nor the video
+     * upload routes: the proxy buffers a request body before passing it on,
+     * so every 4 MiB chunk would be held twice, and those routes check the
+     * session themselves (a route handler can refresh its own cookie).
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/solutions|api/revalidate|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/solutions|api/revalidate|api/teach/uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

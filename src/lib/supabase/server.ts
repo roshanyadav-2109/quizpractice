@@ -2,6 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { supabaseAnonKey, supabaseUrl } from '@/lib/env'
 import type { UserRole } from '@/types/db'
 
@@ -130,4 +131,64 @@ export class NotStaffError extends Error {
     super('This action requires a contributor or admin account.')
     this.name = 'NotStaffError'
   }
+}
+
+/**
+ * Gate for the teaching server actions and route handlers: a teacher or an
+ * admin. A contributor edits papers and is not a teacher. Which subjects the
+ * teacher may touch is the database's call (can_teach_question), not this one.
+ */
+export async function requireTeacher(): Promise<CurrentProfile> {
+  const profile = await getCurrentProfile()
+  if (!isTeacher(profile)) {
+    throw new NotTeacherError()
+  }
+  return profile as CurrentProfile
+}
+
+export class NotTeacherError extends Error {
+  constructor() {
+    super('This needs a teacher account.')
+    this.name = 'NotTeacherError'
+  }
+}
+
+/** Gate for role, trust and YouTube management: admins only. */
+export async function requireAdmin(): Promise<CurrentProfile> {
+  const profile = await getCurrentProfile()
+  if (profile?.role !== 'admin') {
+    throw new NotAdminError()
+  }
+  return profile
+}
+
+export class NotAdminError extends Error {
+  constructor() {
+    super('This needs an admin account.')
+    this.name = 'NotAdminError'
+  }
+}
+
+/**
+ * The first line of every teacher page: a visitor is sent to sign in and
+ * brought back to `nextPath`; a signed-in student or contributor goes home.
+ */
+export async function teacherPageGate(nextPath: string): Promise<CurrentProfile> {
+  const profile = await getCurrentProfile()
+  if (!profile) {
+    // Only a path on this site: never let `next` carry the visitor elsewhere.
+    const next = /^\/(?![/\\])/.test(nextPath) ? nextPath : '/teach'
+    redirect(`/?login=1&next=${encodeURIComponent(next)}`)
+  }
+  if (!isTeacher(profile)) redirect('/')
+  return profile
+}
+
+/**
+ * Drops this server instance's held copy of a profile, after an admin changes
+ * that user's role. Other instances catch up within PROFILE_TTL_MS; the
+ * database enforces the new role at once either way.
+ */
+export function forgetProfile(userId: string): void {
+  profiles.delete(userId)
 }

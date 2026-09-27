@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 
 /**
  * Browsing by exam lives on /papers now. This route stays so older links —
- * including ones this app printed itself — keep landing somewhere useful.
+ * including ones the app itself used to hand out — keep landing somewhere
+ * useful.
  */
 export default async function BrowseRedirect({
   searchParams,

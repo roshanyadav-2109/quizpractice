@@ -23,7 +23,7 @@ interface ReportRecord {
     body: unknown
     set_id: string
   } | null
-  profiles: { display_name: string | null } | null
+  reporter: { display_name: string | null } | null
 }
 
 const KIND_LABELS: Record<ReportKind, string> = {
@@ -44,14 +44,17 @@ export default async function AdminReportsPage({
   let query = supabase
     .from('reports')
     .select(
-      'id, kind, description, status, created_at, question_id, questions(id, number, body, set_id), profiles(display_name)',
+      // reports reaches profiles twice (reporter, resolver): name the key, or
+      // the embed is refused and the queue silently comes back empty.
+      'id, kind, description, status, created_at, question_id, questions(id, number, body, set_id), reporter:profiles!reports_user_id_fkey(display_name)',
     )
     .order('created_at', { ascending: false })
     .limit(200)
 
   if (status !== 'all') query = query.eq('status', status)
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) console.error(`admin reports: ${error.message}`)
   const reports = (data ?? []) as unknown as ReportRecord[]
 
   return (
@@ -78,7 +81,11 @@ export default async function AdminReportsPage({
         </div>
       </div>
 
-      {reports.length === 0 ? (
+      {error ? (
+        <p className="rounded-md bg-incorrect-soft px-3 py-2 text-xs text-incorrect">
+          The reports could not be loaded: {error.message}
+        </p>
+      ) : reports.length === 0 ? (
         <EmptyState size="sm" art="all-clear" title="Nothing in this queue">
           All caught up.
         </EmptyState>
@@ -93,7 +100,7 @@ export default async function AdminReportsPage({
                     {report.description}
                   </p>
                   <p className="mt-2 text-xs text-ink-faint">
-                    {report.profiles?.display_name ?? 'Anonymous'} ·{' '}
+                    {report.reporter?.display_name ?? 'Anonymous'} ·{' '}
                     {new Date(report.created_at).toLocaleDateString('en-GB')}
                   </p>
                 </div>

@@ -205,6 +205,81 @@ export const imageBlockSchema = z.object({
   caption: z.string().optional(),
 })
 
+// ---------------------------------------------------------------------------
+// Sketch: a whiteboard page, kept as vectors
+// ---------------------------------------------------------------------------
+
+/** One stored whiteboard page may be this large, as JSON. */
+export const SKETCH_MAX_BYTES = 150_000
+/**
+ * A whole written explanation may be this large, as JSON. The table (0024)
+ * allows half as much again, the most jsonb's own spacing can add.
+ */
+export const EXPLANATION_MAX_BYTES = 300_000
+
+/** Bytes of a value as compact JSON, the form the app sends to the database. */
+export function jsonByteLength(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length
+}
+
+const boardCoordinate = z.number().int().min(-10_000).max(10_000)
+
+/**
+ * One mark on the board. Coordinates are whole board units (the board is
+ * 1280 × 720). A pen or highlighter stroke is x, y, pressure triplets, with
+ * pressure 0–100; a line, arrow, rectangle or ellipse is its two corners.
+ */
+export const sketchStrokeSchema = z
+  .object({
+    tool: z.enum(['pen', 'highlighter', 'line', 'arrow', 'rect', 'ellipse']),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #rrggbb colour.'),
+    size: z.number().positive().max(200),
+    pts: z.array(boardCoordinate).max(30_000),
+  })
+  .superRefine((stroke, ctx) => {
+    const freehand = stroke.tool === 'pen' || stroke.tool === 'highlighter'
+    if (freehand) {
+      if (stroke.pts.length < 3 || stroke.pts.length % 3 !== 0) {
+        ctx.addIssue({ code: 'custom', path: ['pts'], message: 'A pen stroke is x, y, pressure triplets.' })
+      } else if (stroke.pts.some((value, index) => index % 3 === 2 && (value < 0 || value > 100))) {
+        ctx.addIssue({ code: 'custom', path: ['pts'], message: 'Pressure runs from 0 to 100.' })
+      }
+    } else if (stroke.pts.length !== 4) {
+      ctx.addIssue({ code: 'custom', path: ['pts'], message: 'A shape is two corners: x1, y1, x2, y2.' })
+    }
+  })
+
+export const sketchBlockSchema = z
+  .object({
+    type: z.literal('sketch'),
+    w: z.number().int().positive().max(10_000),
+    h: z.number().int().positive().max(10_000),
+    bg: z.enum(['plain', 'grid', 'dots']).optional(),
+    strokes: z.array(sketchStrokeSchema).max(1_500),
+    /**
+     * Question figures pinned to the board. Only images already in the bank:
+     * a sketch never uploads anything, so a pending upload is refused.
+     */
+    figures: z
+      .array(
+        z.object({
+          image: cloudinaryRefSchema.refine((ref) => ref.source_url === undefined, 'Only existing images can be pinned.'),
+          x: z.number(),
+          y: z.number(),
+          w: z.number().positive(),
+          h: z.number().positive(),
+        }),
+      )
+      .max(4)
+      .optional(),
+    /** What the drawing shows, for screen readers and search. */
+    alt: z.string().max(2_000),
+    caption: z.string().max(2_000).optional(),
+  })
+  .refine((sketch) => jsonByteLength(sketch) <= SKETCH_MAX_BYTES, {
+    message: `A board page must be under ${SKETCH_MAX_BYTES / 1000} kB. Clear some strokes or split it across pages.`,
+  })
+
 export const blockSchema = z.discriminatedUnion('type', [
   textBlockSchema,
   mathBlockSchema,
@@ -215,9 +290,30 @@ export const blockSchema = z.discriminatedUnion('type', [
   graphBlockSchema,
   chartBlockSchema,
   imageBlockSchema,
+  sketchBlockSchema,
 ])
 
 export const blocksSchema = z.array(blockSchema)
+
+/**
+ * What a teacher's written explanation may hold: prose with $maths$,
+ * equations, code, tables and board pages. No image uploads — a figure goes
+ * on the board, and the board is stored as vectors.
+ */
+export const explanationBlocksSchema = z
+  .array(
+    z.discriminatedUnion('type', [
+      textBlockSchema,
+      mathBlockSchema,
+      codeBlockSchema,
+      tableBlockSchema,
+      sketchBlockSchema,
+    ]),
+  )
+  .max(200)
+  .refine((blocks) => jsonByteLength(blocks) <= EXPLANATION_MAX_BYTES, {
+    message: `An explanation must be under ${EXPLANATION_MAX_BYTES / 1000} kB. Remove a board page or two.`,
+  })
 
 export type Block = z.infer<typeof blockSchema>
 export type BlockType = Block['type']
@@ -230,6 +326,9 @@ export type ErBlock = z.infer<typeof erBlockSchema>
 export type GraphBlock = z.infer<typeof graphBlockSchema>
 export type ChartBlock = z.infer<typeof chartBlockSchema>
 export type ImageBlock = z.infer<typeof imageBlockSchema>
+export type SketchBlock = z.infer<typeof sketchBlockSchema>
+export type SketchStroke = z.infer<typeof sketchStrokeSchema>
+export type ExplanationBlock = z.infer<typeof explanationBlocksSchema>[number]
 
 export const BLOCK_TYPES: BlockType[] = [
   'text',
@@ -241,6 +340,7 @@ export const BLOCK_TYPES: BlockType[] = [
   'graph',
   'chart',
   'image',
+  'sketch',
 ]
 
 /** Human labels for the admin editor's block picker. */
@@ -254,6 +354,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   graph: 'Graph or tree',
   chart: 'Chart',
   image: 'Image',
+  sketch: 'Board drawing',
 }
 
 // ---------------------------------------------------------------------------
@@ -424,6 +525,10 @@ export function blocksToText(blocks: Block[]): string {
         parts.push(block.alt)
         if (block.caption) parts.push(block.caption)
         break
+      case 'sketch':
+        parts.push(block.alt)
+        if (block.caption) parts.push(block.caption)
+        break
     }
   }
 
@@ -436,6 +541,8 @@ export function collectPublicIds(blocks: Block[]): string[] {
   for (const block of blocks) {
     if (block.type === 'image') {
       ids.push(block.image.public_id)
+    } else if (block.type === 'sketch') {
+      for (const figure of block.figures ?? []) ids.push(figure.image.public_id)
     } else if ('fallback_image' in block && block.fallback_image) {
       ids.push(block.fallback_image.public_id)
     }

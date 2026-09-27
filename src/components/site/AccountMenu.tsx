@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Gauge, ShieldCheck, SignOut } from '@/components/ui/icons'
+import { ChalkboardTeacher, Gauge, ShieldCheck, SignOut } from '@/components/ui/icons'
 
 /** "Roshan Singh" → "RS"; an email falls back to its first letter. */
 function initials(name: string): string {
@@ -59,18 +59,22 @@ function Avatar({ name, src, size }: { name: string; src: string | null; size: n
 
 /**
  * The student's photo in the bar, and behind it who they are signed in as and
- * their dashboard, admin for staff, and sign out.
+ * their dashboard, the teaching desk for teachers, admin for staff, and sign
+ * out.
  */
 export function AccountMenu({
   name,
   email,
   avatarUrl,
   staff,
+  teacher,
 }: {
   name: string
   email: string | null
   avatarUrl: string | null
   staff: boolean
+  /** A teacher or an admin: someone with a teaching desk at /teach. */
+  teacher: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -151,6 +155,12 @@ export function AccountMenu({
             <Gauge size={18} aria-hidden="true" className={icon} />
             Dashboard
           </Link>
+          {teacher ? (
+            <Link role="menuitem" href="/teach" className={item} onClick={() => setOpen(false)}>
+              <ChalkboardTeacher size={18} aria-hidden="true" className={icon} />
+              Teach
+            </Link>
+          ) : null}
           {staff ? (
             <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
               <ShieldCheck size={18} aria-hidden="true" className={icon} />

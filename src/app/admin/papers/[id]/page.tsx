@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { setPaperStatus } from '@/app/admin/actions'
+import { moveSetToSubject, setPaperStatus } from '@/app/admin/actions'
 import { ActionButton } from '@/components/admin/ActionButton'
+import { MoveSetForm, type SubjectGroup } from '@/components/admin/MoveSetForm'
+import { getBrowseTree } from '@/lib/queries'
 import { blocksToText, parseBlocks } from '@/lib/blocks/schema'
 import type { ContentStatus, QuestionType } from '@/types/db'
 
@@ -18,6 +20,7 @@ interface PaperDetail {
   total_marks: number | null
   duration_minutes: number | null
   notes: string | null
+  subject_id: string
   subjects: { name: string; slug: string } | null
   exam_types: { name: string } | null
 }
@@ -43,7 +46,7 @@ export default async function AdminPaperPage({ params }: { params: Params }) {
   const { data: paperRow } = await supabase
     .from('question_papers')
     .select(
-      'id, title, session_date, status, total_marks, duration_minutes, notes, subjects(name, slug), exam_types(name)',
+      'id, title, session_date, status, total_marks, duration_minutes, notes, subject_id, subjects(name, slug), exam_types(name)',
     )
     .eq('id', id)
     .maybeSingle()
@@ -60,6 +63,16 @@ export default async function AdminPaperPage({ params }: { params: Params }) {
     .order('sort_order')
 
   const sets = (setRows ?? []) as unknown as SetDetail[]
+
+  // Where a misfiled set can be moved: every subject, by branch and level.
+  const subjectGroups: SubjectGroup[] = (await getBrowseTree()).flatMap((program) =>
+    program.levels
+      .filter((level) => level.subjects.length > 0)
+      .map((level) => ({
+        label: `${program.short_name ?? program.name} › ${level.name}`,
+        subjects: level.subjects.map((subject) => ({ id: subject.id, name: subject.name })),
+      })),
+  )
 
   return (
     <div>
@@ -128,7 +141,7 @@ export default async function AdminPaperPage({ params }: { params: Params }) {
                   Set {set.set_code}
                   {set.label ? <span className="ml-2 text-ink-muted">{set.label}</span> : null}
                 </h3>
-                <div className="flex items-center gap-3 text-xs text-ink-muted">
+                <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-ink-muted">
                   <span>{questions.length} questions</span>
                   <Link
                     href={`/practice/${set.id}?mode=learning`}
@@ -136,6 +149,12 @@ export default async function AdminPaperPage({ params }: { params: Params }) {
                   >
                     Preview
                   </Link>
+                  <MoveSetForm
+                    setCode={set.set_code}
+                    currentSubjectId={paper.subject_id}
+                    groups={subjectGroups}
+                    action={moveSetToSubject.bind(null, set.id)}
+                  />
                 </div>
               </div>
 

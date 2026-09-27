@@ -3,16 +3,21 @@ import { redirect } from 'next/navigation'
 import { getCurrentProfile, isStaff } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { ROUTES } from '@/lib/teach/contracts'
 
 export const dynamic = 'force-dynamic'
 
-const SECTIONS = [
+// Admin-only sections are left out of a contributor's bar; their pages say so
+// too, and the database refuses the writes either way.
+const SECTIONS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/taxonomy', label: 'Taxonomy' },
   { href: '/admin/papers', label: 'Papers' },
   { href: '/admin/import', label: 'Import' },
   { href: '/admin/review', label: 'Review queue' },
-  { href: '/admin/solutions', label: 'Solutions' },
+  { href: ROUTES.adminSolutions, label: 'Explanations' },
+  { href: ROUTES.adminEducators, label: 'Educators', adminOnly: true },
+  { href: ROUTES.adminDuplicates, label: 'Duplicates' },
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/spotlight', label: 'Banners' },
 ]
@@ -39,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </p>
         </div>
         <nav className="flex flex-wrap gap-1">
-          {SECTIONS.map((section) => (
+          {SECTIONS.filter((section) => !section.adminOnly || profile.role === 'admin').map((section) => (
             <Link
               key={section.href}
               href={section.href}

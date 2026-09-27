@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { ROUTES } from '@/lib/teach/contracts'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,19 +11,23 @@ export const dynamic = 'force-dynamic'
 export default async function AdminOverview() {
   const supabase = await createClient()
 
-  const counts = async (table: string) => {
-    const { count } = await supabase.from(table).select('*', { count: 'exact', head: true })
-    return count ?? 0
+  // A count that could not be read shows as a dash, never as a reassuring 0.
+  const tally = ({ count, error }: { count: number | null; error: { message: string } | null }) => {
+    if (error) console.error(`admin overview: ${error.message}`)
+    return error ? null : (count ?? 0)
   }
+  const counts = (table: string) =>
+    supabase.from(table).select('*', { count: 'exact', head: true }).then(tally)
 
   const [
     programs,
     subjects,
     papers,
     questions,
+    teachers,
     drafts,
     openReports,
-    pendingSolutions,
+    awaitingReview,
     pendingExtractions,
   ] = await Promise.all([
     counts('programs'),
@@ -30,25 +35,34 @@ export default async function AdminOverview() {
     counts('question_papers'),
     counts('questions'),
     supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'teacher')
+      .then(tally),
+    supabase
       .from('question_papers')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'draft')
-      .then((r) => r.count ?? 0),
+      .then(tally),
     supabase
       .from('reports')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'open')
-      .then((r) => r.count ?? 0),
+      .then(tally),
+    // Submitted for review: a teacher's draft (pending, never submitted) is
+    // still theirs, not the reviewers'. Imported and student-written ones are
+    // never drafts. Must match the "In review" tab of /admin/solutions.
     supabase
       .from('solutions')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'pending')
-      .then((r) => r.count ?? 0),
+      .or('submitted_at.not.is.null,kind.neq.authored')
+      .then(tally),
     supabase
       .from('extractions')
       .select('*', { count: 'exact', head: true })
       .in('status', ['pending', 'in_review'])
-      .then((r) => r.count ?? 0),
+      .then(tally),
   ])
 
   return (
@@ -65,9 +79,9 @@ export default async function AdminOverview() {
           />
           <QueueCard href="/admin/reports" label="Open reports" value={openReports} />
           <QueueCard
-            href="/admin/solutions"
-            label="Solutions awaiting moderation"
-            value={pendingSolutions}
+            href={ROUTES.adminSolutions}
+            label="Explanations awaiting review"
+            value={awaitingReview}
           />
           <QueueCard href="/admin/papers?status=draft" label="Draft papers" value={drafts} />
         </div>
@@ -75,11 +89,12 @@ export default async function AdminOverview() {
 
       <section>
         <h2 className="text-sm tracking-wide text-ink-muted uppercase">Content</h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Stat label="Branches" value={programs} />
           <Stat label="Subjects" value={subjects} />
           <Stat label="Papers" value={papers} />
           <Stat label="Questions" value={questions} />
+          <Stat label="Teachers" value={teachers} />
         </dl>
       </section>
 
@@ -125,9 +140,9 @@ function QueueCard({
 }: {
   href: string
   label: string
-  value: number
+  value: number | null
 }) {
-  const idle = value === 0
+  const idle = !value
   return (
     <Link
       href={href}
@@ -138,17 +153,17 @@ function QueueCard({
       }`}
     >
       <p className={`text-2xl font-medium tabular-nums ${idle ? 'text-ink' : 'text-marked'}`}>
-        {value}
+        {value ?? '—'}
       </p>
       <p className="mt-0.5 text-xs text-ink-muted">{label}</p>
     </Link>
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-lg border border-rule bg-surface p-4">
-      <dd className="text-2xl font-medium text-ink tabular-nums">{value}</dd>
+      <dd className="text-2xl font-medium text-ink tabular-nums">{value ?? '—'}</dd>
       <dt className="mt-0.5 text-xs text-ink-muted">{label}</dt>
     </div>
   )

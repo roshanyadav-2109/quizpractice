@@ -15,11 +15,11 @@ import type {
   Level,
   Program,
   ProgramStats,
+  PublicSolution,
   QuestionOptionRow,
   QuestionPaper,
   QuestionSet,
   QuestionWithOptions,
-  SolutionRow,
   Subject,
   SubjectStats,
 } from '@/types/db'
@@ -476,7 +476,7 @@ export interface SetContext {
 }
 
 /**
- * Everything needed to run or print one question set.
+ * Everything needed to run or review one question set.
  *
  * `includeAnswers` controls whether is_correct comes back. Exam mode does not
  * ask for it, so the answer key is simply not in the payload while the student
@@ -640,24 +640,19 @@ async function getSubjectContextById(subjectId: string): Promise<SubjectContext 
 }
 
 /**
- * One question's approved explanations. Fetched only when a student opens the
- * answer, and shared: the first student to open it reads the database, every
- * one after gets the same copy.
+ * One question's approved explanations: its own, and those written for any
+ * copy of the same question in another set, sitting or branch (`shared`).
+ * Fetched only when a student opens the answer, and shared: the first student
+ * to open it reads the database, every one after gets the same copy.
  */
-export async function getSolutionsForQuestion(questionId: string): Promise<SolutionRow[]> {
+export async function getSolutionsForQuestion(questionId: string): Promise<PublicSolution[]> {
   const rows = await unstable_cache(
     async (id: string) => {
-      const { data, error } = await publicClient
-        .from('solutions')
-        .select('*')
-        .eq('question_id', id)
-        .eq('status', 'approved')
-        .order('kind')
-        .order('upvotes', { ascending: false })
+      const { data, error } = await publicClient.rpc('solutions_for_question', { qid: id })
       if (error) throw new Error(`solutions failed — ${error.message}`)
-      return (data ?? []) as (Omit<SolutionRow, 'body'> & { body: unknown })[]
+      return (data ?? []) as (Omit<PublicSolution, 'body'> & { body: unknown })[]
     },
-    ['qp-shared', 'question-solutions'],
+    ['qp-shared', 'question-solutions-v2'],
     { tags: [TAG.solutions], revalidate: 60 * 60 },
   )(questionId)
   return rows.map((row) => ({ ...row, body: parseBlocks(row.body) }))

@@ -92,17 +92,21 @@ Four roles, each with a different home:
 | Role | Home | Can do |
 |---|---|---|
 | `student` | `/dashboard` — top navbar | Practise papers, own their attempts |
-| `teacher` | (sidebar shell, not built yet) | Author solutions and upload solution video for any question |
+| `teacher` | `/teach` | Assigned branch+subject combos; writes explanations, records whiteboard video |
 | `contributor` | `/admin` | Import and edit papers and questions |
 | `admin` | `/admin` | Everything, including roles |
 
 A teacher is deliberately not a content editor: they write solutions, not
 taxonomy or papers. Widening that later is a policy change; starting wide and
-narrowing later is a migration nobody performs.
+narrowing later is a migration nobody performs. A teacher works only on the
+branch+subject combos an admin assigns in `/admin/educators` — a subject that
+is not part of that branch never matches, and the database enforces it.
 
-The `role` column is not grantable to `authenticated`, so promotion is
-deliberately a service-role operation — a signed-in user cannot promote
-themselves.
+The `role` column is not grantable to `authenticated`, so a signed-in user
+cannot promote themselves. Admins make people teachers, contributors or
+students in `/admin/educators`, through an RPC that refuses anyone who is not an
+admin. The admin role itself is still granted or removed only in the Supabase
+dashboard.
 
 ### 4. Cloudinary
 
@@ -274,24 +278,31 @@ src/
     subject/[slug]/           papers for one subject
     practice/[setId]/         the exam runner
     result/[attemptId]/       review of a saved attempt
-    print/[setId]/            printable worksheet, optional answer key
     search/                   full-text search across question content
-    admin/                    taxonomy, papers, question editor, queues
+    teach/                    teacher desk, work queue, and the studio at q/[id]
+    admin/                    taxonomy, papers, question editor, queues, educators
+    privacy/, terms/          the policies the footer links to
     api/
       attempts/               marks a submission server-side
       import/                 admin JSON import
       cloudinary/sign/        signed direct upload
+      teach/uploads/          resumable YouTube upload sessions for the studio
+      youtube/                admin: connect or disconnect the channel
   components/
     blocks/                   one renderer per block type
+    board/                    the studio whiteboard
     exam/                     runner, palette, timer, answer inputs
     question/                 solutions, discussion, reports
   lib/
     blocks/schema.ts          the block model (Zod)
+    board/                    whiteboard model, strokes, rendering
+    teach/                    explanation contracts and writes
+    youtube/                  link checks, OAuth, upload client
     scoring.ts                marking rules — pure and unit tested
     import-paper.ts           JSON → database
     extract.ts                scan → JSON
     queries.ts                every read the public site makes
-  proxy.ts                    session refresh + /admin gate
+  proxy.ts                    session refresh + /admin and /teach gates
 supabase/migrations/          schema, functions, RLS, seed taxonomy
 schema/                       the canonical JSON Schema and an example paper
 ```
@@ -385,17 +396,19 @@ in the page payload while a student is working.
 ### Access rules
 
 Published content is world-readable. Every content write requires
-`admin` or `contributor`. A student can only ever read and write their own
-attempts. The `/admin` gate is enforced three times over — in `src/proxy.ts`,
-again in the admin layout, and finally by RLS — because the admin API routes use
-the service-role key, which answers to none of them.
+`admin` or `contributor`. A teacher can write explanations only for questions
+in their assigned combos; RLS checks the combo on every write. A student can
+only ever read and write their own attempts. The `/admin` gate is enforced three
+times over — in `src/proxy.ts`, again in the admin layout, and finally by RLS —
+because the admin API routes use the service-role key, which answers to none of
+them.
 
 ### Signing in
 
-Email and password, or a magic link. Supabase's built-in email is
-rate-limited; configure SMTP or enable an OAuth provider before real traffic.
-Practising works fully signed-out — an attempt is marked and returned, it is just
-not saved.
+Google, from a sign-in dialog available on every page. The demo student and
+demo admin show beside it until `NEXT_PUBLIC_DEMO_LOGINS=false`. Practising
+works fully signed-out — an attempt is marked and returned, it is just not
+saved.
 
 ---
 
@@ -404,8 +417,9 @@ not saved.
 - `supabase gen types typescript --linked > src/types/database.ts` will give
   fully generated database types once the project is linked; `src/types/db.ts`
   holds the hand-written equivalents until then.
-- Video solutions are stored as URLs (YouTube, Vimeo, Cloudflare Stream, Bunny),
-  not uploaded to Cloudinary — video burns Cloudinary credits fast.
+- Video explanations are YouTube links — recorded in the studio, uploaded
+  Unlisted to the channel — never files on Cloudinary, where video burns credits
+  fast.
 - The seeded taxonomy is a starting point. IIT Madras revises its curriculum
   regularly, so verify course codes and level placement against the current
   catalogue and correct them in `/admin/taxonomy` rather than editing the

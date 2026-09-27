@@ -102,6 +102,15 @@ export interface QuestionRow {
   topics: string[]
   difficulty: Difficulty | null
   status: ContentStatus
+  /**
+   * Which copies of this question share an explanation (0025). NULL means the
+   * question is never linked. Kept by triggers; selected only where needed.
+   */
+  fingerprint?: string | null
+  /** The same with case, quotes and punctuation counting. */
+  fingerprint_strict?: string | null
+  /** Hash of the options in the order this copy shows them. */
+  option_order?: string | null
 }
 
 export interface QuestionOptionRow {
@@ -118,9 +127,17 @@ export type QuestionOptionPublic = Omit<QuestionOptionRow, 'is_correct'> & {
   is_correct?: boolean
 }
 
+/**
+ * An explanation. It is anchored on the question it was written for and shows
+ * on every copy sharing that question's fingerprint.
+ *
+ * Status reads with submitted_at: pending + null is a draft, pending + a time
+ * is waiting for review, approved is live, rejected is rejected or unpublished.
+ */
 export interface SolutionRow {
   id: string
-  question_id: string
+  /** Null once the anchor question is deleted; the fingerprint keeps it linked. */
+  question_id: string | null
   kind: SolutionKind
   body: Block[]
   video_url: string | null
@@ -128,6 +145,90 @@ export interface SolutionRow {
   status: ModerationStatus
   upvotes: number
   created_at: string
+  updated_at?: string
+  /** The anchor's fingerprint, copied by trigger. */
+  fingerprint: string | null
+  submitted_at: string | null
+  review_note: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  /** From solutions_for_question(): the author's display name. */
+  author_name?: string | null
+  /** From solutions_for_question(): written for another copy of this question. */
+  shared?: boolean
+}
+
+/** What students receive: rpc('solutions_for_question'), approved rows only. */
+export type PublicSolution = Pick<
+  SolutionRow,
+  'id' | 'question_id' | 'kind' | 'body' | 'video_url' | 'author_id' | 'status' | 'upvotes' | 'created_at'
+> & {
+  author_name: string | null
+  shared: boolean
+}
+
+/** One branch + subject combo of a teacher (0024). */
+export interface TeacherAssignment {
+  teacher_id: string
+  program_id: string
+  subject_id: string
+  assigned_by: string | null
+  created_at: string
+}
+
+/** rpc('admin_list_people'): the only read of email and auto_publish, admins only. */
+export interface AdminPersonRow {
+  id: string
+  display_name: string | null
+  email: string | null
+  avatar_url: string | null
+  role: UserRole
+  /** A trusted teacher's explanations go live without review. */
+  auto_publish: boolean
+  created_at: string
+  /** How many branch + subject combos they hold. */
+  assignments: number
+}
+
+/** An admin's decision on sharing one fingerprint. */
+export interface FingerprintOverride {
+  fingerprint: string
+  decision: 'allow' | 'block'
+  note: string | null
+  decided_by: string | null
+  decided_at: string
+}
+
+/** A teacher's 48-hour hold on a duplicate group. */
+export interface ExplanationClaim {
+  group_key: string
+  question_id: string
+  teacher_id: string
+  claimed_at: string
+  expires_at: string
+}
+
+export type VideoPrivacy = 'unlisted' | 'public' | 'private'
+export type VideoMime = 'video/webm' | 'video/mp4'
+export type VideoUploadStatus = 'started' | 'uploading' | 'done' | 'failed' | 'abandoned'
+
+/**
+ * One upload to YouTube. The session address is left out: it is readable
+ * only by the service role.
+ */
+export interface VideoUploadRow {
+  id: string
+  question_id: string | null
+  teacher_id: string
+  title: string
+  privacy: VideoPrivacy
+  mime: VideoMime
+  bytes_total: number
+  status: VideoUploadStatus
+  youtube_video_id: string | null
+  error: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface DiscussionRow {

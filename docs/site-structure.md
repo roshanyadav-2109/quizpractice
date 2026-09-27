@@ -20,10 +20,11 @@ make all three visible:
 
 1. **Questions are structured data, not pictures.** A relation renders as a real
    table, SQL as syntax-highlighted code, an ER diagram as a diagram. So
-   questions are searchable, reflow on a phone, and print properly.
+   questions are searchable and reflow on a phone.
 2. **The exam runner follows NTA CBT conventions** — the same palette, timer and
    controls students already use in the real exam.
-3. **Every question can carry a video solution**, recorded by a teacher.
+3. **Every question can carry an explanation and a video**, written and
+   recorded by a teacher — once for every copy of the same question.
 
 ---
 
@@ -33,7 +34,7 @@ make all three visible:
 |---|---|
 | **Visitor** (signed out) | Browse the catalogue, read questions, sit a paper without saving |
 | **Student** | Sit papers, save attempts, see analysis, discuss, report errors |
-| **Teacher** | Everything a student does, plus write and record solutions |
+| **Teacher** | Everything a student does, plus write and record explanations for their assigned subjects |
 | **Admin** | Everything, plus taxonomy, imports, moderation queues |
 
 ---
@@ -57,7 +58,7 @@ a breadcrumb, not by a persistent rail.
 │  │ …        │ │ …        │ │ …        │ │ …        │       │   4 / 3 / 2 / 1
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
 ├────────────────────────────────────────────────────────────┤
-│  Disclaimer · not affiliated with IIT Madras               │   footer
+│  Privacy · Terms                                           │   footer
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -70,8 +71,9 @@ a breadcrumb, not by a persistent rail.
   I" signal.
 - Filter state lives in the **URL** (`?exam=quiz-1&year=2026`) so filtered views
   are linkable and the back button works.
-- **The exam runner is the one exception** — it hides the chrome and owns the
-  viewport. Sitting a paper is a mode, not a page.
+- **The exam runner and the teacher's studio are the exceptions** — they hide
+  the header and footer and own the viewport. Sitting a paper, or recording an
+  explanation, is a mode, not a page.
 
 ---
 
@@ -107,7 +109,7 @@ type, as a card grid.
 
 **Paper card:** sitting date, set code when a paper has several sets, marks,
 duration, your best attempt (score + percentage, linking to its analysis), then
-**Start / Re-attempt** and a printable-worksheet icon.
+**Start / Re-attempt**.
 
 Empty state when filters match nothing.
 
@@ -169,32 +171,80 @@ Full-text across question bodies, **including text inside tables and options** �
 searching "Bengaluru" finds it inside a relation cell. Filters by subject and
 exam type. Results show the matching question with its paper and a link in.
 
-### 4.6 Printable worksheet — `/print/[setId]`
+### 4.6 Auth — `/login`, `/auth/*`
 
-Paper laid out for A4, no app chrome, page breaks that never split a question.
-This is how "save as PDF" works without a PDF library.
+Google sign-in, from a dialog available on every page. Demo student and demo
+admin shown while demo logins are enabled. Once signed in, the photo in the
+header opens the account menu: Dashboard, **Teach** for teachers, **Admin** for
+staff, and Sign out — **a user cannot change their own role**.
 
-### 4.7 Auth — `/login`, `/auth/*`, `/account`
-
-Email sign-in. Demo student and demo admin shown while demo logins are enabled.
-Account page: display name and avatar only — **a user cannot change their own
-role**.
-
-### 4.8 Student dashboard — `/dashboard`
+### 4.7 Student dashboard — `/dashboard`
 
 Signed-in home. Resume bar ("pick up where you left off"), recent attempts,
 weakest topics ranked worst-first, papers not yet attempted.
 
-### 4.9 Teacher — `/teacher/*` *(not built)*
+### 4.8 Teacher — `/teach`, `/teach/s/[subject]`, `/teach/q/[questionId]`
 
-Solution queue showing questions with no solution, ranked by how often they are
-attempted and missed. Write a text solution, attach or record a video, submit
-for approval.
+Only for teachers (and admins). An admin assigns each teacher **branch+subject
+combos** — several subjects in a branch, several branches. A subject is only
+ever matched inside the branch it belongs to; the database refuses anything
+else, so a teacher never sees a question outside their combos.
 
-### 4.10 Admin — `/admin/*`
+- **Desk — `/teach`.** One card per combo, grouped by branch:
+  `Data Science › Foundation › English I`, questions, unique questions once
+  duplicates are collapsed, and how many are explained, have a video, or wait in
+  review, with **Open queue** and **Continue** (the next question to do). Below,
+  "My recent explanations" with their status and any review note. With no
+  combos: "An admin has not assigned you subjects yet".
+- **Queue — `/teach/s/[subject]`.** Filter chips (To do, Needs video, In review,
+  Published, Mine, All), a paper filter, 50 rows a page. Each row: question
+  number, exam and date, set, type and marks, a snippet, a **+N copies** badge
+  (the same question with the same answer in other sets, terms or years —
+  explained once, shown on all of them), who is working on it, and its status.
+  Copies whose options are shuffled still count, unless an option points at
+  another by letter or position ("Both A and B", "None of the above"); then
+  the order has to match too.
+  A subject outside the teacher's combos answers 403.
+- **Help — `/teach/help`.** Recording tips, and the YouTube Studio steps for
+  uploading a recording by hand.
+- **Studio — `/teach/q/[questionId]`.** Full viewport, no header or footer, like
+  the exam runner.
+  - Top bar: back to the queue, who is working on the question, save state.
+  - Reference: the whole question as students see it — text, code, tables,
+    maths, figures, every option — with the **correct answer marked**, the
+    numeric answer with its tolerance, and the marks. "Also shows on" lists every
+    copy the explanation will reach. When the copies list the options in a
+    different order, a notice asks the teacher to name options by their content,
+    never by letter.
+  - Write: an explanation built from blocks (text with inline maths, equation,
+    code, table, a page of the board as a drawing), with a live preview.
+  - Board & record: a whiteboard (pen, highlighter, eraser, colours, thickness,
+    shapes, undo/redo, clear page, several pages, laser pointer, stylus pressure)
+    with the question card beside it, recorded with the microphone and an
+    optional webcam bubble. Review the take, re-record or download it.
+  - Video: paste the YouTube link of the upload (checked before it is saved), or
+    upload to YouTube from the page once the channel's API access is approved.
+  - **Save draft**, then **Submit** for review — or **Publish** for a teacher an
+    admin trusts to publish without review.
+
+### 4.9 Admin — `/admin/*`
 
 Taxonomy editor (programmes, levels, subjects, exam types), paper import,
-extraction review, reports queue, media cleanup.
+extraction review, reports queue, media cleanup, plus:
+
+- **Educators — `/admin/educators`.** Find a person by name or email and make
+  them a teacher, contributor or student. Each teacher's card shows their combo
+  chips (`Data Science › Foundation › English I ×`), an **Add combo** form that
+  picks a branch first and then offers only that branch's subjects, and a
+  "Publish without review" switch. The YouTube panel connects the channel for
+  one-click uploads.
+- **Explanations — `/admin/solutions`.** The review queue: In review (default),
+  Drafts, Approved, Rejected, All, filtered by subject and teacher. Each card
+  shows the question, how many copies the explanation reaches, the explanation
+  and its video, and Approve, Reject with a note, Unpublish, Delete.
+- **Duplicates — `/admin/duplicates`.** How questions are grouped as copies:
+  repeats inside one set (probably import errors), the largest groups, and groups
+  that span subjects, each with Allow, Block and Clear.
 
 ---
 
@@ -214,6 +264,10 @@ need to show that each of these renders natively, because this is the product:
 | `graph` | Node-and-edge graph |
 | `chart` | Plotted chart |
 | `image` | The escape hatch — only for genuinely spatial content |
+
+A teacher's explanation is built from the same blocks — text, maths, code,
+tables — plus `sketch`: a page of the studio whiteboard, kept as vector strokes
+and drawn as an inline drawing on a white card.
 
 ---
 

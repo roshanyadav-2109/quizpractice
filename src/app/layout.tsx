@@ -3,6 +3,7 @@ import { Lexend, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteChrome } from '@/components/site/SiteChrome'
+import { SiteFooter } from '@/components/site/SiteFooter'
 import { AuthProvider } from '@/components/site/AuthDialog'
 import { OfflineBanner } from '@/components/site/OfflineBanner'
 import { publicEnv } from '@/lib/env'
@@ -47,13 +48,17 @@ export default function RootLayout({
       >
         {/* Sign-in is a dialog, available from anywhere on the site. */}
         <AuthProvider>
-          {/* The exam runner owns the whole viewport; SiteChrome hides the
-              navigation on it. */}
+          {/* The exam runner and the teacher's studio own the whole viewport;
+              SiteChrome hides the navigation and the footer on them. */}
           <SiteChrome>
             <SiteHeader />
           </SiteChrome>
 
           <main className="flex-1">{children}</main>
+
+          <SiteChrome>
+            <SiteFooter />
+          </SiteChrome>
         </AuthProvider>
         <OfflineBanner />
       </body>
