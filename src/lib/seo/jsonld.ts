@@ -1,4 +1,4 @@
-import { SITE, ORIGIN, absolute } from './site'
+import { SITE, SOCIALS, ORIGIN, absolute } from './site'
 
 /**
  * Structured data, as schema.org JSON-LD.
@@ -20,12 +20,7 @@ export const IDS = {
 }
 
 /** The profiles Unknown IITians runs, so assistants connect the brand across them. */
-const PUBLISHER_PROFILES = [
-  SITE.publisherUrl,
-  'https://www.youtube.com/@UnknownIITians',
-  'https://www.instagram.com/unknown_iitians',
-  'https://www.linkedin.com/company/unknown-iitians',
-]
+const PUBLISHER_PROFILES = [SITE.publisherUrl, ...SOCIALS.map((social) => social.url)]
 
 /** Who runs the site and who publishes it. On every page. */
 export function siteGraph(): Json {
@@ -320,9 +315,10 @@ export function webPage({ path, name, description, crumbs, type = 'WebPage' }: {
         inLanguage: SITE.language,
         isPartOf: { '@id': IDS.website },
         publisher: { '@id': IDS.organization },
-        breadcrumb: { '@id': `${url}#breadcrumb` },
+        ...(crumbs.length > 1 ? { breadcrumb: { '@id': `${url}#breadcrumb` } } : {}),
       },
-      { ...breadcrumbList(crumbs), '@id': `${url}#breadcrumb` },
+      // A trail of one — the home page — is no trail.
+      ...(crumbs.length > 1 ? [{ ...breadcrumbList(crumbs), '@id': `${url}#breadcrumb` }] : []),
     ],
   }
 }
