@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     ...pageMetadata({
       title: titles.home(),
-      description: `Free IITM BS PYQs with answers: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers for ${withPapers} Data Science and ES subjects. Practise as timed mock tests.`,
+      description: `Free IITM BS PYQs with answers: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers for ${withPapers} subjects, as timed mock tests.`,
       path: '/',
     }),
     // The home page carries the full brand whatever the length.
