@@ -148,6 +148,7 @@ export function ExamRunner(props: ExamRunnerProps) {
   const elapsedRef = useRef(0)
   const scroller = useRef<HTMLDivElement>(null)
   const questionPane = useRef<HTMLDivElement>(null)
+  const questionColumn = useRef<HTMLDivElement>(null)
   const submitDialog = useRef<HTMLDialogElement>(null)
   const instructionsDialog = useRef<HTMLDialogElement>(null)
 
@@ -533,7 +534,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           {/* The question scrolls; the video dock sits over its bottom-left corner. */}
           <div ref={questionPane} className="relative min-h-0 flex-1">
           <div ref={scroller} className="h-full overflow-y-auto">
-            <div className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-36 sm:pb-36' : ''}`}>
+            <div ref={questionColumn} className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-36 sm:pb-36' : ''}`}>
               {graded ? <GradedBanner graded={graded} isSignedIn={isSignedIn} /> : null}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -637,7 +638,7 @@ export function ExamRunner(props: ExamRunnerProps) {
               ) : null}
             </div>
           </div>
-          {revealed && learning ? <SolutionVideoDock questionId={question.id} bounds={questionPane} /> : null}
+          {revealed && learning ? <SolutionVideoDock questionId={question.id} bounds={questionPane} column={questionColumn} /> : null}
           </div>
 
           {/* The CBT action bar, pinned under the question. We save as you go,

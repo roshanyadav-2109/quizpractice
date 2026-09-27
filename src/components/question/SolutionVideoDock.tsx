@@ -5,11 +5,9 @@ import { CornersIn, Play } from '@/components/ui/icons'
 import { parseYouTubeUrl, youTubeEmbedUrl, type YouTubeRef } from '@/lib/youtube/url'
 import { loadSolutions } from './LazySolutionPanel'
 
-/** The question column's width (max-w-4xl): the white margin beside it is the card's home. */
-const COLUMN_W = 896
-/** The folded card: as wide as that margin, within these bounds. */
+/** The folded card: as wide as the white space before the question starts, within these bounds. */
 const MIN_CARD_W = 112
-const MAX_CARD_W = 280
+const MAX_CARD_W = 420
 const PAD = 8
 /** Where there is no margin (tablet, phone): a slip of this width over the corner. */
 const SLIP_W = 260
@@ -29,37 +27,53 @@ const MAX_OPEN_W = 840
  * It reads the explanations the explanation panel already loaded, so it costs
  * no extra request.
  */
-export function SolutionVideoDock({ questionId, bounds }: { questionId: string; bounds: RefObject<HTMLElement | null> }) {
+interface Areas {
+  /** The question pane the frame lives in and grows over. */
+  bounds: RefObject<HTMLElement | null>
+  /** The question column: the folded card stops just short of where its content starts. */
+  column: RefObject<HTMLElement | null>
+}
+
+export function SolutionVideoDock({ questionId, ...areas }: { questionId: string } & Areas) {
   return (
     <Suspense fallback={null}>
       {/* Keyed by question: moving on folds the frame and stops the video. */}
-      <Dock key={questionId} questionId={questionId} bounds={bounds} />
+      <Dock key={questionId} questionId={questionId} {...areas} />
     </Suspense>
   )
 }
 
-function Dock({ questionId, bounds }: { questionId: string; bounds: RefObject<HTMLElement | null> }) {
+function Dock({ questionId, ...areas }: { questionId: string } & Areas) {
   const solutions = use(loadSolutions(questionId))
   const url = solutions?.find((solution) => solution.video_url)?.video_url ?? null
   const video = url ? parseYouTubeUrl(url) : null
   if (!video) return null
-  return <Frame video={video} bounds={bounds} />
+  return <Frame video={video} {...areas} />
 }
 
-function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLElement | null> }) {
+function Frame({ video, bounds, column }: { video: YouTubeRef } & Areas) {
   const [open, setOpen] = useState(false)
-  const [room, setRoom] = useState({ width: 960, height: 640 })
+  const [room, setRoom] = useState({ width: 960, height: 640, contentLeft: 0 })
 
-  // The pane's size decides how far the frame may grow.
+  // The pane's size decides how far the frame may grow, and where the
+  // question's content starts decides how wide the folded card may be.
   useLayoutEffect(() => {
     const pane = bounds.current
     if (!pane) return
-    const measure = () => setRoom({ width: pane.clientWidth, height: pane.clientHeight })
+    const measure = () => {
+      const col = column.current
+      let contentLeft = 0
+      if (col) {
+        const padding = parseFloat(getComputedStyle(col).paddingLeft) || 0
+        contentLeft = col.getBoundingClientRect().left - pane.getBoundingClientRect().left + padding
+      }
+      setRoom({ width: pane.clientWidth, height: pane.clientHeight, contentLeft })
+    }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(pane)
     return () => observer.disconnect()
-  }, [bounds])
+  }, [bounds, column])
 
   useEffect(() => {
     if (!open) return
@@ -70,9 +84,9 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // Folded, the card is exactly as wide as the white margin left of the
-  // question column: the frame on top, "Watch the solution" under it.
-  const margin = Math.floor((room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2)
+  // Folded, the card fills the white space up to a little short of where the
+  // question starts: the frame on top at 16:9, "Watch the solution" under it.
+  const margin = Math.floor(room.contentLeft - GAP * 2)
   const inMargin = margin >= MIN_CARD_W
   const foldedWidth = inMargin ? Math.min(margin, MAX_CARD_W) : Math.max(0, Math.min(SLIP_W, room.width - GAP * 2))
   const frameH = Math.round(((foldedWidth - PAD * 2) * 9) / 16)
