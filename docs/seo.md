@@ -15,6 +15,9 @@ students search: subject, then exam, then the day the paper was sat.
 | Programme / level | `/program/data-science`, `/program/data-science/foundation` | `programs.short_name`, `levels.slug` |
 | Subject | `/pyq/maths-1` | `subjects.slug` |
 | Subject × exam | `/pyq/maths-1/quiz-1` | `exam_types.slug` |
+| Subject × exam × year | `/pyq/maths-1/quiz-1/2025` | only where that year had two or more papers; one redirects to the paper |
+| Year | `/year/2025` | every paper sat that year, by exam |
+| Exam × year | `/exam/quiz-1/2025` | every subject's paper from that exam and year, by term |
 | Term (several sets) | `/pyq/maths-1/qualifier/may-2024` | only where a term had more than one set; otherwise it redirects to the paper |
 | Paper | `/pyq/maths-1/quiz-1/16-feb-2025` | the sitting date, plus the set code when one day had several sets (`…/20-apr-2025-qdf2`) |
 | Question | `/pyq/maths-1/quiz-1/16-feb-2025/q12-consider-relation-delivery-fee` | the question number, then a few words of its own prose |
@@ -62,6 +65,13 @@ papers as a table, then questions students ask, answered. The exam facts in
 `src/lib/seo/exam-facts.ts` come from study.iitm.ac.in and name their sources;
 check them each term — IIT Madras revises the rules.
 
+The words students add to these searches are "with solutions", "answer key"
+and "video solutions", so titles, descriptions and questions-answered say what
+comes with each paper: the answer key for every question and a video solution
+on each question's own page. Videos live only there — under the answer, at
+`#video-solution` — never on separate pages or linked out to a channel. A
+question without its video yet says it is being recorded.
+
 Questions are indexed only when they are worth a result of their own: the
 first sitting of a repeated question (the others point to it with
 `rel=canonical`), with at least 60 characters of text or code that is not just a
@@ -74,9 +84,10 @@ sitemap — change them together, or the sitemap lists redirects.
 | Address | What |
 |---|---|
 | `/robots.txt` | everything public open to every crawler, AI assistants named; private areas, the API and search results closed |
-| `/sitemap.xml` | index of `/sitemaps/pages.xml`, `/sitemaps/papers.xml` and `/sitemaps/questions-N.xml` (100 sets each); real `lastmod` dates only |
+| `/sitemap.xml` | index of `/sitemaps/pages.xml`, `/sitemaps/papers.xml`, `/sitemaps/videos.xml` (once a video exists) and `/sitemaps/questions-N.xml` (100 sets each); real `lastmod` dates only |
+| `/sitemaps/videos.xml` | the canonical, indexable question pages a video solution plays on, with thumbnail, title and player — from `public_video_solutions()` (migration 0033) |
 | `/llms.txt`, `/llms-full.txt` | the site described for AI agents, generated from the catalogue |
-| JSON-LD | Organization + WebSite on every page; CollectionPage + ItemList on hubs; Quiz/LearningResource with each Question's accepted answer on papers and questions; BreadcrumbList everywhere |
+| JSON-LD | Organization + WebSite on every page; CollectionPage + ItemList on hubs; Quiz/LearningResource with each Question's accepted answer on papers and questions; a VideoObject on a question's canonical page once its video solution is up; BreadcrumbList everywhere |
 | `opengraph-image` | a card per subject, exam and paper for shared links |
 
 ## After adding papers
