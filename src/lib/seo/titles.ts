@@ -8,17 +8,33 @@ import { listOf, shortName, sittingDate, yearSpan } from './names'
  * students' searches take, measured across 5,000 search suggestions and 370
  * video titles (September 2026):
  *
- *   subject, then exam, then "PYQ", then "IITM BS"
- *   — "Maths 1 Quiz 1 PYQ IITM BS", never "IITM PYQ Maths 1 Quiz 1"
+ *   subject, then exam, then "PYQ", then what comes with it
+ *   — "Maths 1 Quiz 1 PYQ with Video Solutions", never "IITM PYQ Maths 1 Quiz 1"
+ *
+ * What comes with it is the answer key for every question and a video
+ * solution on each question's page — so titles say "with Solutions" and
+ * "Video Solutions", the words students add to these searches.
  *
  * "IITM BS", never bare "IITM": alone it also means IITM Janakpuri, IITM
  * Pune and NPTEL. Short names lead for Foundation and Diploma courses; the
  * database's short name for a degree-level course is its full name, because
- * that is how those are searched. The brand is added by pageMetadata when
- * there is room, so these stop short of it.
+ * that is how those are searched.
+ *
+ * Each title is the first of its candidates that fits a results page (about
+ * 60 characters); the brand is added by pageMetadata when there is room.
  */
 
 type Named = Pick<Subject, 'name' | 'aliases'> & { short_name?: string | null }
+
+/** What a results page shows of a title before cutting it. */
+const ROOM = 60
+/** A main heading kept to what reads at a glance. */
+const HEADING_ROOM = 70
+
+/** The first candidate that fits, else the shortest. */
+function fit(candidates: string[], room = ROOM): string {
+  return candidates.find((title) => title.length <= room) ?? candidates.reduce((a, b) => (b.length < a.length ? b : a))
+}
 
 const LONG_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
@@ -36,95 +52,154 @@ function programShort(program: Pick<Program, 'name' | 'short_name'>): string {
   return program.short_name ?? program.name
 }
 
+/** "Quiz 1, Quiz 2 & End Term" */
+function examList(exams: Pick<ExamType, 'name'>[]): string {
+  return listOf(exams.map((exam) => exam.name)).replace(/ and ([^,]*)$/, ' & $1')
+}
+
 export const titles = {
-  // Under 60 characters with " | Quiz Space": the whole title shows in results.
-  home: () => 'IITM BS PYQ: Quiz, End Term & Qualifier Papers',
-  homeHeading: () => 'IITM BS PYQs with answers: Quiz 1, Quiz 2, End Term, Qualifier',
+  // With " | Quiz Space" this is 60 characters: the whole title shows in results.
+  home: () => 'IITM BS PYQs with Video Solutions & Answer Keys',
+  homeHeading: () => 'IITM BS PYQs with solutions: Quiz 1, Quiz 2, End Term, Qualifier',
 
   program(program: Pick<Program, 'name' | 'short_name'>, courses: number): string {
-    const short = programShort(program)
-    return /electronic/i.test(short)
-      ? 'IITM BS Electronic Systems (ES) PYQs: Quiz & End Term Papers'
-      : `IITM BS ${short} PYQs: All ${courses} Courses, Quiz & End Term`
+    const short = /electronic/i.test(programShort(program)) ? 'Electronic Systems' : programShort(program)
+    return fit([
+      `IITM BS ${short} PYQs with Solutions: All ${courses} Courses`,
+      `IITM BS ${short} PYQs with Solutions`,
+      `IITM BS ${short} PYQs`,
+    ])
   },
-  programHeading: (program: Pick<Program, 'name'>, courses: number) =>
-    `IIT Madras ${program.name}: previous year papers for all ${courses} courses`,
+  programHeading: (program: Pick<Program, 'name'>) =>
+    fit([`${program.name} PYQs with solutions`, `${program.name} PYQs`], HEADING_ROOM),
 
   level(level: Pick<Level, 'name'>, program: Pick<Program, 'name' | 'short_name'>, subjects: Named[]): string {
-    const base = `IITM BS ${/data science/i.test(programShort(program)) ? '' : `${programShort(program)} `}${levelShort(level)} PYQs`
-    // As many subject names as fit a results-page title.
+    const base = `IITM BS ${/data science/i.test(programShort(program)) ? '' : `${programShort(program)} `}${levelShort(level)} PYQs with Solutions`
+    // As many subject names as fit; a long one that does not is skipped, not the end of the list.
     const names: string[] = []
     for (const subject of subjects.map(shortName)) {
-      // A long name that does not fit is skipped, not the end of the list.
-      if (`${base}: ${[...names, subject].join(', ')}`.length > 60) continue
+      if (`${base}: ${[...names, subject].join(', ')}`.length > ROOM) continue
       names.push(subject)
     }
     return names.length > 0 ? `${base}: ${names.join(', ')}` : base
   },
   levelHeading: (level: Pick<Level, 'name'>, program: Pick<Program, 'name'>) =>
-    `${levelShort(level)} PYQs — IIT Madras ${program.name}`,
+    fit([`${levelShort(level)} PYQs with solutions — IIT Madras ${program.name}`, `${levelShort(level)} PYQs with solutions`], HEADING_ROOM),
 
   subject(subject: Named, exams: Pick<ExamType, 'name'>[]): string {
     const short = shortName(subject)
-    const list = listOf(exams.map((exam) => exam.name)).replace(/ and ([^,]*)$/, ' & $1')
-    const withPapers = `${short} PYQ IITM BS: ${list} Papers`
-    return withPapers.length <= 60 ? withPapers : `${short} PYQ IITM BS: ${list}`
+    return fit([
+      `${short} PYQ with Solutions: IITM BS ${examList(exams)}`,
+      `${short} PYQ with Video Solutions & Answer Keys | IITM BS`,
+      `${short} PYQ with Video Solutions | IITM BS`,
+      `${short} PYQ with Solutions | IITM BS`,
+      `${short} PYQ | IITM BS`,
+    ])
   },
   subjectHeading(subject: Named): string {
     const short = shortName(subject)
-    return short === subject.name ? `${subject.name} previous year papers` : `${subject.name} (${short}) previous year papers`
+    return fit(
+      [
+        ...(short === subject.name ? [] : [`${subject.name} (${short}) PYQs with solutions`]),
+        `${subject.name} PYQs with solutions`,
+        `${short} PYQs with solutions`,
+      ],
+      HEADING_ROOM,
+    )
   },
 
-  subjectExam: (subject: Named, exam: Pick<ExamType, 'name'>, count: number) =>
-    `${shortName(subject)} ${exam.name} PYQ IITM BS: ${count} ${count === 1 ? 'Paper' : 'Papers'} with Answers`,
+  subjectExam: (subject: Named, exam: Pick<ExamType, 'name'>, count: number) => {
+    const short = shortName(subject)
+    const papers = `${count} IITM BS ${count === 1 ? 'Paper' : 'Papers'}`
+    return fit([
+      `${short} ${exam.name} PYQ with Video Solutions: ${papers}`,
+      `${short} ${exam.name} PYQ with Solutions: ${papers}`,
+      `${short} ${exam.name} PYQ with Solutions | IITM BS`,
+      `${short} ${exam.name} PYQ | IITM BS`,
+    ])
+  },
   subjectExamHeading(subject: Named, exam: Pick<ExamType, 'name' | 'slug'>): string {
     const weeks = examFact(exam.slug)?.weeks
-    return `${shortName(subject)} ${exam.name} previous year papers${weeks ? ` (${weeks})` : ''}`
+    const base = `${shortName(subject)} ${exam.name} PYQs with solutions`
+    return fit([weeks ? `${base} (${weeks})` : base, base], HEADING_ROOM)
   },
 
   paper(paper: PaperEntry): string {
     const short = shortName(paper.subject)
     const set = paper.setsInSitting > 1 ? ` (Set ${paper.setCode})` : ''
-    if (paper.examType.slug === 'qualifier') return `IITM BS Qualifier ${short} PYQ: ${sittingDate(paper.sessionDate)}${set}`
-    return `${short} ${paper.examType.name} PYQ ${paper.term?.short ?? ''}: ${sittingDate(paper.sessionDate)}${set} · IITM BS`
+    const date = sittingDate(paper.sessionDate)
+    if (paper.examType.slug === 'qualifier') {
+      return fit([
+        `IITM BS Qualifier ${short} PYQ ${date}${set} with Solutions`,
+        `IITM BS Qualifier ${short} PYQ ${date}${set}`,
+        `Qualifier ${short} PYQ ${date}${set}`,
+      ])
+    }
+    const term = paper.term?.short ?? ''
+    return fit([
+      `${short} ${paper.examType.name} PYQ ${term}: ${date}${set} with Video Solutions`,
+      `${short} ${paper.examType.name} PYQ ${term}: ${date}${set} with Solutions`,
+      `${short} ${paper.examType.name} PYQ ${date}${set} with Solutions`,
+      `${short} ${paper.examType.name} PYQ ${date}${set} · IITM BS`,
+    ])
   },
   paperHeading(paper: PaperEntry): string {
     const set = paper.setsInSitting > 1 ? `, Set ${paper.setCode}` : ''
     const heading = (name: string) =>
       `${name} ${paper.examType.name}: ${longDate(paper.sessionDate)}${set} (${paper.term?.label ?? 'undated'})`
     // The full course name when the heading stays readable; the short one past 70 characters.
-    const full = heading(paper.subject.name)
-    return full.length <= 70 ? full : heading(shortName(paper.subject))
+    return fit([heading(paper.subject.name), heading(shortName(paper.subject))], HEADING_ROOM)
   },
 
+  /** The question's own words first — what a student pastes into a search — then where it is from. */
   question(stem: string, paper: PaperEntry, number: number): string {
-    const context = `${shortName(paper.subject)} ${paper.examType.name} PYQ ${paper.term ? sittingDate(paper.sessionDate).replace(/^\d+\s+/, '') : ''}`.trim()
-    if (!stem) return `${context}, Question ${number} · IITM BS`
-    const cut = stem.length > 48 ? `${stem.slice(0, 47).replace(/\s+\S*$/, '')}…` : stem
-    return `${cut} | ${context}`
+    const month = paper.term ? sittingDate(paper.sessionDate).replace(/^\d+\s+/, '') : ''
+    const context = `${shortName(paper.subject)} ${paper.examType.name} ${month}`.replace(/\s+/g, ' ').trim()
+    if (!stem) return `${context} PYQ Q${number} with Video Solution · IITM BS`
+    const cut = stem.length > 44 ? `${stem.slice(0, 43).replace(/\s+\S*$/, '')}…` : stem
+    return `${cut} | ${context} PYQ Video Solution`
   },
 
   exam(exam: Pick<ExamType, 'name' | 'slug'>, years: number[]): string {
     switch (exam.slug) {
       case 'qualifier':
-        return `IITM BS Qualifier PYQ: Previous Year Papers ${yearSpan(years)}`
+        return fit([
+          `IITM BS Qualifier PYQ with Video Solutions ${yearSpan(years)}`,
+          `IITM BS Qualifier PYQ with Solutions ${yearSpan(years)}`,
+        ])
       case 'diploma-qualifier':
-        return 'IITM Diploma Qualifier PYQ: Direct Entry Exam Papers'
+        return 'IITM Diploma Qualifier PYQ with Solutions: Direct Entry'
       case 'quiz-1':
-        return 'IITM BS Quiz 1 PYQ: All Subjects, Weeks 1–4 Papers'
+        return 'IITM BS Quiz 1 PYQ with Video Solutions: Weeks 1–4'
       case 'quiz-2':
-        return 'IITM BS Quiz 2 PYQ: All Subjects, Previous Year Papers'
+        return 'IITM BS Quiz 2 PYQ with Video Solutions: All Subjects'
       case 'end-term':
-        return 'IITM BS End Term PYQ: Previous Year Papers, All Courses'
+        return 'IITM BS End Term PYQ with Video Solutions: All Courses'
       default:
-        return `IITM BS ${exam.name} PYQ: Previous Year Papers, All Subjects`
+        return fit([`IITM BS ${exam.name} PYQ with Solutions: All Subjects`, `IITM BS ${exam.name} PYQ with Solutions`])
     }
   },
   examHeading(exam: Pick<ExamType, 'name' | 'slug'>): string {
-    if (exam.slug === 'qualifier') return 'IIT Madras BS Qualifier exam: previous year papers'
-    if (exam.slug === 'diploma-qualifier') return 'IIT Madras Diploma (direct entry) Qualifier: previous year papers'
-    return `IITM BS ${exam.name} previous year papers for every course`
+    if (exam.slug === 'qualifier') return 'IIT Madras BS Qualifier exam PYQs with solutions'
+    if (exam.slug === 'diploma-qualifier') return 'IIT Madras Diploma (direct entry) Qualifier PYQs'
+    return `IITM BS ${exam.name} PYQs with solutions, every course`
   },
 
-  subjects: (count: number) => `All IITM BS Subjects: PYQs for ${count} Courses (DS & ES)`,
+  examYear: (exam: Pick<ExamType, 'name'>, year: number) =>
+    fit([`IITM BS ${exam.name} PYQ ${year} with Solutions: All Subjects`, `IITM BS ${exam.name} PYQ ${year} with Solutions`]),
+  examYearHeading: (exam: Pick<ExamType, 'name'>, year: number) => `IITM BS ${exam.name} ${year} question papers with solutions`,
+  year: (year: number) => fit([`IITM BS PYQ ${year} with Solutions: Quiz, End Term & Qualifier`, `IITM BS PYQ ${year} with Solutions`]),
+  yearHeading: (year: number) => `IITM BS ${year} previous year papers with solutions`,
+  subjectExamYear: (subject: Named, exam: Pick<ExamType, 'name'>, year: number, count: number) => {
+    const short = shortName(subject)
+    return fit([
+      `${short} ${exam.name} PYQ ${year} with Solutions: ${count} IITM BS Papers`,
+      `${short} ${exam.name} PYQ ${year} with Solutions`,
+      `${short} ${exam.name} PYQ ${year} | IITM BS`,
+    ])
+  },
+  subjectExamYearHeading: (subject: Named, exam: Pick<ExamType, 'name'>, year: number) =>
+    `${shortName(subject)} ${exam.name} ${year} question papers with solutions`,
+
+  subjects: (count: number) => `All IITM BS Subjects: PYQs with Solutions for ${count} Courses`,
 }
