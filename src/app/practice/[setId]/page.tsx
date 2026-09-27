@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { paperPathForSet } from '@/lib/seo/catalogue'
 import { absolute } from '@/lib/seo/site'
@@ -6,6 +7,11 @@ import { getSetContext, getSetOverview } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
+import { SHELL } from '@/components/site/Page'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { buttonClass } from '@/components/ui/primitives'
+import { leadIn, openSet, recordSignal } from '@/lib/access'
+import { watermark } from '@/lib/watermark'
 import { ExamRunner } from '@/components/exam/ExamRunner'
 import { blocksToText } from '@/lib/blocks/schema'
 import { formatSession } from '@/lib/format'
@@ -62,6 +68,21 @@ export default async function PracticePage({
   const context = await getSetContext(setId, { includeAnswers: mode === 'learning' && Boolean(profile) })
   if (!context) notFound()
 
+  // Signed out: the paper's first questions, as on its page, and the rest
+  // behind a sign-in. Signed in: the whole paper — recorded, limited per
+  // account, and marked with the account (src/lib/access.ts).
+  let questions = context.questions
+  if (!profile) {
+    questions = leadIn(context.questions)
+  } else {
+    const opened = await openSet(setId)
+    if (!opened.allowed) {
+      await recordSignal({ kind: 'limit', userId: profile.id, setId, path: `/practice/${setId}` })
+      return <SlowDown />
+    }
+    questions = watermark(context.questions, profile.id)
+  }
+
   const totalMarks = context.questions.reduce(
     (sum, question) => sum + Number(question.marks),
     0,
@@ -72,7 +93,8 @@ export default async function PracticePage({
       <ExamRunner
         setId={setId}
         mode={mode}
-        questions={context.questions}
+        questions={questions}
+        locked={profile ? undefined : { total: context.questions.length }}
         isSignedIn={Boolean(profile)}
         startAt={q ? Number(q) : undefined}
         meta={{
@@ -91,11 +113,32 @@ export default async function PracticePage({
       {/* A plain-text rendering of the first question, so search engines and
           link previews see the actual content rather than an empty shell. */}
       <p className="sr-only">
-        {context.questions
+        {questions
           .slice(0, 3)
           .map((question) => blocksToText(question.body))
           .join(' ')}
       </p>
     </>
+  )
+}
+
+/** An account over the paper limit: the same screen for a student in a hurry and a copier. */
+function SlowDown() {
+  return (
+    <div className={`${SHELL} py-12`}>
+      <EmptyState
+        art="waiting-for-others"
+        size="lg"
+        title="That is a lot of papers in a short time"
+        actions={
+          <Link href="/dashboard" className={buttonClass('primary', 'md')}>
+            Back to your dashboard
+          </Link>
+        }
+      >
+        To keep the question bank from being copied, each account can open up to 30 new papers an hour and 100 a day.
+        Papers you have already opened today still open. Try this one again in a little while.
+      </EmptyState>
+    </div>
   )
 }
