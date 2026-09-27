@@ -19,7 +19,7 @@ const key = keyFile.replace(/\.txt$/, '')
 const args = process.argv.slice(2)
 const sinceIndex = args.indexOf('--since')
 const since = sinceIndex >= 0 ? args[sinceIndex + 1] : null
-const explicit = args.filter((arg, index) => /^https?:\/\//.test(arg) && index !== sinceIndex + 1)
+const explicit = args.filter((arg, index) => /^https?:\/\//.test(arg) && (sinceIndex < 0 || index !== sinceIndex + 1))
 
 async function text(url) {
   const response = await fetch(url, { headers: { 'User-Agent': 'Quiz Space IndexNow submitter' } })
