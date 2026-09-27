@@ -133,4 +133,12 @@ export {
   Article,
   CornersIn,
   CornersOut,
+
+  // Unknown IITians' profiles, in the footer
+  InstagramLogo,
+  LinkedinLogo,
+  TelegramLogo,
+  WhatsappLogo,
+  MediumLogo,
+  LinktreeLogo,
 } from '@phosphor-icons/react/ssr'
