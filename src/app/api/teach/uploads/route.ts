@@ -9,7 +9,7 @@ import {
   UPLOADS_PER_TEACHER_PER_DAY,
 } from '@/lib/teach/contracts'
 import {
-  MANUAL_PATH,
+  RETRY_LATER,
   YouTubeNotConnected,
   createUpload,
   getAccessToken,
@@ -30,8 +30,8 @@ import type { VideoMime } from '@/types/db'
  *
  * Refused when the teacher is not assigned the question's subject, has
  * started 20 uploads in a day, or the site has started 90 (YouTube allows
- * 100). Every refusal that is about limits points to the manual path, which
- * always works.
+ * 100). Every refusal that is about limits tells the teacher to try again
+ * later: the take stays in their browser for 7 days.
  */
 
 const MAX_BYTES = 2_147_483_648
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   const { profile } = who
 
   if (!youtubeApiUploadsFlag()) {
-    return uploadError(409, 'api-uploads-off', `Uploading from the site is not switched on yet. ${MANUAL_PATH}`)
+    return uploadError(409, 'api-uploads-off', `Uploading from the site is not switched on yet. ${RETRY_LATER}`)
   }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))
@@ -105,11 +105,11 @@ export async function POST(request: NextRequest) {
     return uploadError(
       429,
       'rate-limited',
-      `You have started ${UPLOADS_PER_TEACHER_PER_DAY} uploads in the last 24 hours, the most allowed. ${MANUAL_PATH}`,
+      `You have started ${UPLOADS_PER_TEACHER_PER_DAY} uploads in the last 24 hours, the most allowed. ${RETRY_LATER}`,
     )
   }
   if (counts.all >= UPLOADS_PER_DAY) {
-    return uploadError(429, 'rate-limited', `The site has used today’s YouTube uploads. ${MANUAL_PATH}`)
+    return uploadError(429, 'rate-limited', `The site has used today’s YouTube uploads. ${RETRY_LATER}`)
   }
 
   // The row goes in first, so a session YouTube refused still counts and its
@@ -143,14 +143,14 @@ export async function POST(request: NextRequest) {
     await updateUpload(uploadId, { status: 'failed', error: reason.slice(0, 500) })
 
     if (error instanceof YouTubeNotConnected) {
-      return uploadError(409, 'not-connected', `The site’s YouTube channel is not connected right now. ${MANUAL_PATH}`)
+      return uploadError(409, 'not-connected', `The site’s YouTube channel is not connected right now. ${RETRY_LATER}`)
     }
     if (error instanceof GoogleApiError && error.isRateLimit) {
       // Besides the published 100 a day, YouTube has an unpublished daily
-      // upload cap that answers 429: either way, only the manual path is left.
-      return uploadError(429, 'rate-limited', `YouTube is not taking more uploads from the site today. ${MANUAL_PATH}`)
+      // upload cap that answers 429: either way, it waits for another day.
+      return uploadError(429, 'rate-limited', `YouTube is not taking more uploads from the site today. ${RETRY_LATER}`)
     }
-    return uploadError(502, 'youtube-error', `YouTube did not open the upload. ${MANUAL_PATH}`)
+    return uploadError(502, 'youtube-error', `YouTube did not open the upload. ${RETRY_LATER}`)
   }
 
   // Without the address on record the upload could not be resumed or checked.

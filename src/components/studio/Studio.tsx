@@ -774,6 +774,8 @@ export function Studio({
                             {videoHeld}
                           </p>
                         ) : null}
+                        {/* With the one-click upload on there is no by-hand route: a held video waits in the take. */}
+                        {videoHeld && apiUploads ? null : (
                         <UploadPanel
                           questionId={question.id}
                           take={take}
@@ -795,6 +797,7 @@ export function Studio({
                           onDiscard={discardTake}
                           onActivity={touch}
                         />
+                        )}
                       </>
                     )}
                   </ReviewPanel>

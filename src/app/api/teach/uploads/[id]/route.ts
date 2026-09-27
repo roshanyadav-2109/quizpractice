@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { PROXY_CHUNK_BYTES } from '@/lib/teach/contracts'
 import {
-  MANUAL_PATH,
+  RETRY_LATER,
   getAccessToken,
   ownUpload,
   updateUpload,
@@ -78,7 +78,7 @@ function youtubeFailure(error: unknown): Response {
     return uploadError(
       429,
       'rate-limited',
-      `YouTube is busy. Wait a minute and the upload carries on from where it stopped. If it keeps happening: ${MANUAL_PATH}`,
+      `YouTube is busy. Wait a minute and the upload carries on from where it stopped. ${RETRY_LATER}`,
     )
   }
   return uploadError(502, 'youtube-error', 'YouTube did not answer as expected. The upload will carry on from where it stopped.')

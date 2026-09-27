@@ -34,8 +34,10 @@ type Phase = 'form' | 'uploading' | 'stopped' | 'done' | 'failed'
  * goes straight from this browser to YouTube, with progress, a stop button
  * and resume after a failure or a reload, and the link is attached for you.
  *
- * v1, always available: the steps for YouTube Studio, with the title and
- * description ready to copy, then paste the link.
+ * v1, only while the one-click upload is off (before Google's approval): the
+ * steps for YouTube Studio, with the title and description ready to copy,
+ * then paste the link. Once v2 is on, teachers never upload by hand, and
+ * nothing is sent until the teacher presses Upload.
  */
 export function UploadPanel({
   questionId,
@@ -87,25 +89,7 @@ export function UploadPanel({
           onActivity={onActivity}
         />
       ) : null}
-      {oneClick ? (
-        <details className="group rounded-control border border-rule">
-          <summary className="cursor-pointer list-none px-3 py-2 text-meta text-ink-muted hover:text-ink">
-            Or upload it by hand in YouTube Studio
-          </summary>
-          <div className="border-t border-rule p-3">
-            <ManualSteps
-              questionId={questionId}
-              suggestedTitle={suggestedTitle}
-              suggestedDescription={suggestedDescription}
-              solutionId={solutionId}
-              currentUrl={currentUrl}
-              onVideo={onVideo}
-              onDiscard={onDiscard}
-              onActivity={onActivity}
-            />
-          </div>
-        </details>
-      ) : (
+      {oneClick ? null : (
         <ManualSteps
           questionId={questionId}
           suggestedTitle={suggestedTitle}
@@ -264,7 +248,8 @@ function OneClickUpload({
             <Warning size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
             <span>
               The video is on YouTube but could not be attached
-              {!outcome.result.ok ? `: ${outcome.result.error}` : '.'} Paste its link under “Upload it by hand” to attach it.
+              {!outcome.result.ok ? `: ${outcome.result.error}` : '.'} Once that is sorted, paste its link in the Video
+              section to attach it; there is no need to upload it again.
             </span>
           </p>
         )}
@@ -383,9 +368,7 @@ function OneClickUpload({
       {error ? (
         <p className="flex items-start gap-2 text-meta text-incorrect" aria-live="polite">
           <Warning size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
-          <span>
-            {error} If it keeps failing, download the take and upload it by hand below.
-          </span>
+          <span>{error}</span>
         </p>
       ) : null}
 

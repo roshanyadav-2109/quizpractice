@@ -13,9 +13,9 @@ const WARN_MINUTES = Math.round(RECORDING_WARN_MS / 60_000)
 const MAX_MINUTES = Math.round(RECORDING_MAX_MS / 60_000)
 
 /**
- * How to record well, and how a recording gets onto YouTube. The upload steps
- * are the manual ones (YouTube Studio), which work today; the one-click upload
- * is described as on or not yet, read from the same switch the studio uses.
+ * How to record well, and how a recording gets onto YouTube: the one-click
+ * upload once it is switched on (the same switch the studio reads), and until
+ * then the steps for uploading by hand in YouTube Studio.
  */
 export default async function TeachHelpPage() {
   await teacherPageGate(ROUTES.teachHelp)
@@ -101,57 +101,78 @@ export default async function TeachHelpPage() {
         {/* Side by side from lg; stacked below it, with the gap a Section would have. */}
         <div className="mt-8 lg:mt-0">
           <Section title="Putting the video on YouTube">
-            <Card className="p-4 sm:p-5">
-              <ol className="flex list-decimal flex-col gap-2.5 pl-5 text-ui text-ink marker:text-ink-faint">
-                <li>In the studio, review your take and download it. The file is named after the question.</li>
-                <li>
-                  Open YouTube Studio (studio.youtube.com) with the account that can upload to the{' '}
-                  <strong className="font-medium">Unknown IITians</strong> channel, and switch to that channel.
-                </li>
-                <li>Choose Create, then Upload videos, and pick the file.</li>
-                <li>Paste the title and the description the studio suggests for this question.</li>
-                <li>
-                  Under Playlists, add it to the subject’s <strong className="font-medium">Unlisted</strong> playlist.
-                  If the subject has none yet, create one named after the subject, visibility Unlisted.
-                </li>
-                <li>
-                  Audience: choose <strong className="font-medium">No, it’s not made for kids</strong>.
-                </li>
-                <li>
-                  Open Show more and make sure <strong className="font-medium">Allow embedding</strong> is on. Without
-                  it the video cannot play on the site.
-                </li>
-                <li>
-                  Visibility: <strong className="font-medium">Unlisted</strong>. Not Private — a private video does not
-                  play for students.
-                </li>
-                <li>Save, then copy the video’s link.</li>
-                <li>
-                  Back in the studio, paste the link and save. The site checks that the video is on the channel, is not
-                  private and can be embedded before it keeps the link.
-                </li>
-              </ol>
-              <p className="mt-4 border-t border-rule pt-3 text-meta text-ink-muted">
-                No access to the channel? Send the downloaded file to an admin, who can upload it and send you the link
-                to paste.
-              </p>
-            </Card>
+            {oneClick ? (
+              <Card className="p-4 sm:p-5">
+                <ol className="flex list-decimal flex-col gap-2.5 pl-5 text-ui text-ink marker:text-ink-faint">
+                  <li>Record your take on the Board &amp; record tab, then stop.</li>
+                  <li>
+                    Watch it back and record again if you like. Nothing leaves your browser until you choose to upload.
+                  </li>
+                  <li>
+                    Check the title and description the studio fills in, keep the visibility on{' '}
+                    <strong className="font-medium">Unlisted</strong>, and tick the box for YouTube’s terms.
+                  </li>
+                  <li>
+                    Press <strong className="font-medium">Upload to YouTube</strong> and keep the tab open until it
+                    finishes. If the connection drops, Carry on uploading picks up where it stopped.
+                  </li>
+                  <li>
+                    The video goes to the <strong className="font-medium">Unknown IITians</strong> channel and its link
+                    is saved to your explanation for you. Then submit the explanation.
+                  </li>
+                </ol>
+                <p className="mt-4 border-t border-rule pt-3 text-meta text-ink-muted">
+                  If an upload cannot go ahead, for example when the day’s upload limit is reached, your take stays saved
+                  in this browser for 7 days. Try again later.
+                </p>
+              </Card>
+            ) : (
+              <>
+                <Card className="p-4 sm:p-5">
+                  <ol className="flex list-decimal flex-col gap-2.5 pl-5 text-ui text-ink marker:text-ink-faint">
+                    <li>In the studio, review your take and download it. The file is named after the question.</li>
+                    <li>
+                      Open YouTube Studio (studio.youtube.com) with the account that can upload to the{' '}
+                      <strong className="font-medium">Unknown IITians</strong> channel, and switch to that channel.
+                    </li>
+                    <li>Choose Create, then Upload videos, and pick the file.</li>
+                    <li>Paste the title and the description the studio suggests for this question.</li>
+                    <li>
+                      Under Playlists, add it to the subject’s <strong className="font-medium">Unlisted</strong> playlist.
+                      If the subject has none yet, create one named after the subject, visibility Unlisted.
+                    </li>
+                    <li>
+                      Audience: choose <strong className="font-medium">No, it’s not made for kids</strong>.
+                    </li>
+                    <li>
+                      Open Show more and make sure <strong className="font-medium">Allow embedding</strong> is on. Without
+                      it the video cannot play on the site.
+                    </li>
+                    <li>
+                      Visibility: <strong className="font-medium">Unlisted</strong>. Not Private — a private video does not
+                      play for students.
+                    </li>
+                    <li>Save, then copy the video’s link.</li>
+                    <li>
+                      Back in the studio, paste the link and save. The site checks that the video is on the channel, is not
+                      private and can be embedded before it keeps the link.
+                    </li>
+                  </ol>
+                  <p className="mt-4 border-t border-rule pt-3 text-meta text-ink-muted">
+                    No access to the channel? Send the downloaded file to an admin, who can upload it and send you the link
+                    to paste.
+                  </p>
+                </Card>
 
-            <p className="mt-4 flex gap-2.5 rounded-control bg-accent-soft px-4 py-3 text-meta text-ink">
-              <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
-              {oneClick ? (
-                <span>
-                  One-click upload is on. After reviewing a take, choose Upload to YouTube in the studio: the video goes
-                  to the channel with the title, description and visibility you pick, and its link is saved for you. If
-                  it fails, the steps above always work.
-                </span>
-              ) : (
-                <span>
-                  An Upload to YouTube button that does all of this from the studio arrives once Google approves the
-                  site’s use of the YouTube API. Until then, use the steps above.
-                </span>
-              )}
-            </p>
+                <p className="mt-4 flex gap-2.5 rounded-control bg-accent-soft px-4 py-3 text-meta text-ink">
+                  <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
+                  <span>
+                    An Upload to YouTube button that does all of this from the studio arrives once Google approves the
+                    site’s use of the YouTube API. Until then, use the steps above.
+                  </span>
+                </p>
+              </>
+            )}
           </Section>
         </div>
       </div>

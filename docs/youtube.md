@@ -6,7 +6,7 @@ Nothing here costs money.
 
 There are two ways a video gets there:
 
-| | v1: upload by hand (works today) | v2: one-click upload (after Google's audit) |
+| | v1: upload by hand (only until the audit passes) | v2: one-click upload (after Google's audit) |
 |---|---|---|
 | Teacher | Records in the studio, downloads the file, uploads it in YouTube Studio as **Unlisted**, pastes the link | Records, fills in title / description / visibility, ticks the YouTube terms, presses Upload |
 | Site checks | The link: right channel, not Private, embedding allowed | The same, on the uploaded video |
@@ -172,11 +172,16 @@ has to be uploaded again. Google publishes no timeline; 2–4 weeks is typical.
 ## 6. Limits
 
 - **Quota.** 10,000 units a day for reads (a link check is 1 unit) and, since June 2026, a separate bucket of 100 uploads a day. The site stops at **90 uploads a day** and **20 per teacher per 24 hours**.
-- **Unpublished cap.** YouTube has been reported to answer 429 to uploads beyond an unpublished per-channel daily limit. The site shows teachers *"YouTube is not taking more uploads from the site today"* and points them to the manual path, which is not affected.
+- **Unpublished cap.** YouTube has been reported to answer 429 to uploads beyond an unpublished per-channel daily limit. The site shows teachers *"YouTube is not taking more uploads from the site today"* and tells them to try again later: the take stays in their browser for 7 days.
 - **Length.** Videos longer than 15 minutes need the channel to be phone-verified (YouTube Studio → Settings → Channel → Feature eligibility). The recorder stops at 20 minutes.
 - **Hosting transfer.** A recording normally goes from the browser straight to YouTube and costs the site nothing. If the browser cannot do that, it goes through the site in 4 MiB parts, which counts about twice the file size against Vercel's free transfer. The studio says which route it used.
 
 ## 7. How the upload works
+
+Nothing is uploaded when a recording stops. The teacher watches the take
+back, checks the title, description and visibility (Unlisted by default),
+ticks YouTube's terms and presses **Upload to YouTube**. With v2 on, the
+studio and `/teach/help` no longer offer the by-hand steps at all.
 
 1. The studio asks `POST /api/teach/uploads`. The server checks the teacher is assigned the question's subject and under the limits, then opens a resumable session at YouTube with the channel's token, sending the site's `Origin` so YouTube allows the browser to talk to that session. It returns only the session address, which is good for this one file.
 2. The browser PUTs 8 MiB chunks straight to the session address.

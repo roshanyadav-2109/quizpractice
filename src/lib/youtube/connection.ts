@@ -403,9 +403,13 @@ export function uploadError(status: number, code: UploadApiCode, error: string):
   return Response.json({ error, code }, { status, headers: { 'Cache-Control': 'no-store' } })
 }
 
-/** Where to send a teacher when the one-click upload cannot go ahead. */
-export const MANUAL_PATH =
-  'Download the recording, upload it in YouTube Studio as Unlisted, and paste its link here instead.'
+/**
+ * What a teacher is told when the one-click upload cannot go ahead. Uploading
+ * is automatic only: there is no by-hand route to send them to, so the take
+ * waits in their browser (kept 7 days) for another try.
+ */
+export const RETRY_LATER =
+  'Your recording stays saved in this browser for 7 days, so try the upload again later. Download it too if you want a copy.'
 
 /**
  * The signed-in teacher (or admin) making an upload request, or the response
