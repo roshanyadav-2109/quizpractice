@@ -41,7 +41,9 @@ export function HubHeader({
           <h1 className="mt-0.5 text-[1.625rem] leading-tight font-medium text-balance text-ink sm:text-[2rem]">{title}</h1>
         </div>
       </div>
-      <div className="mt-3 max-w-[72ch] text-body leading-relaxed text-ink-muted">{lead}</div>
+      <div className="mt-3 max-w-[72ch] text-body leading-relaxed text-ink-muted [&_a]:underline [&_a]:underline-offset-2">
+        {lead}
+      </div>
       {stats.length > 0 ? (
         <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
           {stats.map((stat) => (
