@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { paths } from '@/lib/seo/paths'
 import type { Metadata } from 'next'
 import { getMistakeBank, getQuestionsWithAnswers } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
@@ -22,7 +23,7 @@ export default async function RetryMistakes({ searchParams }: { searchParams: Se
   if (!isSupabaseConfigured) return <SetupNotice />
   const [profile, { subject }] = await Promise.all([getCurrentProfile(), searchParams])
   // Back to where retrying starts: the home page, or the subject's page.
-  const back = subject ? `/subject/${subject}` : '/'
+  const back = subject ? paths.subject(subject) : '/'
   const self = subject ? `/mistakes/practice?subject=${subject}` : '/mistakes/practice'
   if (!profile) redirect(`/?login=1&next=${encodeURIComponent(self)}`)
 
