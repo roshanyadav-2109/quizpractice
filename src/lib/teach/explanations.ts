@@ -218,6 +218,13 @@ export async function upsertExplanation(input: SaveExplanationInput): Promise<Sa
     submittedAt = base.submitted_at
   }
 
+  // Staff publishing from the studio is the review: record who approved it,
+  // as the review page does. (The database lets only staff set these.)
+  const review =
+    input.intent === 'submit' && status === 'approved' && staff
+      ? { reviewed_by: profile.id, reviewed_at: new Date().toISOString(), review_note: null }
+      : {}
+
   let saved: { id: string; status: ModerationStatus } | null
   if (!current) {
     const { data, error } = await supabase
@@ -230,6 +237,7 @@ export async function upsertExplanation(input: SaveExplanationInput): Promise<Sa
         author_id: profile.id,
         status,
         submitted_at: submittedAt,
+        ...review,
       })
       .select('id, status')
       .single<{ id: string; status: ModerationStatus }>()
@@ -239,7 +247,7 @@ export async function upsertExplanation(input: SaveExplanationInput): Promise<Sa
     // is the one every later save picks.
     if (orphan) await supabase.from('solutions').delete().eq('id', orphan.id)
   } else {
-    const patch: Record<string, unknown> = { status, submitted_at: submittedAt }
+    const patch: Record<string, unknown> = { status, submitted_at: submittedAt, ...review }
     if (body !== undefined) patch.body = body
     if (videoUrl !== undefined) patch.video_url = videoUrl
     const { data, error } = await supabase
