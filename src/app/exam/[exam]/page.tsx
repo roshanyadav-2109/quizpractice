@@ -6,6 +6,7 @@ import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { collectionPage } from '@/lib/seo/jsonld'
 import { listOf, plural, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
+import { paths } from '@/lib/seo/paths'
 import { CHECKED, examFact } from '@/lib/seo/exam-facts'
 import { formatCount } from '@/lib/format'
 import { artFor } from '@/lib/art'
@@ -15,6 +16,7 @@ import { PaperTable } from '@/components/seo/PaperTable'
 import { Faq, type FaqItem } from '@/components/seo/Faq'
 import { SHELL } from '@/components/site/Page'
 import { Art } from '@/components/ui/Art'
+import { buttonClass } from '@/components/ui/primitives'
 
 export const revalidate = 3600
 
@@ -46,9 +48,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const subjects = new Set(papers.map((paper) => paper.subject.id)).size
   return pageMetadata({
     title: titles.exam(examType, years(papers)),
-    description: `Every IITM BS ${examType.name} previous year question paper: ${formatCount(papers.length)} papers across ${subjects} subjects, ${yearSpan(
+    description: `IITM BS ${examType.name} PYQs with solutions: ${formatCount(papers.length)} papers across ${subjects} subjects, ${yearSpan(
       years(papers),
-    )}, with answer keys. Free to read or take as a timed mock test.`,
+    )}, with answer keys, video solutions and free ${examType.name} mock tests.`,
     path: `/exam/${examType.slug}`,
   })
 }
@@ -93,17 +95,17 @@ export default async function ExamHub({ params }: { params: Params }) {
         <>
           Every {examType.name} paper on Quiz Space is linked from this page: {formatCount(papers.length)} papers across{' '}
           {plural(subjectIds.size, 'subject')}, {yearSpan(years(papers))}. Pick a subject below to see its {examType.name}{' '}
-          papers by year.
+          papers by year, or a year to see every subject&rsquo;s {examType.name} from that year.
         </>
       ),
     },
     ...(fact?.faq ?? []).map((item) => ({ q: item.q, a: <>{item.a}</> })),
     {
-      q: `Do the ${examType.name} PYQs have answers?`,
+      q: `Are there IITM BS ${examType.name} PYQs with solutions?`,
       a: (
         <>
-          Yes — every question shows its answer key, and every paper can be taken as a free, timed mock test on a
-          screen laid out like the real exam.
+          Yes — every question shows its answer key, and each question has its own page where its video solution plays.
+          Every paper can also be taken as a free, timed {examType.name} mock test on a screen laid out like the real exam.
         </>
       ),
     },
@@ -144,8 +146,8 @@ export default async function ExamHub({ params }: { params: Params }) {
           <p>
             <strong className="font-medium text-ink">{formatCount(papers.length)} {examType.name} papers</strong> across{' '}
             {plural(subjectIds.size, 'subject')} of the IIT Madras BS degree, {yearSpan(years(papers))} —{' '}
-            {formatCount(questions)} questions, each with its answer key. {fact ? fact.scope : ''} Choose a subject to see
-            its papers by year, or start with the latest below.
+            {formatCount(questions)} questions, each with its answer key and a video solution on its own page.{' '}
+            {fact ? fact.scope : ''} Choose a subject or a year, or start with the latest papers below.
           </p>
         }
         stats={[
@@ -156,6 +158,18 @@ export default async function ExamHub({ params }: { params: Params }) {
         ]}
         updated={updated}
       />
+
+      {years(papers).length > 0 ? (
+        <nav aria-label={`${examType.name} PYQs by year`} className="mt-6 flex flex-wrap gap-2">
+          {years(papers)
+            .sort((a, b) => b - a)
+            .map((year) => (
+              <Link key={year} href={paths.examYear(examType.slug, year)} className={buttonClass('outline', 'sm')}>
+                {examType.name} PYQ {year}
+              </Link>
+            ))}
+        </nav>
+      ) : null}
 
       {fact ? (
         <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" aria-labelledby="about-exam">
