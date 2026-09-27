@@ -24,6 +24,8 @@ import { Badge, buttonClass } from '@/components/ui/primitives'
 import { ArrowRight, MagnifyingGlass } from '@/components/ui/icons'
 import { formatSession } from '@/lib/format'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { SignInButton } from '@/components/site/AuthDialog'
+import { getCurrentProfile } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +58,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   const { q = '', in: rawIn } = await searchParams
   const term = q.trim()
+  // Results quote the questions, so searching inside them is for signed-in
+  // students, like the papers themselves.
+  const profile = term ? await getCurrentProfile() : null
+  if (term && !profile) return <SignInToSearch term={term} />
   // The hits and their options together, held briefly per term.
   const [{ hits, options }, popular] = await Promise.all([searchWithOptions(term), getPopularSearches(10)])
 
@@ -251,5 +257,24 @@ async function BrowseSubjects() {
         ))}
       </ul>
     </section>
+  )
+}
+
+function SignInToSearch({ term }: { term: string }) {
+  return (
+    <div className={`${SHELL} py-12`}>
+      <EmptyState
+        art="sign-in-required"
+        size="lg"
+        title={`Sign in to search for “${term}”`}
+        actions={
+          <SignInButton next={`/search?q=${encodeURIComponent(term)}`} className={buttonClass('primary', 'md')}>
+            Sign in with Google
+          </SignInButton>
+        }
+      >
+        Searching inside the questions, like the full papers, needs a free Google sign-in.
+      </EmptyState>
+    </div>
   )
 }
