@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const papers = subjects.reduce((sum, subject) => sum + subject.paperCount, 0)
   return pageMetadata({
     title: titles.program(program.program),
-    description: `${formatCount(papers)} IITM BS ${program.program.short_name ?? program.program.name} PYQs with solutions: Qualifier, Quiz 1, Quiz 2 and End Term papers for every course, with answer keys and video solutions.`,
+    description: `${formatCount(papers)} IITM BS ${program.program.short_name ?? program.program.name} PYQs with solutions: Qualifier, Quiz 1, Quiz 2 and End Term papers for every course, with answer keys and free mock tests.`,
     path: program.path,
   })
 }
@@ -95,7 +95,7 @@ export default async function ProgramHub({ params }: { params: Params }) {
               Previous year question papers for the IIT Madras {program.program.name}:{' '}
               <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> across{' '}
               {plural(subjects.length, 'subject')}, {yearSpan(allYears)} — {formatCount(questions)} questions, each with its solution
-              from the answer key and a video solution on its own page. {program.program.description ?? ''}
+              from the answer key, open with a free Google sign-in. {program.program.description ?? ''}
             </p>
           }
           statsTitle={`${name} PYQ at a glance`}
