@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { paths } from '@/lib/seo/paths'
 import type { QualityCounts } from '@/lib/queries'
 import { formatCount } from '@/lib/format'
 
@@ -100,7 +101,7 @@ export function SpeedMap({
             const shown = ZONES.filter((zone) => (subject.counts[zone.key] ?? 0) > 0)
             return (
               <li key={subject.slug}>
-                <Link href={`/subject/${subject.slug}`} className="group block outline-none">
+                <Link href={paths.subject(subject.slug)} className="group block outline-none">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 truncate text-ui font-light text-ink group-hover:text-accent">{subject.name}</span>
                     <span className="shrink-0 text-meta text-ink-faint tabular-nums">{formatCount(total)} answered</span>
