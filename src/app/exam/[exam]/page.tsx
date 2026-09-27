@@ -137,7 +137,7 @@ export default async function ExamHub({ params }: { params: Params }) {
 
       <HubHeader
         crumbs={[{ label: 'Home', href: '/' }, { label: `${examType.name} PYQ` }]}
-        icon={art ? <Art src={art} size={56} /> : undefined}
+        icon={art ? <Art src={art} size={56} alt={`IITM BS ${examType.name}`} /> : undefined}
         eyebrow="IIT Madras BS degree"
         title={titles.examHeading(
           examType,
@@ -198,7 +198,10 @@ export default async function ExamHub({ params }: { params: Params }) {
           </h2>
           {levels.map(({ level, subjects }) => (
             <div key={level.level.id} className="mt-5">
-              <h3 className="text-ui font-medium text-ink-muted">{level.level.name}</h3>
+              <h3 className="text-ui font-medium text-ink-muted">
+                {level.level.name}
+                <span className="sr-only"> — {program.program.short_name ?? program.program.name}</span>
+              </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {subjects.map(({ node, exam }) => (
                   <li key={node.subject.id}>
@@ -243,6 +246,10 @@ export default async function ExamHub({ params }: { params: Params }) {
                     <Link key={paper.setId} href={paper.path} className="text-accent hover:underline">
                       {shortName(paper.subject)}
                       {paper.setsInSitting > 1 ? ` (${paper.setCode})` : ''}
+                      <span className="sr-only">
+                        {' '}
+                        {examType.name} {sittingDate(date)}
+                      </span>
                     </Link>
                   ))}
                 </p>
