@@ -6,7 +6,7 @@ import { publicEnv } from '@/lib/env'
 
 export const metadata: Metadata = {
   title: 'Privacy',
-  description: 'What Quiz Space collects, why, who it is shared with, and how to have it deleted.',
+  description: 'What Quiz Space by Unknown IITians collects, why, who it is shared with, and how to have it deleted.',
 }
 
 const UPDATED = '27 September 2026'
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
 
       <article className="max-w-[68ch] text-body text-ink">
         <Lead>
-          Quiz Space is a site for practising previous year papers of the IIT Madras BS degree. This page explains
+          Quiz Space by Unknown IITians is a site for practising previous year papers of the IIT Madras BS degree. This page explains
           what we collect when you use it, why, who else handles it, and how to have it removed. We do not sell your
           data and we do not show advertising.
         </Lead>
