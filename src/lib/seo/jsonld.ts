@@ -214,17 +214,28 @@ export function paperEntity({
   dateCreated,
   modified,
   educationalLevel,
+  totalQuestions,
+  lockedSelector,
 }: {
   path: string
   name: string
   description: string
   crumbs: Crumb[]
   course: Json
+  /** The questions the page shows — its free preview. */
   questions: QuizQuestion[]
   timeRequiredMinutes: number | null
   dateCreated: string | null
   modified: string | null
   educationalLevel: string
+  /** How many questions the paper has, preview or not. */
+  totalQuestions: number
+  /**
+   * The part of the page that stands for what needs a sign-in. Google's
+   * markup for content behind a login or paywall: the page is not free to
+   * access in full, and this element is where it stops.
+   */
+  lockedSelector?: string
 }): Json {
   const url = absolute(path)
   return {
@@ -239,7 +250,7 @@ export function paperEntity({
         inLanguage: SITE.language,
         learningResourceType: 'Previous year question paper',
         educationalLevel,
-        isAccessibleForFree: true,
+        isAccessibleForFree: !lockedSelector,
         ...(timeRequiredMinutes ? { timeRequired: `PT${timeRequiredMinutes}M` } : {}),
         ...(dateCreated ? { dateCreated } : {}),
         ...(modified ? { dateModified: modified } : {}),
@@ -247,90 +258,15 @@ export function paperEntity({
         isPartOf: { '@id': IDS.website },
         publisher: { '@id': IDS.organization },
         breadcrumb: { '@id': `${url}#breadcrumb` },
-        numberOfQuestions: questions.length,
-        hasPart: questions.slice(0, 80).map(questionEntity),
+        numberOfQuestions: totalQuestions,
+        hasPart: [
+          ...questions.slice(0, 80).map(questionEntity),
+          ...(lockedSelector ? [{ '@type': 'WebPageElement', isAccessibleForFree: false, cssSelector: lockedSelector }] : []),
+        ],
       },
       { ...breadcrumbList(crumbs), '@id': `${url}#breadcrumb` },
     ],
   }
-}
-
-/** A single question page. */
-export function questionPage({
-  path,
-  crumbs,
-  question,
-  course,
-  paperPath,
-  paperName,
-  educationalLevel,
-  modified,
-  video,
-}: {
-  path: string
-  crumbs: Crumb[]
-  question: QuizQuestion
-  course: Json
-  paperPath: string
-  paperName: string
-  educationalLevel: string
-  modified: string | null
-  /** The question's video solution, which plays on this page. */
-  video?: QuestionVideo
-}): Json {
-  const url = absolute(path)
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': ['Quiz', 'LearningResource'],
-        '@id': `${url}#quiz`,
-        url,
-        name: question.name,
-        inLanguage: SITE.language,
-        learningResourceType: 'Practice question',
-        educationalLevel,
-        isAccessibleForFree: true,
-        ...(modified ? { dateModified: modified } : {}),
-        about: course,
-        isPartOf: [{ '@id': IDS.website }, { '@type': 'Quiz', name: paperName, url: absolute(paperPath) }],
-        publisher: { '@id': IDS.organization },
-        breadcrumb: { '@id': `${url}#breadcrumb` },
-        hasPart: [questionEntity(question)],
-        ...(video ? { video: { '@id': `${url}#video` } } : {}),
-      },
-      { ...breadcrumbList(crumbs), '@id': `${url}#breadcrumb` },
-      ...(video
-        ? [
-            {
-              '@type': 'VideoObject',
-              '@id': `${url}#video`,
-              name: video.name,
-              description: video.description,
-              thumbnailUrl: [video.thumbnailUrl],
-              uploadDate: video.uploadDate,
-              ...(video.embedUrl ? { embedUrl: video.embedUrl } : {}),
-              contentUrl: video.contentUrl,
-              inLanguage: SITE.language,
-              isFamilyFriendly: true,
-              isAccessibleForFree: true,
-              // The page the video plays on — the question it solves.
-              mainEntityOfPage: url,
-              publisher: { '@id': IDS.organization },
-            },
-          ]
-        : []),
-    ],
-  }
-}
-
-export interface QuestionVideo {
-  name: string
-  description: string
-  thumbnailUrl: string
-  uploadDate: string
-  embedUrl: string | null
-  contentUrl: string
 }
 
 /** A plain page (about, a guide). */
