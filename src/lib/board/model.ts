@@ -481,11 +481,13 @@ function placeFigure(page: BoardPage, id: string, rect: BoardRect): BoardPage {
  * figure covers — or, when there is none, stepped down and right from the
  * top so none hides another exactly.
  */
-export function placeNewFigure(page: BoardPage, aspect: number): BoardRect {
+export function placeNewFigure(
+  page: BoardPage,
+  aspect: number,
+  { maxW = BOARD_W * 0.5, maxH = BOARD_H * 0.6 }: { maxW?: number; maxH?: number } = {},
+): BoardRect {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3
   const margin = 32
-  const maxW = BOARD_W * 0.5
-  const maxH = BOARD_H * 0.6
   let w = maxW
   let h = w / safeAspect
   if (h > maxH) {
@@ -708,14 +710,13 @@ function sanitizeStroke(value: unknown): Stroke | null {
 function sanitizeFigure(value: unknown): PinnedFigure | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
+  if (![raw.x, raw.y, raw.w, raw.h].every(finite) || (raw.w as number) <= 0 || (raw.h as number) <= 0) return null
+  const id = typeof raw.id === 'string' && raw.id ? raw.id : newId()
+  const rect = normaliseRect({ x: raw.x as number, y: raw.y as number, w: raw.w as number, h: raw.h as number })
+  if (raw.card === 'plain' || raw.card === 'answer') return { id, card: raw.card, ...rect }
   const image = cloudinaryRefSchema.safeParse(raw.image)
   if (!image.success || image.data.source_url !== undefined) return null
-  if (![raw.x, raw.y, raw.w, raw.h].every(finite) || (raw.w as number) <= 0 || (raw.h as number) <= 0) return null
-  return {
-    id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
-    image: image.data,
-    ...normaliseRect({ x: raw.x as number, y: raw.y as number, w: raw.w as number, h: raw.h as number }),
-  }
+  return { id, image: image.data, ...rect }
 }
 
 /**

@@ -47,10 +47,27 @@ export interface Stroke {
   pts: number[]
 }
 
-/** A question figure placed on the page, drawn beneath the ink. */
+/** Which picture of the question card: as students see it, or with the answer marked. */
+export type CardKind = 'plain' | 'answer'
+
+/** A picture of the question card, made in the browser; never uploaded or saved. */
+export interface CardPicture {
+  image: CanvasImageSource
+  width: number
+  height: number
+}
+
+/**
+ * Something placed on the page and drawn beneath the ink, so the teacher can
+ * write over it: one of the question's own figures, or the whole question
+ * card — text, options, figures and, if chosen, the answer.
+ */
 export interface PinnedFigure {
   id: string
-  image: CloudinaryRef
+  /** A question figure already on the site. Absent for the question card. */
+  image?: CloudinaryRef
+  /** The question card. */
+  card?: CardKind
   x: number
   y: number
   w: number

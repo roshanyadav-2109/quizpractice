@@ -22,6 +22,8 @@ import {
   type BoardBackground,
   type BoardPage,
   type BoardRect,
+  type CardKind,
+  type CardPicture,
   type InkTool,
   type PinnedFigure,
   type Stroke,
@@ -129,6 +131,17 @@ export class FigureImages {
   version = 0
   private entries = new Map<string, ImageEntry>()
   private listeners = new Set<() => void>()
+  private cards: Partial<Record<CardKind, CardPicture>> = {}
+
+  /** The question card's pictures, made by the studio; redraws whatever shows them. */
+  setCards(cards: Record<CardKind, CardPicture> | null): void {
+    this.cards = cards ?? {}
+    this.bump()
+  }
+
+  card(kind: CardKind): CardPicture | null {
+    return this.cards[kind] ?? null
+  }
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
@@ -209,8 +222,15 @@ export function figureAspect(ref: CloudinaryRef, img?: HTMLImageElement | null):
 }
 
 export function drawFigure(ctx: Ctx, figure: PinnedFigure, images: FigureImages): void {
-  const img = images.get(figure.image)
-  if (!img || !img.naturalWidth) {
+  if (figure.card) {
+    const card = images.card(figure.card)
+    if (card && card.width > 0 && card.height > 0) {
+      ctx.drawImage(card.image, 0, 0, card.width, card.height, figure.x, figure.y, figure.w, figure.h)
+      return
+    }
+  }
+  const img = figure.image ? images.get(figure.image) : null
+  if (!figure.image || !img || !img.naturalWidth) {
     // Still loading, or unavailable: hold its place so ink around it makes sense.
     ctx.save()
     ctx.fillStyle = '#f5f5f4'

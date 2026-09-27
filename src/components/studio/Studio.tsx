@@ -7,8 +7,11 @@ import { BackLink } from '@/components/site/BackLink'
 import { Trail } from '@/components/site/Page'
 import {
   ArrowLeft,
+  Article,
   BookOpenText,
   CheckCircle,
+  CornersIn,
+  CornersOut,
   PushPin,
   Question,
   VideoCamera,
@@ -197,6 +200,34 @@ export function Studio({
   viewer,
 }: StudioProps) {
   const boardRef = useRef<WhiteboardHandle>(null)
+  const boardPanel = useRef<HTMLElement>(null)
+  const [cardReady, setCardReady] = useState(false)
+  const onCardReady = useCallback(() => setCardReady(true), [])
+  const [fullBoard, setFullBoard] = useState(false)
+
+  // Full screen: the browser's own where it has one (desktop, iPad), and a
+  // panel filling the window everywhere, so the board grows either way.
+  // Leaving the browser's full screen (Esc) leaves the studio's too.
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) setFullBoard(false)
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  function toggleFullBoard() {
+    const next = !fullBoard
+    setFullBoard(next)
+    const panel = boardPanel.current
+    if (next && panel && typeof panel.requestFullscreen === 'function' && !document.fullscreenElement) {
+      panel.requestFullscreen().catch(() => {
+        // Refused (an iPhone, an embedded frame): the window-filling panel stands in.
+      })
+    } else if (!next && document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+    }
+  }
   const [tab, setTab] = useState<Tab>('write')
   const [paneOpen, setPaneOpen] = useState(true)
 
@@ -689,11 +720,16 @@ export function Studio({
               </section>
 
               <section
+                ref={boardPanel}
                 id="panel-board"
                 role="tabpanel"
                 aria-labelledby="tab-board"
                 hidden={tab !== 'board'}
-                className="flex w-full flex-col gap-4 p-4 sm:p-6"
+                className={
+                  fullBoard
+                    ? 'fixed inset-0 z-50 flex w-full flex-col gap-3 overflow-y-auto bg-surface p-3 sm:p-4'
+                    : 'flex w-full flex-col gap-4 p-4 sm:p-6'
+                }
               >
                 <RecordPanel
                   question={question}
@@ -704,6 +740,7 @@ export function Studio({
                   onPhase={setPhase}
                   onTake={onTake}
                   onActivity={touch}
+                  onCardReady={onCardReady}
                 />
 
                 {take ? (
@@ -750,6 +787,7 @@ export function Studio({
                 ) : null}
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <QuestionOnBoard boardRef={boardRef} ready={cardReady} onResult={setBoardNotice} />
                   <PinFigure boardRef={boardRef} question={question} onResult={setBoardNotice} />
                   <InsertBoardPage
                     boardRef={boardRef}
@@ -758,6 +796,15 @@ export function Studio({
                     label="Add this page to the written explanation"
                     tone="ghost"
                   />
+                  <button
+                    type="button"
+                    onClick={toggleFullBoard}
+                    aria-pressed={fullBoard}
+                    className={`${buttonClass(fullBoard ? 'primary' : 'outline', 'sm')} ml-auto`}
+                  >
+                    {fullBoard ? <CornersIn size={16} aria-hidden="true" /> : <CornersOut size={16} aria-hidden="true" />}
+                    {fullBoard ? 'Exit full screen' : 'Full screen'}
+                  </button>
                   {boardNotice ? (
                     <span
                       className={`flex items-center gap-1.5 text-meta ${boardNotice.tone === 'ok' ? 'text-correct' : 'text-incorrect'}`}
@@ -774,7 +821,14 @@ export function Studio({
                 </div>
 
                 {/* As wide as the column allows, but never taller than the screen can show whole. */}
-                <div className="mx-auto w-full" style={{ maxWidth: 'max(560px, calc((100dvh - 19rem) * 16 / 9))' }}>
+                <div
+                  className="mx-auto w-full"
+                  style={{
+                    maxWidth: fullBoard
+                      ? 'max(560px, calc((100dvh - 11rem) * 16 / 9))'
+                      : 'max(560px, calc((100dvh - 19rem) * 16 / 9))',
+                  }}
+                >
                   <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} />
                 </div>
               </section>
@@ -815,6 +869,76 @@ function TabButton({
 }
 
 /** "Pin a figure": puts one of the question's own figures onto the current board page. */
+/**
+ * Puts the whole question card on the board, beneath the ink: the teacher
+ * circles, underlines and writes on the question itself, and the recording
+ * shows it that way. As students see it, or with the answer marked.
+ */
+function QuestionOnBoard({
+  boardRef,
+  ready,
+  onResult,
+}: {
+  boardRef: RefObject<WhiteboardHandle | null>
+  ready: boolean
+  onResult: (result: { tone: 'ok' | 'error'; text: string }) => void
+}) {
+  const menu = useRef<HTMLDetailsElement>(null)
+
+  function place(kind: 'plain' | 'answer') {
+    if (menu.current) menu.current.open = false
+    const board = boardRef.current
+    if (!board) return
+    try {
+      board.pinCard(kind)
+      onResult({
+        tone: 'ok',
+        text: 'The question is on the board. Write on it; drag it to move it, or its corner to resize it.',
+      })
+    } catch (failure) {
+      onResult({ tone: 'error', text: failure instanceof Error ? failure.message : 'The question could not be placed.' })
+    }
+  }
+
+  if (!ready) {
+    return (
+      <span className={`${buttonClass('ghost', 'sm')} cursor-default text-ink-faint`} aria-live="polite">
+        <Article size={16} aria-hidden="true" />
+        Preparing the question…
+      </span>
+    )
+  }
+
+  return (
+    <details ref={menu} className="relative">
+      <summary className={`${buttonClass('ghost', 'sm')} cursor-pointer list-none`}>
+        <Article size={16} aria-hidden="true" className="text-ink-muted" />
+        Question on board
+      </summary>
+      <ul className="absolute left-0 z-20 mt-1 flex w-72 flex-col rounded-card border border-rule bg-surface p-1">
+        <li>
+          <button
+            type="button"
+            onClick={() => place('plain')}
+            className="w-full rounded-control px-3 py-2 text-left text-meta text-ink hover:bg-surface-2"
+          >
+            The question, as students see it
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            onClick={() => place('answer')}
+            className="w-full rounded-control px-3 py-2 text-left text-meta text-ink hover:bg-surface-2"
+          >
+            With the answer marked
+          </button>
+        </li>
+      </ul>
+    </details>
+  )
+}
+
 function PinFigure({
   boardRef,
   question,

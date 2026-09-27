@@ -28,6 +28,7 @@ import {
   isFreehandTool,
   type BoardPage,
   type InkTool,
+  type PinnedFigure,
   type ShapeTool,
   type Stroke,
 } from './types'
@@ -245,8 +246,13 @@ function buildSketch(page: BoardPage, alt: string, caption: string | undefined, 
     alt,
   }
   if (page.bg !== 'plain') block.bg = page.bg
-  if (page.figures.length) {
-    block.figures = page.figures.map(({ image, x, y, w, h }) => ({
+  // The question card is a picture made in the browser, never uploaded: a
+  // saved page keeps the ink and the site's own figures, not the card.
+  const figures = page.figures.filter((figure): figure is PinnedFigure & { image: NonNullable<PinnedFigure['image']> } =>
+    Boolean(figure.image),
+  )
+  if (figures.length) {
+    block.figures = figures.map(({ image, x, y, w, h }) => ({
       image,
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,

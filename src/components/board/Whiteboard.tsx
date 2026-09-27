@@ -27,7 +27,16 @@ import {
 import { BoardPainter, figureAspect } from '@/lib/board/render'
 import { toSketch } from '@/lib/board/sketch'
 import { useBoardInput, type BoardStore } from '@/lib/board/useBoardInput'
-import { BOARD_H, BOARD_W, MAX_FIGURES, type BoardPage, type BoardRect, type PinnedFigure } from '@/lib/board/types'
+import {
+  BOARD_H,
+  BOARD_W,
+  MAX_FIGURES,
+  type BoardPage,
+  type BoardRect,
+  type CardKind,
+  type CardPicture,
+  type PinnedFigure,
+} from '@/lib/board/types'
 import { BoardToolbar } from './BoardToolbar'
 import { PageStrip } from './PageStrip'
 
@@ -59,6 +68,16 @@ export interface WhiteboardHandle {
   toSketch(pageIndex?: number, alt?: string): SketchBlock
   /** Pins an existing question figure onto the current page. Rejects with a message to show. */
   pinFigure(image: CloudinaryRef): Promise<void>
+  /** Gives the board the studio's pictures of the question card, so it can show them. */
+  setCardImages(cards: Record<CardKind, CardPicture> | null): void
+  /**
+   * Puts the whole question card on the current page, beneath the ink, large
+   * enough to write on — replacing a card already there. Throws a message to
+   * show when the card's picture is not ready or the page is full.
+   */
+  pinCard(kind: CardKind): void
+  /** Whether the current page shows the question card. */
+  questionOnPage(): boolean
 }
 
 /** localStorage keys are `qp-board:<storageKey>`. */
@@ -142,6 +161,25 @@ export function Whiteboard({
         const rect = placeNewFigure(activePage(store.getState()), figureAspect(image, img))
         store.dispatch({ type: 'pinFigure', figure: { id: newId(), image, ...rect } })
       },
+      setCardImages: (cards) => painter.images.setCards(cards),
+      pinCard: (kind) => {
+        const card = painter.images.card(kind)
+        if (!card) throw new Error('The question is still being prepared. Try again in a moment.')
+        const page = activePage(store.getState())
+        // One card per page: choosing the other version swaps it in place.
+        const existing = page.figures.find((figure) => figure.card)
+        if (existing) {
+          store.dispatch({ type: 'unpinFigure', id: existing.id })
+        } else if (page.figures.length >= MAX_FIGURES) {
+          throw new Error(`A board page holds at most ${MAX_FIGURES} figures. Start a new page for the question.`)
+        }
+        const after = activePage(store.getState())
+        const rect = existing
+          ? { x: existing.x, y: existing.y, w: existing.w, h: existing.w / (card.width / card.height) }
+          : placeNewFigure(after, card.width / card.height, { maxW: BOARD_W * 0.62, maxH: BOARD_H - 64 })
+        store.dispatch({ type: 'pinFigure', figure: { id: newId(), card: kind, ...rect } })
+      },
+      questionOnPage: () => activePage(store.getState()).figures.some((figure) => figure.card),
     }),
     [store, painter],
   )
@@ -382,8 +420,8 @@ function FigureHandles({
       >
         <button
           type="button"
-          title="Drag to move the figure (arrow keys nudge it)"
-          aria-label="Move figure"
+          title={`Drag to move the ${figure.card ? 'question' : 'figure'} (arrow keys nudge it)`}
+          aria-label={figure.card ? 'Move the question' : 'Move figure'}
           onPointerDown={start('move')}
           onKeyDown={nudge}
           className={`${grip} h-7 w-7 cursor-move rounded-control`}
@@ -392,8 +430,8 @@ function FigureHandles({
         </button>
         <button
           type="button"
-          title="Take the figure off the page"
-          aria-label="Remove figure"
+          title={`Take the ${figure.card ? 'question' : 'figure'} off the page`}
+          aria-label={figure.card ? 'Remove the question' : 'Remove figure'}
           onClick={() => dispatch({ type: 'unpinFigure', id: figure.id })}
           className={`${grip} h-7 w-7 rounded-control`}
         >
@@ -402,8 +440,8 @@ function FigureHandles({
       </div>
       <button
         type="button"
-        title="Drag to resize the figure"
-        aria-label="Resize figure"
+        title={`Drag to resize the ${figure.card ? 'question' : 'figure'}`}
+        aria-label={figure.card ? 'Resize the question' : 'Resize figure'}
         onPointerDown={start('resize')}
         style={{
           left: `clamp(0px, calc(${right} - 20px), calc(100% - 20px))`,

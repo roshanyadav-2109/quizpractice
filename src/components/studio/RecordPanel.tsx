@@ -106,6 +106,7 @@ export function RecordPanel({
   onPhase,
   onTake,
   onActivity,
+  onCardReady,
 }: {
   question: QuestionWithOptions
   orderVaries: boolean
@@ -117,6 +118,8 @@ export function RecordPanel({
   onPhase: (phase: RecordPhase) => void
   onTake: (take: Take) => void
   onActivity: () => void
+  /** The question card's pictures are ready, so the board can show the question. */
+  onCardReady?: () => void
 }) {
   const support = useSyncExternalStore(subscribeNever, getSupport, getServerSupport)
   const mounted = useSyncExternalStore(subscribeNever, getMounted, getServerMounted)
@@ -136,6 +139,9 @@ export function RecordPanel({
   const [warned, setWarned] = useState(false)
   const [count, setCount] = useState<number | null>(null)
   const [rasterWanted, setRasterWanted] = useState(false)
+  // The card's pictures are made as soon as the board is on screen, so the
+  // question can go on the board at once, before any recording.
+  const rasterOn = rasterWanted || active
   const [raster, setRaster] = useState<{ fallback: boolean } | null>(null)
   const [recoverable, setRecoverable] = useState<RecordingMeta | null>(null)
 
@@ -203,7 +209,7 @@ export function RecordPanel({
 
   // The question card's pictures, once the hidden copies of the card are on the page.
   useEffect(() => {
-    if (!rasterWanted) return
+    if (!rasterOn) return
     const plain = plainRef.current
     const answer = answerRef.current
     if (!plain || !answer) return
@@ -212,12 +218,14 @@ export function RecordPanel({
       if (cancelled) return
       cardImages.current = result.images
       compositor.current?.setCard(result.images)
+      boardRef.current?.setCardImages(result.images)
       setRaster({ fallback: result.fallback })
+      onCardReady?.()
     })
     return () => {
       cancelled = true
     }
-  }, [rasterWanted, question, orderVaries])
+  }, [rasterOn, question, orderVaries, boardRef, onCardReady])
 
   // Q folds the card away and back, while the board is on screen.
   useEffect(() => {
@@ -622,7 +630,7 @@ export function RecordPanel({
             Options are shuffled on some copies: name each option by what it says, never by its letter.
           </p>
         ) : null}
-        {rasterWanted && !raster && phase !== 'idle' ? (
+        {rasterOn && !raster && phase !== 'idle' ? (
           <p className="text-meta text-ink-faint">Preparing the question card for the video…</p>
         ) : null}
         {raster?.fallback && phase !== 'idle' ? (
@@ -656,7 +664,7 @@ export function RecordPanel({
                 onZoom={zoomCard}
                 onScroll={(px) => compositor.current?.scrollCard(px)}
               />
-              {rasterWanted ? (
+              {rasterOn ? (
                 <RasterSource question={question} hideLabels={orderVaries} plainRef={plainRef} answerRef={answerRef} />
               ) : null}
             </>,

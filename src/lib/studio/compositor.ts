@@ -218,7 +218,9 @@ export class Compositor {
         // A board mid-remount: the paper alone this frame.
       }
     }
-    this.drawCard(ctx)
+    // With the question on the board itself, the floating card would only
+    // hide the teacher's writing on it.
+    if (!board?.questionOnPage()) this.drawCard(ctx)
     this.drawBubble(ctx)
   }
 

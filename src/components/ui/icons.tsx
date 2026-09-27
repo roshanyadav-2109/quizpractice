@@ -129,4 +129,8 @@ export {
   Users,
   UserPlus,
   UserMinus,
+  // the teaching studio's board
+  Article,
+  CornersIn,
+  CornersOut,
 } from '@phosphor-icons/react/ssr'

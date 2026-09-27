@@ -707,6 +707,7 @@ export function InsertBoardPage({
   const [alt, setAlt] = useState('')
   const [caption, setCaption] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [hasQuestion, setHasQuestion] = useState(false)
   const altId = useId()
 
   function open() {
@@ -717,6 +718,7 @@ export function InsertBoardPage({
     }
     setPages(board.pages().length)
     setPage(board.currentPage())
+    setHasQuestion(board.pages().some((one) => one.figures.some((figure) => figure.card)))
     setAlt(`Board working for question ${questionNumber}`)
     setCaption('')
     setError(null)
@@ -810,6 +812,9 @@ export function InsertBoardPage({
           <p className="text-micro text-ink-faint">
             The drawing is kept as lines, not a picture, so it stays sharp and costs no image upload. Very busy pages are
             simplified slightly to fit.
+            {hasQuestion
+              ? ' A question placed on the board is not saved with the page, only your writing on it; students see the question just above the explanation.'
+              : ''}
           </p>
           {error ? (
             <p className="flex items-start gap-2 text-meta text-incorrect">
