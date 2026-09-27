@@ -218,7 +218,7 @@ export default async function PaperPage({ params }: { params: Params }) {
         <div className="min-w-0">
           <HubHeader
             crumbs={crumbs}
-            icon={art ? <Art src={art} size={56} /> : undefined}
+            icon={art ? <Art src={art} size={56} alt={short} /> : undefined}
             eyebrow={[termName(paper.term), paper.subject.name, paper.subject.code].filter(Boolean).join(' · ')}
             title={titles.paperHeading(paper)}
             lead={
@@ -241,11 +241,11 @@ export default async function PaperPage({ params }: { params: Params }) {
             ]}
             actions={
               <>
-                <Link href={`/paper/${paper.setId}`} rel="nofollow" className={buttonClass('primary', 'lg')}>
+                <Link href={`/paper/${paper.setId}`} className={buttonClass('primary', 'lg')}>
                   <Clock size={18} aria-hidden="true" />
                   Take as mock test
                 </Link>
-                <Link href={paths.practice(paper.setId, 'learning')} rel="nofollow" className={buttonClass('outline', 'lg')}>
+                <Link href={paths.practice(paper.setId, 'learning')} className={buttonClass('outline', 'lg')}>
                   Practise with answers
                 </Link>
                 <BestScore setId={paper.setId} className="self-center" />
