@@ -7,7 +7,8 @@ import { SolutionPanel } from './SolutionPanel'
 /** Each question's explanations, fetched at most once per tab. */
 const loaded = new Map<string, Promise<SolutionRow[] | null>>()
 
-function load(questionId: string): Promise<SolutionRow[] | null> {
+/** Shared with the video dock, so the two never fetch the same question twice. */
+export function loadSolutions(questionId: string): Promise<SolutionRow[] | null> {
   let request = loaded.get(questionId)
   if (!request) {
     request = fetch(`/api/solutions/${questionId}`)
@@ -38,7 +39,7 @@ export function LazySolutionPanel({ questionId }: { questionId: string }) {
 }
 
 function Solutions({ questionId }: { questionId: string }) {
-  const solutions = use(load(questionId))
+  const solutions = use(loadSolutions(questionId))
   if (solutions === null) {
     return (
       <p className="text-ui text-ink-muted">
@@ -46,5 +47,7 @@ function Solutions({ questionId }: { questionId: string }) {
       </p>
     )
   }
-  return <SolutionPanel solutions={solutions} />
+  // Students see the explanation, not who wrote it; the video plays from the
+  // dock at the bottom left of the question (SolutionVideoDock).
+  return <SolutionPanel solutions={solutions} showAuthor={false} videoInline={false} />
 }

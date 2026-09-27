@@ -20,7 +20,17 @@ export type SolutionView = Pick<SolutionRow, 'id' | 'kind' | 'body' | 'video_url
  * so an explanation written on another copy says so, quietly: a teacher who
  * mentions "this paper" was talking about that one.
  */
-export function SolutionPanel({ solutions }: { solutions: SolutionView[] }) {
+export function SolutionPanel({
+  solutions,
+  showAuthor = true,
+  videoInline = true,
+}: {
+  solutions: SolutionView[]
+  /** Who wrote it: for staff reviewing; students are not shown it. */
+  showAuthor?: boolean
+  /** False where a YouTube video plays from the docked frame instead (the exam runner). */
+  videoInline?: boolean
+}) {
   if (!solutions.length) {
     return (
       <EmptyState framed={false} size="sm" art="no-solution" title="No explanation yet">
@@ -35,7 +45,7 @@ export function SolutionPanel({ solutions }: { solutions: SolutionView[] }) {
         <section key={solution.id} aria-label={kindLabel(solution.kind)}>
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
             <p className="label">{kindLabel(solution.kind)}</p>
-            {solution.author_name ? (
+            {showAuthor && solution.author_name ? (
               <p className="text-meta text-ink-muted">Explained by {solution.author_name}</p>
             ) : null}
           </div>
@@ -49,7 +59,11 @@ export function SolutionPanel({ solutions }: { solutions: SolutionView[] }) {
             </div>
           ) : null}
 
-          {solution.video_url ? (
+          {solution.video_url && !videoInline && parseYouTubeUrl(solution.video_url) && !solution.body?.length ? (
+            <p className="text-ui text-ink-muted">This one is explained on video: watch it from the frame at the bottom left.</p>
+          ) : null}
+
+          {solution.video_url && (videoInline || !parseYouTubeUrl(solution.video_url)) ? (
             <div className="mt-4 overflow-hidden rounded-card border border-rule bg-surface">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <p className="text-ui text-ink">Video solution</p>

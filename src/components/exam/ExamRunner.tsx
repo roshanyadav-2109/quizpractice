@@ -16,6 +16,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { AnswerInput } from './AnswerInput'
 import { ExamTimer } from './ExamTimer'
 import { LazySolutionPanel } from '@/components/question/LazySolutionPanel'
+import { SolutionVideoDock } from '@/components/question/SolutionVideoDock'
 import { BackLink } from '@/components/site/BackLink'
 import { DiscussionThread, countDiscussion } from '@/components/question/DiscussionPanel'
 import { ReportButton } from '@/components/question/ReportButton'
@@ -146,6 +147,7 @@ export function ExamRunner(props: ExamRunnerProps) {
   const [checked, setChecked] = useState<Set<string>>(() => new Set())
   const elapsedRef = useRef(0)
   const scroller = useRef<HTMLDivElement>(null)
+  const questionPane = useRef<HTMLDivElement>(null)
   const submitDialog = useRef<HTMLDialogElement>(null)
   const instructionsDialog = useRef<HTMLDialogElement>(null)
 
@@ -528,8 +530,10 @@ export function ExamRunner(props: ExamRunnerProps) {
       <div className="flex min-h-0 flex-1">
         {/* The question. */}
         <main className="flex min-w-0 flex-1 flex-col">
-          <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6">
+          {/* The question scrolls; the video dock sits over its bottom-left corner. */}
+          <div ref={questionPane} className="relative min-h-0 flex-1">
+          <div ref={scroller} className="h-full overflow-y-auto">
+            <div className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-28 sm:pb-28' : ''}`}>
               {graded ? <GradedBanner graded={graded} isSignedIn={isSignedIn} /> : null}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -632,6 +636,8 @@ export function ExamRunner(props: ExamRunnerProps) {
                 </>
               ) : null}
             </div>
+          </div>
+          {revealed && learning ? <SolutionVideoDock questionId={question.id} bounds={questionPane} /> : null}
           </div>
 
           {/* The CBT action bar, pinned under the question. We save as you go,
