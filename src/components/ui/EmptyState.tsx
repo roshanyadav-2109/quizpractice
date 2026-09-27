@@ -50,7 +50,8 @@ export function EmptyState({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/art/states/${art}.webp`}
-        alt=""
+        alt={typeof title === 'string' ? title : `${art.replace(/-/g, ' ')} illustration`}
+        aria-hidden="true"
         width={px}
         height={px}
         loading="lazy"
