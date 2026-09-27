@@ -181,7 +181,7 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
 
       <HubHeader
         crumbs={crumbs}
-        icon={art ? <Art src={art} size={56} /> : undefined}
+        icon={art ? <Art src={art} size={56} alt={short} /> : undefined}
         eyebrow={[subject.name, subject.code].filter(Boolean).join(' · ')}
         title={titles.subjectExamHeading(subject, exam.examType)}
         lead={
