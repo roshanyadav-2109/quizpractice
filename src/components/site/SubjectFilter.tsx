@@ -184,7 +184,7 @@ export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]
                             active ? 'bg-accent-soft' : 'hover:bg-surface-2'
                           } ${subject.count === 0 && !active ? 'opacity-50' : ''}`}
                         >
-                          <Art src={subject.icon} size={28} />
+                          <Art src={subject.icon} size={28} alt={subject.name} />
                           <span className="min-w-0 flex-1">
                             <span className={`block truncate text-ui ${active ? 'text-accent' : 'text-ink'}`}>
                               {subject.name}
