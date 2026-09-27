@@ -60,6 +60,11 @@ export default function PrivacyPage() {
             either by the teacher in YouTube Studio or through the site’s upload feature (see below).
           </li>
           <li>
+            <strong className="font-medium">Access given by email.</strong> An admin can give teacher access to an
+            email address before its owner has signed in. The address is seen only by admins and is kept until its
+            owner first signs in with it, when the access is applied, or until the admin cancels it.
+          </li>
+          <li>
             <strong className="font-medium">Searches.</strong> We count the words people search for, by day, to
             suggest popular searches. Nothing records who searched.
           </li>

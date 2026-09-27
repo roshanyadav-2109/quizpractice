@@ -21,7 +21,8 @@ const SUPABASE_SHIM = `
   create table if not exists auth.users (
     id                    uuid primary key default gen_random_uuid(),
     email                 text,
-    raw_user_meta_data    jsonb default '{}'::jsonb
+    raw_user_meta_data    jsonb default '{}'::jsonb,
+    email_confirmed_at    timestamptz
   );
 
   -- In real Supabase this reads the JWT claim. Here it returns a value we can
@@ -464,6 +465,49 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   const people = await rows<{ email: string }>(`select email from public.admin_list_people('test.local', null, 10)`)
   check('people: an admin can search by email', people.length === 6, people.length)
 
+  // ---- access by email (0027) ---------------------------------------------------
+  const invited = await one<{ r: string }>(`select public.admin_invite(' New.Teacher@Test.Local ', 'teacher') as r`)
+  check('invites: an unknown address waits as an invite, stored lowercase', invited.r === 'invited' &&
+    (await one<{ n: number }>(`select count(*)::int as n from public.access_invites where email = 'new.teacher@test.local'`)).n === 1)
+  await db.exec(`insert into public.invite_assignments (email, program_id, subject_id)
+    values ('new.teacher@test.local', (select id from public.programs where slug = 'ds'), (select id from public.subjects where slug = 'dbms'))`)
+  await refused('invites: a subject outside the branch is refused (23514)',
+    `insert into public.invite_assignments (email, program_id, subject_id) values ('new.teacher@test.local', (select id from public.programs where slug = 'es'), (select id from public.subjects where slug = 'python'))`, '23514')
+  await refused('invites: nobody is invited as admin (22023)', `select public.admin_invite('boss@test.local', 'admin')`, '22023')
+  const already = await one<{ r: string }>(`select public.admin_invite('student@test.local', 'contributor') as r`)
+  check('invites: someone already signed in gets the role at once',
+    already.r === 'applied' && (await one<{ role: string }>(`select role from public.profiles where id = '${ID.student}'`)).role === 'contributor')
+  await actAsOwner()
+  await db.exec(`update public.profiles set role = 'student' where id = '${ID.student}'`)
+  await actAs(ID.admin)
+  await db.exec(`select public.admin_invite('late.confirm@test.local', 'teacher')`)
+
+  await actAs(ID.teacher)
+  check('invites: a teacher cannot see who is invited',
+    (await one<{ n: number }>(`select count(*)::int as n from public.access_invites`)).n === 0)
+  await refused('invites: a teacher cannot invite (42501)', `select public.admin_invite('x@test.local', 'teacher')`, '42501')
+
+  await actAsOwner()
+  await db.exec(`insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at)
+    values ('00000000-0000-4000-8000-00000000e001', 'new.teacher@test.local', '{"full_name":"Nia New"}', now())`)
+  const newcomer = await one<{ role: string; combos: number; by: string | null }>(`
+    select p.role, (select count(*)::int from public.teacher_assignments where teacher_id = p.id) as combos,
+           (select assigned_by::text from public.teacher_assignments where teacher_id = p.id limit 1) as by
+    from public.profiles p where p.id = '00000000-0000-4000-8000-00000000e001'`)
+  check('invites: first sign-in applies the role and the combos, credited to the inviter',
+    newcomer.role === 'teacher' && newcomer.combos === 1 && newcomer.by === ID.admin, newcomer)
+  check('invites: used up after sign-in',
+    (await one<{ n: number }>(`select count(*)::int as n from public.access_invites where email = 'new.teacher@test.local'`)).n === 0)
+  await db.exec(`insert into auth.users (id, email, raw_user_meta_data)
+    values ('00000000-0000-4000-8000-00000000e002', 'late.confirm@test.local', '{}')`)
+  check('invites: an unconfirmed sign-up with the address gets nothing',
+    (await one<{ role: string }>(`select role from public.profiles where id = '00000000-0000-4000-8000-00000000e002'`)).role === 'student')
+  await db.exec(`update auth.users set email_confirmed_at = now() where id = '00000000-0000-4000-8000-00000000e002'`)
+  check('invites: confirming the address applies the invite',
+    (await one<{ role: string }>(`select role from public.profiles where id = '00000000-0000-4000-8000-00000000e002'`)).role === 'teacher')
+  await db.exec(`delete from auth.users where id in ('00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-00000000e002')`)
+  await actAs(ID.admin)
+
   await actAs(ID.teacher)
   await refused('combos: a teacher cannot assign themselves a subject',
     `insert into public.teacher_assignments (teacher_id, program_id, subject_id) values ('${ID.teacher}', (select id from public.programs where slug = 'ds'), (select id from public.subjects where slug = 'python'))`, '42501')
@@ -629,7 +673,7 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
     'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats', 'solutions_for_question',
   ]
   const authAllowed = [
-    ...anonAllowed, 'admin_list_people', 'can_teach_subject', 'claim_question', 'duplicate_review', 'group_explanations',
+    ...anonAllowed, 'admin_invite', 'admin_list_people', 'can_teach_subject', 'claim_question', 'duplicate_review', 'group_explanations',
     'group_key', 'leaderboard', 'my_auto_publish', 'my_peer_gaps', 'question_group_members', 'release_claim',
     'set_auto_publish', 'set_user_role', 'teacher_exam_progress', 'teacher_queue', 'teacher_subject_summary',
   ]

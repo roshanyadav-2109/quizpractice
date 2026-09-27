@@ -6,6 +6,8 @@ import { toAssignmentSummary, type AssignmentSummary, type AssignmentSummaryRaw 
 import { PeopleSearch } from '@/components/admin/educators/PeopleSearch'
 import { TeacherCard } from '@/components/admin/educators/TeacherCard'
 import { YouTubePanel } from '@/components/admin/educators/YouTubePanel'
+import { InviteForm } from '@/components/admin/educators/InviteForm'
+import { PendingInvites, type PendingInvite } from '@/components/admin/educators/PendingInvites'
 import type { BranchOption } from '@/components/admin/educators/AssignmentForm'
 import type { AdminPersonRow } from '@/types/db'
 
@@ -39,9 +41,13 @@ export default async function EducatorsPage({ searchParams }: { searchParams: Se
   const query = (params.q ?? '').trim().slice(0, 100)
 
   const supabase = await createClient()
-  const [teachersResult, peopleResult, tree, youtube] = await Promise.all([
+  const [teachersResult, peopleResult, invitesResult, tree, youtube] = await Promise.all([
     supabase.rpc('admin_list_people', { p_search: null, p_role: 'teacher', p_limit: 100 }),
     supabase.rpc('admin_list_people', { p_search: query || null, p_role: null, p_limit: query ? 50 : 20 }),
+    supabase
+      .from('access_invites')
+      .select('email, role, created_at, invite_assignments(program_id, subject_id)')
+      .order('created_at', { ascending: false }),
     getBrowseTree(),
     getYouTubeStatus().catch(
       (error: unknown): YouTubeStatus => ({
@@ -92,7 +98,7 @@ export default async function EducatorsPage({ searchParams }: { searchParams: Se
         <SectionHeading
           title="Teachers"
           meta={teachersResult.error ? undefined : `${teachers.length}`}
-          hint="Make someone a teacher under People below, then give them subjects here."
+          hint="Give someone access by email below, or make someone who has signed in a teacher under People."
         />
         {teachersResult.error ? (
           <ErrorNote what="Teachers" message={teachersResult.error.message} />
@@ -112,6 +118,22 @@ export default async function EducatorsPage({ searchParams }: { searchParams: Se
               />
             ))}
           </ul>
+        )}
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Give access by email"
+          meta={invitesResult.error ? undefined : invitesResult.data?.length ? `${invitesResult.data.length} waiting` : undefined}
+          hint="Enter the Google address they sign in with. The access, and a teacher's subjects, apply the first time they sign in, or at once if they already have an account."
+        />
+        <InviteForm />
+        {invitesResult.error ? (
+          <div className="mt-3">
+            <ErrorNote what="Invites" message={invitesResult.error.message} />
+          </div>
+        ) : (
+          <PendingInvites invites={(invitesResult.data ?? []) as PendingInvite[]} branches={branches} />
         )}
       </section>
 

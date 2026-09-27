@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { addAssignment } from '@/app/admin/educators/actions'
+import { addAssignment, addInviteAssignment } from '@/app/admin/educators/actions'
 import type { ActionState } from '@/app/admin/actions'
 
 /** One branch as the form offers it: its levels, each with its subjects. */
@@ -17,14 +17,19 @@ export interface BranchOption {
  * same subject name in another branch (English I in Data Science and in
  * Electronic Systems) is a different job and is never offered by mistake.
  * The database refuses a mismatched pair anyway.
+ *
+ * With `inviteEmail`, the combo waits on that invite instead and is given to
+ * the person with the teacher role the first time they sign in.
  */
 export function AssignmentForm({
   teacherId,
+  inviteEmail,
   teacherName,
   branches,
   assigned,
 }: {
-  teacherId: string
+  teacherId?: string
+  inviteEmail?: string
   teacherName: string
   branches: BranchOption[]
   /** Subjects the teacher already has, shown but not selectable. */
@@ -44,7 +49,9 @@ export function AssignmentForm({
     if (!programId || !subjectId) return
     setState({})
     startTransition(async () => {
-      const result = await addAssignment(teacherId, programId, subjectId)
+      const result = inviteEmail
+        ? await addInviteAssignment(inviteEmail, programId, subjectId)
+        : await addAssignment(teacherId ?? '', programId, subjectId)
       setState(result)
       if (result.ok) setSubjectId('')
     })

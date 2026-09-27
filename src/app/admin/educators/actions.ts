@@ -142,3 +142,83 @@ export async function removeAssignment(teacherId: string, subjectId: string): Pr
   revalidatePath(ROUTES.adminEducators)
   return { ok: true }
 }
+
+// ---------------------------------------------------------------------------
+// Access by email (0027): invite someone before they have ever signed in
+// ---------------------------------------------------------------------------
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+/** Roles an invite can carry. Admin stays a dashboard job, as with setRole. */
+const INVITABLE_ROLES: readonly UserRole[] = ['teacher', 'contributor']
+
+function cleanEmail(raw: string): string | null {
+  const email = (raw ?? '').trim().toLowerCase()
+  return email.length <= 254 && EMAIL.test(email) ? email : null
+}
+
+/**
+ * Gives an email address a role. Someone who has already signed in gets it at
+ * once ('applied'); anyone else gets it the first time they sign in with that
+ * Google address ('invited').
+ */
+export async function inviteByEmail(rawEmail: string, role: UserRole): Promise<ActionState & { applied?: boolean }> {
+  if (!(await adminOrNull())) return fail(NOT_ADMIN)
+  const email = cleanEmail(rawEmail)
+  if (!email) return fail('That is not an email address.')
+  if (!INVITABLE_ROLES.includes(role)) return fail('Invite someone as a teacher or a contributor.')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('admin_invite', { p_email: email, p_role: role })
+  if (error) return fail(explain(error, 'The invite could not be saved.'))
+
+  revalidatePath(ROUTES.adminEducators)
+  return { ok: true, applied: data === 'applied' }
+}
+
+/** Withdraws an invite that has not been used yet, with its subjects. */
+export async function cancelInvite(rawEmail: string): Promise<ActionState> {
+  if (!(await adminOrNull())) return fail(NOT_ADMIN)
+  const email = cleanEmail(rawEmail)
+  if (!email) return fail('That invite was not found.')
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('access_invites').delete().eq('email', email)
+  if (error) return fail(explain(error, 'The invite could not be cancelled.'))
+
+  revalidatePath(ROUTES.adminEducators)
+  return { ok: true }
+}
+
+/** A branch + subject combo waiting on a teacher invite; applied with the role at first sign-in. */
+export async function addInviteAssignment(rawEmail: string, programId: string, subjectId: string): Promise<ActionState> {
+  if (!(await adminOrNull())) return fail(NOT_ADMIN)
+  const email = cleanEmail(rawEmail)
+  if (!email) return fail('That invite was not found.')
+  if (!UUID.test(programId ?? '')) return fail('Choose a branch.')
+  if (!UUID.test(subjectId ?? '')) return fail('Choose a subject.')
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('invite_assignments')
+    .insert({ email, program_id: programId, subject_id: subjectId })
+  if (error) {
+    return fail(error.code === '23505' ? 'That invite already has this subject.' : explain(error, 'The subject could not be added.'))
+  }
+
+  revalidatePath(ROUTES.adminEducators)
+  return { ok: true }
+}
+
+export async function removeInviteAssignment(rawEmail: string, subjectId: string): Promise<ActionState> {
+  if (!(await adminOrNull())) return fail(NOT_ADMIN)
+  const email = cleanEmail(rawEmail)
+  if (!email || !UUID.test(subjectId ?? '')) return fail('That subject was not found.')
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('invite_assignments').delete().eq('email', email).eq('subject_id', subjectId)
+  if (error) return fail(explain(error, 'The subject could not be removed.'))
+
+  revalidatePath(ROUTES.adminEducators)
+  return { ok: true }
+}
