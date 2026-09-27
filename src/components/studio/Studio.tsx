@@ -845,18 +845,22 @@ export function Studio({
                 </div>
 
                 {/* As wide as the column allows, but never taller than the screen can show whole. */}
-                {fullBoard ? (
-                  // The page as large as the screen allows: full width on a 16:9 screen.
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div style={{ width: 'min(100vw, calc(100dvh * 16 / 9))' }}>
-                      <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} layout="overlay" />
-                    </div>
+                {/* One board in both layouts — the same element, only restyled — so
+                    going full screen keeps its pictures, undo history and a
+                    recording in progress. Full screen: as large as the screen
+                    allows, full width on a 16:9 screen. */}
+                <div
+                  className={fullBoard ? 'absolute inset-0 flex items-center justify-center' : 'mx-auto w-full'}
+                  style={fullBoard ? undefined : { maxWidth: 'max(560px, calc((100dvh - 19rem) * 16 / 9))' }}
+                >
+                  <div className="w-full" style={fullBoard ? { width: 'min(100vw, calc(100dvh * 16 / 9))' } : undefined}>
+                    <Whiteboard
+                      handleRef={boardRef}
+                      storageKey={`studio:${question.id}`}
+                      layout={fullBoard ? 'overlay' : 'stacked'}
+                    />
                   </div>
-                ) : (
-                  <div className="mx-auto w-full" style={{ maxWidth: 'max(560px, calc((100dvh - 19rem) * 16 / 9))' }}>
-                    <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} />
-                  </div>
-                )}
+                </div>
               </section>
             </div>
           </main>
