@@ -1,6 +1,42 @@
 import type { NextConfig } from 'next'
 
+/**
+ * Only the production deployment may be indexed. Previews and the bare
+ * *.vercel.app address serve the same pages; left open they compete with
+ * the real site for its own content.
+ */
+const indexable = process.env.VERCEL_ENV === undefined || process.env.VERCEL_ENV === 'production'
+
+/**
+ * The one address the site answers on. In production any other host — the
+ * project's *.vercel.app aliases — is sent here permanently, so links and
+ * crawlers consolidate on a single domain. API routes are left alone: the
+ * cron and OAuth callbacks must not be bounced.
+ */
+const canonical = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_SITE_URL ? new URL(process.env.NEXT_PUBLIC_SITE_URL) : null
+  } catch {
+    return null
+  }
+})()
+const hostRedirects =
+  process.env.VERCEL_ENV === 'production' && canonical && !canonical.hostname.endsWith('localhost')
+    ? [
+        {
+          source: '/:path((?!api/).*)',
+          missing: [{ type: 'host' as const, value: canonical.host }],
+          destination: `${canonical.origin}/:path`,
+          permanent: true,
+        },
+      ]
+    : []
+
 const nextConfig: NextConfig = {
+  // Titles, descriptions and canonicals go in the <head> of the first byte
+  // for every client. By default Next streams them after the body for
+  // crawlers it believes run JavaScript, and AI crawlers mostly do not.
+  htmlLimitedBots: /.*/,
   // Pin the workspace root. Without this Turbopack walks up and finds an
   // unrelated package-lock.json in the user's home directory.
   turbopack: {
@@ -21,11 +57,19 @@ const nextConfig: NextConfig = {
     // subject they are not assigned — with a real 403 rather than a 404.
     authInterrupts: true,
   },
-  // The printable worksheet is gone. Old links and bookmarks land on the
-  // paper's instructions page instead of a 404. Temporary, so nothing caches
-  // it for good in case a download ever comes back.
+  async headers() {
+    return indexable
+      ? []
+      : [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }]
+  },
   async redirects() {
-    return [{ source: '/print/:setId', destination: '/paper/:setId', permanent: false }]
+    return [
+      ...hostRedirects,
+      // The printable worksheet is gone. Old links and bookmarks land on the
+      // paper's page instead of a 404. Temporary, so nothing caches it for
+      // good in case a download ever comes back.
+      { source: '/print/:setId', destination: '/paper/:setId', permanent: false },
+    ]
   },
 }
 
