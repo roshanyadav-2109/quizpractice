@@ -9,7 +9,14 @@ import { loadSolutions } from './LazySolutionPanel'
 const FOLDED_W = 320
 /** The question column's width (max-w-4xl); the margin beside it is the dock's home. */
 const COLUMN_W = 896
+/** Margins this wide hold the card as a row (picture beside the words)… */
 const MIN_MARGIN_W = 240
+/** …and down to this, as a stack (picture above the words). */
+const MIN_STACK_W = 124
+const MAX_STACK_W = 220
+/** The stacked card's words under the picture (a line more when the title wraps), and its padding. */
+const STACK_TEXT_H = 64
+const STACK_PAD = 8
 const FOLDED_H = 84
 /** The open frame's own strip above the player. */
 const HEADER_H = 44
@@ -71,11 +78,19 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
   // Folded, the frame fills the white margin left of the question column, so
   // on a wide screen it covers nothing; where that margin is too thin, it is a
   // fixed slip over the corner (the question keeps room below to scroll clear).
-  const margin = (room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2
+  const margin = Math.floor((room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2)
+  const stacked = margin >= MIN_STACK_W && margin < MIN_MARGIN_W
   const foldedWidth = Math.max(
     0,
-    margin >= MIN_MARGIN_W ? Math.min(margin, 380) : Math.min(FOLDED_W, room.width - GAP * 2),
+    margin >= MIN_MARGIN_W
+      ? Math.min(margin, 380)
+      : stacked
+        ? Math.min(margin, MAX_STACK_W)
+        : Math.min(FOLDED_W, room.width - GAP * 2),
   )
+  const foldedHeight = stacked
+    ? Math.round(((foldedWidth - STACK_PAD * 2) * 9) / 16) + STACK_PAD * 2 + STACK_TEXT_H + (foldedWidth < 176 ? 24 : 0)
+    : FOLDED_H
   // As wide as the pane allows, and short enough that the player never runs
   // off the top: 16:9 under the strip.
   const openWidth = Math.max(
@@ -89,7 +104,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
   return (
     <div
       className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-card border border-ink/10 bg-pal-marked shadow-[0_14px_40px_-16px_rgba(12,10,9,0.45)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
-      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : FOLDED_H }}
+      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight }}
     >
       {open ? (
         <div className="flex h-full flex-col">
@@ -123,9 +138,14 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
           onClick={() => setOpen(true)}
           aria-expanded={false}
           aria-label="Watch the video solution"
-          className="group flex h-full w-full items-center gap-3 px-3 text-left"
+          className={`group flex h-full w-full text-left ${stacked ? 'flex-col gap-2' : 'items-center gap-3 px-3'}`}
+          style={stacked ? { padding: STACK_PAD } : undefined}
         >
-          <span className="relative h-[3.25rem] w-[5.75rem] shrink-0 overflow-hidden rounded-control bg-ink/80 ring-2 ring-ink/10">
+          <span
+            className={`relative shrink-0 overflow-hidden rounded-control bg-ink/80 ring-2 ring-ink/10 ${
+              stacked ? 'aspect-video w-full' : 'h-[3.25rem] w-[5.75rem]'
+            }`}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element -- YouTube's own thumbnail, not a site image */}
             <img
               src={thumbnail}
@@ -140,11 +160,13 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
               </span>
             </span>
           </span>
-          <span className="min-w-0">
-            <span className="block text-ui font-semibold text-ink">Watch the solution</span>
-            <span className="line-clamp-2 block text-meta leading-snug text-ink/75">Popcorn optional, aha moment included.</span>
+          <span className="min-w-0 px-0.5">
+            <span className="block text-ui leading-tight font-semibold text-ink">Watch the solution</span>
+            <span className="mt-0.5 line-clamp-2 block text-meta leading-snug text-ink/75">
+              Popcorn optional, aha moment included.
+            </span>
           </span>
-          <Squiggle />
+          {stacked ? null : <Squiggle />}
         </button>
       )}
     </div>
