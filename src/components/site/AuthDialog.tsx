@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { AUTH_EVENT } from '@/components/site/Viewer'
 import { buttonClass } from '@/components/ui/primitives'
 import { DEMO_ACCOUNTS, demoLoginsEnabled } from '@/lib/demo-accounts'
 import { ChalkboardTeacher, Check, Gauge, User, WarningCircle, X } from '@/components/ui/icons'
@@ -29,6 +29,15 @@ interface AuthContext {
 }
 
 const Context = createContext<AuthContext | null>(null)
+
+/**
+ * The Supabase client, loaded when someone actually signs in rather than
+ * with every page: it is a large bundle most visitors never need.
+ */
+async function supabaseClient() {
+  const { createClient } = await import('@/lib/supabase/client')
+  return createClient()
+}
 
 export function useSignIn(): AuthContext {
   const value = useContext(Context)
@@ -130,13 +139,16 @@ function SignInPanel({
   async function signInAsDemo(email: string, password: string) {
     setDemoBusy(true)
     setError(null)
-    const { error: signInError } = await createClient().auth.signInWithPassword({ email, password })
+    const { error: signInError } = await (await supabaseClient()).auth.signInWithPassword({ email, password })
     setDemoBusy(false)
     if (signInError) setError(signInError.message)
     else completeSignIn()
   }
 
   function completeSignIn() {
+    // The header and the page learn who is here from the viewer, which starts
+    // watching the session now.
+    window.dispatchEvent(new Event(AUTH_EVENT))
     onClose()
     if (next) router.push(next)
     router.refresh()
@@ -378,7 +390,7 @@ function GoogleButton({ onError, onDone }: { onError: (message: string) => void;
           client_id: GOOGLE_CLIENT_ID,
           nonce: hashed,
           callback: async (response) => {
-            const { error } = await createClient().auth.signInWithIdToken({
+            const { error } = await (await supabaseClient()).auth.signInWithIdToken({
               provider: 'google',
               token: response.credential,
               nonce: raw,
