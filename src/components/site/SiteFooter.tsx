@@ -4,7 +4,26 @@ import { isSupabaseConfigured, publicEnv } from '@/lib/env'
 import { getSeoCatalogue } from '@/lib/seo/catalogue'
 import { shortName } from '@/lib/seo/names'
 import { paths } from '@/lib/seo/paths'
-import { SITE } from '@/lib/seo/site'
+import { SITE, SOCIALS, type SocialNetwork } from '@/lib/seo/site'
+import {
+  InstagramLogo,
+  LinkedinLogo,
+  LinktreeLogo,
+  MediumLogo,
+  TelegramLogo,
+  WhatsappLogo,
+  YoutubeLogo,
+} from '@/components/ui/icons'
+
+const SOCIAL_ICONS: Record<SocialNetwork, typeof YoutubeLogo> = {
+  youtube: YoutubeLogo,
+  instagram: InstagramLogo,
+  linkedin: LinkedinLogo,
+  telegram: TelegramLogo,
+  whatsapp: WhatsappLogo,
+  medium: MediumLogo,
+  linktree: LinktreeLogo,
+}
 
 /**
  * The foot of every page: the exams, the programmes and their levels, the
@@ -129,6 +148,25 @@ export async function SiteFooter() {
               </>
             ) : null}
           </nav>
+          <p className="mt-6 text-ui font-medium text-ink">Follow {SITE.publisher}</p>
+          <ul aria-label={`${SITE.publisher} elsewhere`} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-ink-muted">
+            {SOCIALS.map((social) => {
+              const Icon = SOCIAL_ICONS[social.network]
+              return (
+                <li key={social.network}>
+                  <a
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex min-h-6 items-center gap-2 ${link}`}
+                  >
+                    <Icon size={16} aria-hidden="true" className="shrink-0" />
+                    {social.label}
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       </div>
     </footer>
