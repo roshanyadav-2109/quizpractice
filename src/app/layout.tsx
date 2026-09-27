@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { SiteHeader } from '@/components/site/SiteHeader'
@@ -6,7 +6,10 @@ import { SiteChrome } from '@/components/site/SiteChrome'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { AuthProvider } from '@/components/site/AuthDialog'
 import { OfflineBanner } from '@/components/site/OfflineBanner'
-import { publicEnv } from '@/lib/env'
+import { ViewerProvider } from '@/components/site/Viewer'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { ORIGIN, SITE } from '@/lib/seo/site'
+import { siteGraph } from '@/lib/seo/jsonld'
 
 /**
  * Everything that is words or numbers: regular for text, medium for headings,
@@ -29,36 +32,74 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(publicEnv.siteUrl),
+  metadataBase: new URL(ORIGIN),
   title: {
-    default: 'Previous year papers — IIT Madras BS Degree',
-    template: '%s — Quiz Space',
+    default: `IITM BS PYQ — Previous Year Question Papers with Answers | ${SITE.name}`,
+    template: `%s | ${SITE.name}`,
   },
-  description:
-    'Previous quiz, end term and OPPE question papers from the IIT Madras BS degree, taken under exam conditions.',
+  description: SITE.description,
+  applicationName: SITE.name,
+  authors: [{ name: SITE.publisher, url: SITE.publisherUrl }],
+  creator: SITE.publisher,
+  publisher: SITE.publisher,
+  category: 'education',
+  // No canonical here: it would be inherited by every page that forgot its
+  // own and point them all at the home page. Each page sets its own.
+  openGraph: {
+    type: 'website',
+    siteName: SITE.name,
+    locale: SITE.locale,
+    title: 'IITM BS PYQ — Previous Year Question Papers with Answers',
+    description: SITE.description,
+  },
+  twitter: { card: 'summary_large_image' },
+  robots: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
+  formatDetection: { telephone: false, email: false, address: false },
+  // Search Console and Bing Webmaster Tools ownership, when the tokens are set.
+  verification: {
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : {}),
+    ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { other: { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } }
+      : {}),
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
 }
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en-IN">
+      <head>
+        {/* For AI agents: the site described in plain text (llmstxt.org). */}
+        <link rel="describedby" type="text/plain" href="/llms.txt" />
+      </head>
       <body
         className={`${lexend.variable} ${jetbrainsMono.variable} flex min-h-screen flex-col antialiased`}
       >
+        {/* Who runs the site, on every page: the identity search engines and
+            AI assistants join the rest of the structured data to. */}
+        <JsonLd data={siteGraph()} />
         {/* Sign-in is a dialog, available from anywhere on the site. */}
         <AuthProvider>
-          {/* The exam runner and the teacher's studio own the whole viewport;
-              SiteChrome hides the navigation and the footer on them. */}
-          <SiteChrome>
-            <SiteHeader />
-          </SiteChrome>
+          {/* Who is signed in, known in the browser: the pages themselves are
+              the same for everyone and served from the CDN. */}
+          <ViewerProvider>
+            {/* The exam runner and the teacher's studio own the whole viewport;
+                SiteChrome hides the navigation and the footer on them. */}
+            <SiteChrome>
+              <SiteHeader />
+            </SiteChrome>
 
-          <main className="flex-1">{children}</main>
+            <main className="flex-1">{children}</main>
 
-          <SiteChrome>
-            <SiteFooter />
-          </SiteChrome>
+            <SiteChrome>
+              <SiteFooter />
+            </SiteChrome>
+          </ViewerProvider>
         </AuthProvider>
         <OfflineBanner />
       </body>
