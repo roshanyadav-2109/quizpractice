@@ -211,6 +211,7 @@ const subjectInput = z.object({
   level_id: z.string().uuid(),
   slug: z.string().regex(slugPattern, 'Use a lowercase slug like "dbms".'),
   name: z.string().min(2),
+  short_name: z.string().trim().max(60).optional().transform((value) => value || null),
   code: z.string().optional(),
   aliases: z.string().optional(),
   has_programming: z.coerce.boolean().default(false),
