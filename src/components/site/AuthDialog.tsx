@@ -15,7 +15,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buttonClass } from '@/components/ui/primitives'
 import { DEMO_ACCOUNTS, demoLoginsEnabled } from '@/lib/demo-accounts'
-import { Check, Gauge, User, WarningCircle, X } from '@/components/ui/icons'
+import { ChalkboardTeacher, Check, Gauge, User, WarningCircle, X } from '@/components/ui/icons'
 
 const PERKS = [
   'Save every attempt and score',
@@ -176,7 +176,7 @@ function SignInPanel({
                     onClick={() => void signInAsDemo(account.email, account.password)}
                     className="inline-flex h-9 items-center gap-2 rounded-control border border-rule px-3.5 text-meta text-ink-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-60"
                   >
-                    {account.role === 'admin' ? <Gauge size={15} /> : <User size={15} />}
+                    {account.role === 'admin' ? <Gauge size={15} /> : account.role === 'teacher' ? <ChalkboardTeacher size={15} /> : <User size={15} />}
                     {account.displayName}
                   </button>
                 ))}

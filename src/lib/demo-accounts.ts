@@ -24,6 +24,13 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     blurb: 'Practise papers, save attempts, post in discussions.',
   },
   {
+    email: 'teacher@example.com',
+    password: 'teacher1234',
+    displayName: 'Demo Teacher',
+    role: 'teacher',
+    blurb: 'The teaching desk and studio, for the subjects an admin assigns.',
+  },
+  {
     email: 'admin@example.com',
     password: 'admin1234',
     displayName: 'Demo Admin',
