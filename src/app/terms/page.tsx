@@ -6,7 +6,7 @@ import { publicEnv } from '@/lib/env'
 
 export const metadata: Metadata = {
   title: 'Terms of use',
-  description: 'The terms for using Quiz Space, including the YouTube Terms of Service that apply to its videos.',
+  description: 'The terms for using Quiz Space by Unknown IITians, including the YouTube Terms of Service that apply to its videos.',
 }
 
 const UPDATED = '27 September 2026'
@@ -29,7 +29,7 @@ export default function TermsPage() {
 
       <article className="max-w-[68ch] text-body text-ink">
         <p className="text-ink-muted">
-          Quiz Space is a free site for practising previous year papers of the IIT Madras BS degree. By using it you
+          Quiz Space by Unknown IITians is a free site for practising previous year papers of the IIT Madras BS degree. By using it you
           agree to these terms. If you do not agree, please do not use the site.
         </p>
 
