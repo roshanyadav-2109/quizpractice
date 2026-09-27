@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { paths } from '@/lib/seo/paths'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { moveSetToSubject, setPaperStatus } from '@/app/admin/actions'
@@ -116,7 +117,7 @@ export default async function AdminPaperPage({ params }: { params: Params }) {
           )}
           {paper.subjects ? (
             <Link
-              href={`/subject/${paper.subjects.slug}`}
+              href={paths.subject(paper.subjects.slug)}
               className="rounded-md border border-rule px-2.5 py-1.5 text-xs text-ink-muted hover:border-rule-strong hover:text-ink"
             >
               View public page
