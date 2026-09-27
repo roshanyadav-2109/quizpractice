@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useViewer } from './Viewer'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { Spotlight, SpotlightAction, SpotlightTone } from '@/lib/spotlight-shared'
@@ -25,7 +26,10 @@ const TONES: Record<SpotlightTone, { band: string; Icon: typeof Info }> = {
  * the reader is pointing at it, focused inside it, or prefers less motion;
  * arrows, dots and a swipe move it by hand.
  */
-export function SpotlightCarousel({ items }: { items: Spotlight[] }) {
+export function SpotlightCarousel({ items: all }: { items: Spotlight[] }) {
+  // A banner for visitors only is dropped once the browser knows who is here.
+  const { status } = useViewer()
+  const items = status === 'signed-in' ? all.filter((item) => item.audience !== 'signed-out') : all
   const [index, setIndex] = useState(0)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
