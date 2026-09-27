@@ -167,7 +167,7 @@ export function MegaNav({ items }: { items: MenuItem[] }) {
                       }`}
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
-                        {entry.icon !== undefined ? <Art src={entry.icon} size={32} /> : null}
+                        {entry.icon !== undefined ? <Art src={entry.icon} size={32} alt={entry.name} /> : null}
                         {entry.name}
                       </span>
                       <CaretRight size={14} aria-hidden="true" className="shrink-0" />
@@ -204,7 +204,7 @@ export function MegaNav({ items }: { items: MenuItem[] }) {
                                 href={link.href}
                                 className="group flex h-full items-center gap-3 rounded-card border border-rule p-3.5 transition-colors hover:border-rule-strong"
                               >
-                                <Art src={link.icon ?? null} size={44} />
+                                <Art src={link.icon ?? null} size={44} alt={link.title} />
                                 <span className="min-w-0">
                                   <span className="block text-ui leading-snug text-ink">{link.title}</span>
                                   {link.caption ? (
