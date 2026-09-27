@@ -78,7 +78,7 @@ export default async function LevelHub({ params }: { params: Params }) {
       />
       <HubHeader
         crumbs={[{ label: 'Home', href: '/' }, { label: name, href: program.path }, { label: level.level.name }]}
-        icon={art ? <Art src={art} size={56} /> : undefined}
+        icon={art ? <Art src={art} size={56} alt={level.level.name} /> : undefined}
         eyebrow={program.program.name}
         title={titles.levelHeading(level.level, program.program)}
         lead={
@@ -124,6 +124,7 @@ export default async function LevelHub({ params }: { params: Params }) {
                     <span key={exam.examType.id}>
                       {index > 0 ? ' · ' : ''}
                       <Link href={exam.path} className="hover:text-ink hover:underline">
+                        <span className="sr-only">{shortName(subject.subject)} </span>
                         {exam.examType.name}
                       </Link>
                     </span>
@@ -134,6 +135,9 @@ export default async function LevelHub({ params }: { params: Params }) {
                 <td className="px-4 py-3 whitespace-nowrap text-ink-muted tabular-nums">
                   {subject.latest ? (
                     <Link href={subject.latest.path} className="hover:text-ink hover:underline">
+                      <span className="sr-only">
+                        {shortName(subject.subject)} {subject.latest.examType.name}{' '}
+                      </span>
                       {sittingDate(subject.latest.sessionDate)}
                     </Link>
                   ) : (
