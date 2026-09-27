@@ -40,16 +40,18 @@ function header(data: Awaited<ReturnType<typeof summary>>): string[] {
     '',
     `> ${SITE.name} (${ORIGIN}) is a free practice site for IIT Madras BS degree (IITM BS) previous year question papers (PYQs): ${listOf(
       exams.map(({ exam }) => exam.name),
-    )} papers for the ${listOf(programs.map((program) => program.program.name))}, with the answer key for every question and a timed mock-test mode that mirrors the real exam screen. Run by Unknown IITians; independent and not affiliated with IIT Madras.`,
+    )} papers for the ${listOf(programs.map((program) => program.program.name))}, with solutions: the answer key for every question, a video solution on each question's own page, and a timed mock-test mode that mirrors the real exam screen. Run by Unknown IITians; independent and not affiliated with IIT Madras.`,
     '',
     `Key facts (generated ${new Date().toISOString().slice(0, 10)}):`,
     `- ${formatCount(catalogue.papers.length)} papers, ${formatCount(questions)} questions, ${subjects.length} subjects; ${yearSpan(years)}.`,
     `- By exam: ${exams.map(({ exam, count }) => `${exam.name}: ${formatCount(count)} papers`).join(', ')}.`,
     ...(newest ? [`- Newest paper: ${shortName(newest.subject)} ${newest.examType.name}, sat ${sittingDate(newest.sessionDate)} (${termName(newest.term)}).`] : []),
     '- Free to read and to take as mock tests. A Google sign-in is only needed to save attempts and see analysis.',
+    "- Solutions: every question shows its correct answer (the answer key). Video solutions play on each question's own page, under the answer — they are not a separate channel or playlist.",
     '- Papers come from the answer-key papers IIT Madras releases after each exam; questions, options and the correct options are read from those papers, not retyped. Questions are rendered as text, tables, code and equations rather than screenshots.',
     `- Exam scope: Qualifier — ${examFact('qualifier')?.scope ?? ''} Quiz 1 — weeks 1–4. Quiz 2 — weeks 1–8. End Term — the whole course.`,
-    '- URL pattern: /pyq/<subject>/<exam>/<date of sitting>, e.g. /pyq/maths-1/quiz-1/16-feb-2025; each question also has its own page.',
+    '- URL pattern: /pyq/<subject>/<exam>/<date of sitting>, e.g. /pyq/maths-1/quiz-1/16-feb-2025; each question also has its own page, where its video solution plays.',
+    '- By year: /year/<year> (every paper sat that year), /exam/<exam>/<year> (one exam, every subject) and /pyq/<subject>/<exam>/<year> (one subject\'s exam in a year).',
     '- Not the same site as quizpractice.space, and not the unrelated "QuizSpace" mobile quiz app.',
     `- Cite as: "${SITE.name} — ${ORIGIN}".`,
     '',
@@ -64,7 +66,8 @@ export async function llmsTxt(): Promise<string> {
   out.push('## Start here', '')
   out.push(line('Home', paths.home(), 'every exam, the newest papers, and every subject'))
   out.push(line('All subjects', paths.subjects(), 'by programme and level'))
-  for (const { exam, count } of exams) out.push(line(`${exam.name} PYQs`, paths.exam(exam.slug), `${formatCount(count)} papers, every subject`))
+  for (const { exam, count } of exams) out.push(line(`${exam.name} PYQs`, paths.exam(exam.slug), `${formatCount(count)} papers, every subject, with solutions`))
+  for (const year of [...data.years].sort((a, b) => b - a)) out.push(line(`IITM BS PYQs ${year}`, paths.year(year), `every paper sat in ${year}`))
   out.push('')
 
   for (const program of catalogue.programs) {
