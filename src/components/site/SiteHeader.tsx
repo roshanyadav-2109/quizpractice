@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getCurrentProfile, isStaff, isTeacher } from '@/lib/supabase/server'
+import { paths, programSlug } from '@/lib/seo/paths'
 import {
   getBrowseTree,
   getCatalogueCounts,
@@ -17,8 +17,8 @@ import { BrandLogo } from '@/components/site/Brand'
 import { MagnifyingGlass } from '@/components/ui/icons'
 import type { ExamType } from '@/types/db'
 import { MegaNav, MobileMenu, type MenuItem } from './MegaNav'
-import { AccountMenu } from './AccountMenu'
-import { SignInButton } from './AuthDialog'
+import { AccountSlot } from './AccountSlot'
+import { SITE } from '@/lib/seo/site'
 
 /**
  * The navigation: the logo, each programme as a menu that opens onto its
@@ -29,16 +29,15 @@ import { SignInButton } from './AuthDialog'
  * left out altogether — a menu full of dead ends is worse than a short one.
  */
 export async function SiteHeader() {
-  const [profile, tree, counts, examTypes, index, qualifierIds] = isSupabaseConfigured
+  const [tree, counts, examTypes, index, qualifierIds] = isSupabaseConfigured
     ? await Promise.all([
-        getCurrentProfile(),
         getBrowseTree(),
         getCatalogueCounts(),
         getExamTypes(),
         getPaperIndex(),
         getQualifierSubjectIds(),
       ])
-    : [null, [], null, [], [], new Set<string>()]
+    : [[], null, [], [], new Set<string>()]
 
   const programItems: MenuItem[] = tree
     .map((program) => ({
@@ -56,7 +55,7 @@ export async function SiteHeader() {
                 level.subjects
                   .filter((subject) => qualifierIds.has(subject.id))
                   .map((subject) => ({
-                    href: `/subject/${subject.slug}?exam=qualifier`,
+                    href: paths.subjectExam(subject.slug, 'qualifier'),
                     title: subject.name,
                     caption: subject.code,
                     icon: artFor('subjects', subject.slug),
@@ -64,7 +63,7 @@ export async function SiteHeader() {
               ),
             },
           ],
-          more: { href: `/papers?exam=qualifier&program=${program.slug}`, label: 'All Qualifier papers' },
+          more: { href: `${paths.exam('qualifier')}#p-${programSlug(program)}`, label: 'All Qualifier papers' },
         },
         ...program.levels.map((level) => ({
           key: level.slug,
@@ -74,14 +73,14 @@ export async function SiteHeader() {
               links: level.subjects
                 .filter((subject) => (counts?.bySubject.get(subject.id)?.papers ?? 0) > 0)
                 .map((subject) => ({
-                  href: `/subject/${subject.slug}`,
+                  href: paths.subject(subject.slug),
                   title: subject.name,
                   caption: subject.code,
                   icon: artFor('subjects', subject.slug),
                 })),
             },
           ],
-          more: { href: `/subjects?program=${program.slug}&level=${level.slug}`, label: `All of ${level.name}` },
+          more: { href: paths.level(programSlug(program), level.slug), label: `All of ${level.name}` },
         })),
       ].filter((column) => column.groups[0].links.length > 0),
     }))
@@ -93,7 +92,7 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-surface">
       <div className={`${SHELL} flex h-16 items-center gap-2`}>
-        <Link href="/" className="flex shrink-0 items-center" aria-label="Quiz Space home">
+        <Link href="/" className="flex shrink-0 items-center" aria-label={`${SITE.name} home`}>
           <BrandLogo />
         </Link>
         <span aria-hidden className="mx-3 hidden h-7 w-px bg-rule lg:block" />
@@ -108,19 +107,8 @@ export async function SiteHeader() {
           >
             <MagnifyingGlass size={18} />
           </Link>
-          {profile ? (
-            <AccountMenu
-              name={profile.displayName}
-              email={profile.email}
-              avatarUrl={profile.avatarUrl}
-              staff={isStaff(profile)}
-              teacher={isTeacher(profile)}
-            />
-          ) : (
-            <SignInButton className="inline-flex h-10 items-center justify-center rounded-full bg-ink px-5 text-ui text-white transition-colors hover:bg-ink/85">
-              Sign in
-            </SignInButton>
-          )}
+          {/* Filled in by the browser: the page itself is the same for everyone. */}
+          <AccountSlot />
           <MobileMenu items={items} />
         </div>
       </div>
@@ -154,7 +142,7 @@ function examMenu(examTypes: ExamType[], index: PaperIndexRow[], tree: ProgramWi
           {
             heading: 'Branch',
             links: branches.map((program) => ({
-              href: `/papers?exam=${exam.slug}&program=${program.slug}`,
+              href: `${paths.exam(exam.slug)}#p-${programSlug(program)}`,
               title: program.short_name ?? program.name,
               icon: artFor('programs', program.slug),
             })),
@@ -168,15 +156,10 @@ function examMenu(examTypes: ExamType[], index: PaperIndexRow[], tree: ProgramWi
             })),
           },
         ].filter((group) => group.links.length > 0),
-        more: { href: `/papers?exam=${exam.slug}`, label: `All ${exam.name} papers` },
+        more: { href: paths.exam(exam.slug), label: `All ${exam.name} papers` },
       }
     })
     .filter((column) => column.groups.length > 0)
 
   return columns.length > 0 ? { key: 'exams', label: 'Exams', columns } : null
 }
-
-/**
- * The mark: an answer bubble, filled. It is the one glyph every student in the
- * programme has looked at hundreds of times.
- */
