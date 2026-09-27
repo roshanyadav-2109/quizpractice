@@ -105,7 +105,8 @@ export async function SiteHeader() {
             aria-label="Search questions"
             className="hidden h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-ink transition-colors hover:bg-surface-3 sm:flex"
           >
-            <MagnifyingGlass size={18} />
+            <MagnifyingGlass size={18} aria-hidden="true" />
+            <span className="sr-only">Search questions</span>
           </Link>
           {/* Filled in by the browser: the page itself is the same for everyone. */}
           <AccountSlot />
