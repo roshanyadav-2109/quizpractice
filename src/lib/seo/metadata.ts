@@ -53,7 +53,8 @@ export function pageMetadata({ title, description, path, index = true, image, ty
     // `absolute`: the brand is already in, the root template must not add it again.
     title: { absolute: fullTitle },
     description: desc,
-    alternates: { canonical: url },
+    // One language, one region: the page is its own en-IN and default version.
+    alternates: { canonical: url, languages: { 'en-IN': url, 'x-default': url } },
     robots: index
       ? { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 }
       : { index: false, follow: true },
