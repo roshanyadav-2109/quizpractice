@@ -665,6 +665,39 @@ export async function getQuestionIndex(setIds: string[]): Promise<IndexedQuestio
   return rows
 }
 
+export interface VideoSolution {
+  questionId: string
+  setId: string
+  number: number
+  solutionId: string
+  videoUrl: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Every published question with a video solution — on every copy it plays
+ * on (0033). Shared and small; cleared with the explanations.
+ */
+export const getVideoSolutions = shared(
+  'video-solutions',
+  [TAG.solutions],
+  async (): Promise<VideoSolution[]> => {
+    const { data, error } = await publicClient.rpc('public_video_solutions')
+    if (error) throw new Error(`public_video_solutions failed — ${error.message}`)
+    type Row = { question_id: string; set_id: string; number: number; solution_id: string; video_url: string; created_at: string; updated_at: string }
+    return ((data ?? []) as Row[]).map((row) => ({
+      questionId: row.question_id,
+      setId: row.set_id,
+      number: row.number,
+      solutionId: row.solution_id,
+      videoUrl: row.video_url,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }))
+  },
+)
+
 export interface QuestionCopy {
   questionId: string
   setId: string
