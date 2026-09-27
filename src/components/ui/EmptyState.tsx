@@ -45,8 +45,19 @@ export function EmptyState({
         framed ? 'rounded-[10px] border border-rule bg-surface' : ''
       } ${className}`}
     >
+      {/* Lazy: every page carries the not-found state in its payload, and an
+          eager image there would be preloaded on every page for nothing. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/art/states/${art}.webp`} alt="" width={px} height={px} className="max-w-full select-none" draggable={false} />
+      <img
+        src={`/art/states/${art}.webp`}
+        alt=""
+        width={px}
+        height={px}
+        loading="lazy"
+        decoding="async"
+        className="max-w-full select-none"
+        draggable={false}
+      />
       <p className={`${size === 'sm' ? 'mt-2 text-ui' : 'mt-4 text-card'} font-normal text-ink text-balance`}>{title}</p>
       {children ? (
         <div className={`mt-1.5 max-w-[48ch] font-light text-ink-muted ${size === 'sm' ? 'text-meta' : 'text-ui'}`}>{children}</div>
