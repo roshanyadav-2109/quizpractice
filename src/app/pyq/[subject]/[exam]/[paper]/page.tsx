@@ -9,15 +9,16 @@ import { collectionPage, courseEntity, paperEntity } from '@/lib/seo/jsonld'
 import { listJoin, listOf, plural, shortName, sittingDate, termName } from '@/lib/seo/names'
 import { dateFromSlug, paths } from '@/lib/seo/paths'
 import { absolute } from '@/lib/seo/site'
-import { questionSlugOf, toQuizQuestion, TYPE_NAME, titleText } from '@/lib/seo/question-view'
+import { toQuizQuestion, TYPE_NAME, titleText } from '@/lib/seo/question-view'
+import { LEAD_IN, leadIn } from '@/lib/access'
 import { formatCount } from '@/lib/format'
 import { termFromKey } from '@/lib/terms'
 import { artFor } from '@/lib/art'
-import { getVideoIndex } from '@/lib/seo/video-solutions'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { HubHeader } from '@/components/seo/HubHeader'
 import { PaperTable } from '@/components/seo/PaperTable'
 import { PaperQuestion, type CopyLink } from '@/components/seo/PaperQuestion'
+import { PaperLock } from '@/components/seo/PaperLock'
 import { BestScore } from '@/components/seo/BestScore'
 import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
 import { SeoArticle, SeoHeading, SeoIntro } from '@/components/catalogue/SeoArticle'
@@ -30,7 +31,7 @@ import { buttonClass } from '@/components/ui/primitives'
 /**
  * One address, two kinds of page:
  *
- *   /pyq/maths-1/quiz-1/16-feb-2025   a paper — every question, with answers
+ *   /pyq/maths-1/quiz-1/16-feb-2025   a paper — its first questions, the rest after a sign-in
  *   /pyq/maths-1/quiz-1/may-2024      a term sat in several sets — its sets
  *
  * Papers are named by date and terms by season, so the two never collide.
@@ -108,7 +109,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const short = shortName(first.subject)
     return pageMetadata({
       title: `${short} ${first.examType.name} ${term?.short ?? ''} PYQ: ${resolved.papers.length} Sets with Solutions`,
-      description: `IITM BS ${short} ${first.examType.name} papers from the ${termName(term)}: all ${resolved.papers.length} sets with solutions, answer keys and video solutions, free as timed mock tests.`,
+      description: `IITM BS ${short} ${first.examType.name} papers from the ${termName(term)}: all ${resolved.papers.length} sets with solutions and answer keys, free as timed mock tests with a Google sign-in.`,
       path: paths.paper(subject, exam, slug),
     })
   }
@@ -118,7 +119,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const short = shortName(first.subject)
     return pageMetadata({
       title: titles.subjectExamYear(first.subject, first.examType, resolved.year),
-      description: `All ${resolved.papers.length} IITM BS ${short} ${first.examType.name} papers from ${resolved.year}, with solutions, answer keys and video solutions — free to read or take as timed mock tests.`,
+      description: `All ${resolved.papers.length} IITM BS ${short} ${first.examType.name} papers from ${resolved.year}, with solutions and answer keys — free with a Google sign-in, to read or take as timed mock tests.`,
       path: paths.subjectExamYear(subject, exam, resolved.year),
     })
   }
@@ -127,12 +128,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const short = shortName(paper.subject)
   const setPart = paper.setsInSitting > 1 ? ` Set ${paper.setCode}` : ''
   const set = await getPublicSet(paper.setId)
-  const first = set?.questions.find((question) => titleText(question).length > 40)
+  // Only words the page shows: its free preview.
+  const first = set?.questions.slice(0, LEAD_IN).find((question) => titleText(question).length > 40)
   return pageMetadata({
     title: titles.paper(paper),
     description: `${plural(paper.questionCount, 'question')}${paper.totalMarks ? ` · ${paper.totalMarks} marks` : ''}${
       paper.durationMinutes ? ` · ${paper.durationMinutes} min` : ''
-    }. IITM BS ${short} ${paper.examType.name} PYQ, ${sittingDate(paper.sessionDate)} (${termName(paper.term)})${setPart}, with solutions, answer key and video solutions.${
+    }. IITM BS ${short} ${paper.examType.name} PYQ, ${sittingDate(paper.sessionDate)} (${termName(paper.term)})${setPart}, with solutions and answer key after a free Google sign-in.${
       first ? ` Q${first.number}: ${titleText(first, 70)}` : ''
     }`,
     path: paper.path,
@@ -150,7 +152,7 @@ export default async function PaperPage({ params }: { params: Params }) {
   if (resolved.kind === 'year') return <YearPage catalogue={resolved.catalogue} papers={resolved.papers} year={resolved.year} />
 
   const { catalogue, paper } = resolved
-  const [set, videos] = await Promise.all([getPublicSet(paper.setId), getVideoIndex()])
+  const set = await getPublicSet(paper.setId)
   if (!set) notFound()
 
   const node = catalogue.subjectBySlug.get(paper.subject.slug)!
@@ -162,6 +164,8 @@ export default async function PaperPage({ params }: { params: Params }) {
   const levelNode = programNode?.levels.find((entry) => entry.level.id === paper.level.id)
 
   const questions = set.questions
+  // What anyone sees of the paper: its first questions, without their answers.
+  const preview = leadIn(questions)
   const marks = paper.totalMarks ?? questions.reduce((sum, question) => sum + Number(question.marks), 0)
   const penalised = questions.filter((question) => Number(question.negative_marks) > 0).length
   const typeCounts = Object.entries(
@@ -229,9 +233,9 @@ export default async function PaperPage({ params }: { params: Params }) {
             { name: paperName(paper), path: paper.path },
           ],
           course,
-          questions: questions.map((question) =>
-            toQuizQuestion(question, absolute(paths.question(paper.subject.slug, paper.examType.slug, paper.slug, questionSlugOf(question)))),
-          ),
+          questions: preview.map((question) => toQuizQuestion(question, absolute(`${paper.path}#q${question.number}`))),
+          totalQuestions: questions.length,
+          lockedSelector: questions.length > preview.length ? '.paper-locked' : undefined,
           timeRequiredMinutes: paper.durationMinutes,
           dateCreated: paper.sessionDate,
           modified: paper.updatedAt,
@@ -254,9 +258,9 @@ export default async function PaperPage({ params }: { params: Params }) {
                 <strong className="font-medium text-ink">
                   {plural(questions.length, 'question')} for {formatCount(Number(marks))} marks
                 </strong>
-                {paper.durationMinutes ? ` in ${paper.durationMinutes} minutes` : ''}. Every question is below with its
-                solution from the answer key; each question&rsquo;s own page has its video solution. Take the paper as a
-                timed mock test to be marked, or read it through first.
+                {paper.durationMinutes ? ` in ${paper.durationMinutes} minutes` : ''}. The first{' '}
+                {plural(preview.length, 'question')} {preview.length === 1 ? 'is' : 'are'} below. Sign in with Google — it is
+                free — to see the whole paper with its answers and explanations, in learning mode or as a timed mock test.
               </p>
             }
             stats={[
@@ -291,15 +295,10 @@ export default async function PaperPage({ params }: { params: Params }) {
           </p>
 
           <div className="mt-8 flex flex-col gap-4">
-            {questions.map((question) => (
-              <PaperQuestion
-                key={question.id}
-                question={question}
-                href={paths.question(paper.subject.slug, paper.examType.slug, paper.slug, questionSlugOf(question))}
-                copies={copyLinks(question.id)}
-                hasVideo={videos.byQuestion.has(question.id)}
-              />
+            {preview.map((question) => (
+              <PaperQuestion key={question.id} question={question} copies={copyLinks(question.id)} />
             ))}
+            <PaperLock setId={paper.setId} shown={preview.length} total={questions.length} />
           </div>
 
           <nav aria-label="More papers" className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -523,8 +522,8 @@ function YearPage({ catalogue, papers, year }: { catalogue: SeoCatalogue; papers
             <p>
               <strong>{plural(papers.length, `${short} ${examName} paper`)}</strong> from {year}
               {terms.length > 0 ? ` — the ${listOf(terms.map((term) => term.label))}` : ''} — {formatCount(questions)} questions,
-              each with its solution from the answer key and a video solution on its own page. Read one, or take it as a timed
-              mock test.
+              each with its solution from the answer key. Each paper shows its first questions; sign in with Google to read
+              it whole, or take it as a timed mock test.
             </p>
           }
           statsTitle={`${short} ${examName} PYQ ${year} at a glance`}
