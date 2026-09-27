@@ -738,16 +738,12 @@ export function Studio({
                 aria-labelledby="tab-board"
                 hidden={tab !== 'board'}
                 className={
-                  fullBoard ? 'fixed inset-0 z-50 w-full bg-white' : 'flex w-full flex-col gap-4 p-4 sm:p-6'
+                  fullBoard
+                    ? 'fixed inset-0 z-50 flex w-full flex-col gap-3 overflow-hidden bg-surface p-3 sm:p-4'
+                    : 'flex w-full flex-col gap-4 p-4 sm:p-6'
                 }
               >
-                <div
-                  className={
-                    fullBoard
-                      ? 'absolute bottom-3 left-3 z-20 max-h-[45dvh] w-[min(560px,calc(100vw-1.5rem))] overflow-y-auto rounded-card shadow-[0_10px_30px_-12px_rgba(12,10,9,0.4)]'
-                      : 'contents'
-                  }
-                >
+                <div className="contents">
                 <RecordPanel
                   question={question}
                   orderVaries={orderVaries}
@@ -804,13 +800,7 @@ export function Studio({
                   </ReviewPanel>
                 ) : null}
 
-                <div
-                  className={
-                    fullBoard
-                      ? 'absolute top-3 right-3 z-20 flex max-w-[min(420px,calc(100vw-1.5rem))] flex-wrap items-center justify-end gap-1.5 rounded-card bg-surface/95 p-1.5 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]'
-                      : 'flex flex-wrap items-center gap-2'
-                  }
-                >
+                <div className="flex flex-wrap items-center gap-2">
                   <QuestionOnBoard boardRef={boardRef} ready={cardReady} onResult={setBoardNotice} />
                   <PinFigure boardRef={boardRef} question={question} onResult={setBoardNotice} />
                   <InsertBoardPage
@@ -824,7 +814,7 @@ export function Studio({
                     type="button"
                     onClick={toggleFullBoard}
                     aria-pressed={fullBoard}
-                    className={`${buttonClass(fullBoard ? 'primary' : 'outline', 'sm')} ${fullBoard ? '' : 'ml-auto'}`}
+                    className={`${buttonClass(fullBoard ? 'primary' : 'outline', 'sm')} ml-auto`}
                   >
                     {fullBoard ? <CornersIn size={16} aria-hidden="true" /> : <CornersOut size={16} aria-hidden="true" />}
                     {fullBoard ? 'Exit full screen' : 'Full screen'}
@@ -850,14 +840,15 @@ export function Studio({
                     recording in progress. Full screen: as large as the screen
                     allows, full width on a 16:9 screen. */}
                 <div
-                  className={fullBoard ? 'absolute inset-0 flex items-center justify-center' : 'mx-auto w-full'}
+                  className={fullBoard ? 'flex min-h-0 w-full flex-1 flex-col' : 'mx-auto w-full'}
                   style={fullBoard ? undefined : { maxWidth: 'max(560px, calc((100dvh - 19rem) * 16 / 9))' }}
                 >
-                  <div className="w-full" style={fullBoard ? { width: 'min(100vw, calc(100dvh * 16 / 9))' } : undefined}>
+                  <div className={fullBoard ? 'flex h-full min-h-0 w-full flex-col' : 'w-full'}>
                     <Whiteboard
                       handleRef={boardRef}
                       storageKey={`studio:${question.id}`}
-                      layout={fullBoard ? 'overlay' : 'stacked'}
+                      layout={fullBoard ? 'fill' : 'stacked'}
+                      className={fullBoard ? 'h-full' : ''}
                     />
                   </div>
                 </div>

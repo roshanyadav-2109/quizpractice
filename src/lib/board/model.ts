@@ -16,6 +16,7 @@ import {
   BACKGROUNDS,
   BOARD_H,
   BOARD_W,
+  MAX_BOARD_W,
   ERASER_SIZES,
   HIGHLIGHTER_COLORS,
   HIGHLIGHTER_SIZES,
@@ -35,6 +36,7 @@ import {
   type ShapeTool,
   type Stroke,
   type Tool,
+  pageWidth,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -180,6 +182,8 @@ export type BoardCommand =
    */
   | { type: 'moveFigure'; id: string; rect: BoardRect; from?: BoardRect }
   | { type: 'unpinFigure'; id: string }
+  /** Widens the current page (never narrows it), in board units. */
+  | { type: 'setPageWidth'; w: number }
   | { type: 'undo' }
   | { type: 'redo' }
   /** Replaces every page (a restored autosave, a saved draft). History starts afresh. */
@@ -235,9 +239,21 @@ export function boardReducer(state: BoardState, command: BoardCommand): BoardSta
       if (state.pages.length >= MAX_PAGES) return state
       const at = state.current + 1
       const pages = [...state.pages]
-      // A new page keeps the ruling of the one before it.
-      pages.splice(at, 0, emptyPage(activePage(state).bg))
+      // A new page keeps the ruling and the width of the one before it.
+      const before = activePage(state)
+      const page = emptyPage(before.bg)
+      if (pageWidth(before) > BOARD_W) page.w = pageWidth(before)
+      pages.splice(at, 0, page)
       return { ...state, pages, current: at }
+    }
+
+    case 'setPageWidth': {
+      const page = activePage(state)
+      const w = pageWidth({ w: Math.round(command.w) })
+      if (w <= pageWidth(page)) return state
+      const pages = [...state.pages]
+      pages[state.current] = { ...page, w }
+      return { ...state, pages }
     }
 
     case 'deletePage': {
@@ -454,10 +470,10 @@ function eraseAt(state: BoardState, command: Extract<BoardCommand, { type: 'eras
 const MIN_FIGURE = 24
 
 function normaliseRect(rect: BoardRect): BoardRect {
-  const w = Math.max(MIN_FIGURE, Math.min(BOARD_W * 2, rect.w))
+  const w = Math.max(MIN_FIGURE, Math.min(MAX_BOARD_W, rect.w))
   const h = Math.max(MIN_FIGURE, Math.min(BOARD_H * 2, rect.h))
   // At least a corner stays on the board, so a figure can always be grabbed back.
-  const x = Math.max(-w + MIN_FIGURE, Math.min(BOARD_W - MIN_FIGURE, rect.x))
+  const x = Math.max(-w + MIN_FIGURE, Math.min(MAX_BOARD_W - MIN_FIGURE, rect.x))
   const y = Math.max(-h + MIN_FIGURE, Math.min(BOARD_H - MIN_FIGURE, rect.y))
   return { x: round2(x), y: round2(y), w: round2(w), h: round2(h) }
 }
@@ -670,7 +686,7 @@ export function simulatedPressure(previous: number, distance: number, elapsedMs:
 /** Pointer input may run off the board; keep it within a margin of the page. */
 export function clampToBoard(x: number, y: number): [number, number] {
   const margin = 200
-  return [Math.max(-margin, Math.min(BOARD_W + margin, x)), Math.max(-margin, Math.min(BOARD_H + margin, y))]
+  return [Math.max(-margin, Math.min(MAX_BOARD_W + margin, x)), Math.max(-margin, Math.min(BOARD_H + margin, y))]
 }
 
 // ---------------------------------------------------------------------------
@@ -743,7 +759,8 @@ export function sanitizePages(value: unknown): BoardPage[] | null {
           .slice(0, MAX_FIGURES)
       : []
     const bg = BACKGROUNDS.includes(raw.bg as BoardBackground) ? (raw.bg as BoardBackground) : 'plain'
-    pages.push({ id, bg, strokes, figures })
+    const w = pageWidth({ w: typeof raw.w === 'number' ? raw.w : undefined })
+    pages.push(w > BOARD_W ? { id, bg, strokes, figures, w } : { id, bg, strokes, figures })
   }
   return pages.length ? pages : null
 }

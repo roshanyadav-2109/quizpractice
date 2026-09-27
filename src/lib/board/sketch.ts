@@ -23,7 +23,6 @@ import { arrowHead, newId } from './model'
 import { simplifyStroke } from './simplify'
 import {
   BOARD_H,
-  BOARD_W,
   HIGHLIGHTER_ALPHA,
   isFreehandTool,
   type BoardPage,
@@ -31,6 +30,7 @@ import {
   type PinnedFigure,
   type ShapeTool,
   type Stroke,
+  pageWidth,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ function sketchStroke(stroke: Stroke, epsilon: number): SketchBlock['strokes'][n
 function buildSketch(page: BoardPage, alt: string, caption: string | undefined, epsilon: number): SketchBlock {
   const block: SketchBlock = {
     type: 'sketch',
-    w: BOARD_W,
+    w: pageWidth(page),
     h: BOARD_H,
     strokes: page.strokes.map((stroke) => sketchStroke(stroke, epsilon)),
     alt,

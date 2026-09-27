@@ -31,6 +31,7 @@ import {
   BOARD_H,
   BOARD_W,
   MAX_FIGURES,
+  pageWidth,
   type BoardPage,
   type BoardRect,
   type CardKind,
@@ -117,8 +118,8 @@ export function Whiteboard({
   handleRef,
   className = '',
   storageKey, layout = 'stacked' }: {
-  /** 'overlay': the toolbar and page strip float over a board that fills its box (full screen). */
-  layout?: 'stacked' | 'overlay'
+  /** 'fill' (full screen): the board takes the height it is given and widens the page to the space beside it. */
+  layout?: 'stacked' | 'fill'
   handleRef?: Ref<WhiteboardHandle>
   className?: string
   storageKey?: string
@@ -186,15 +187,36 @@ export function Whiteboard({
   )
 
   const page = state.pages[state.current]
+
+  // Full screen: measure the space the board is given, and widen the page to
+  // its shape. Pages only grow, so leaving full screen cuts nothing off.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null)
+  useEffect(() => {
+    const element = boxRef.current
+    if (layout !== 'fill' || !element) return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      if (width > 0 && height > 0) setBox({ w: width, h: height })
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [layout])
+  const wantW = layout === 'fill' && box ? Math.round((BOARD_H * box.w) / box.h) : 0
+  const currentW = pageWidth(page)
+  useEffect(() => {
+    if (wantW > currentW) store.dispatch({ type: 'setPageWidth', w: wantW })
+  }, [wantW, currentW, store])
   const cursor = state.tool === 'eraser' || state.tool === 'laser' ? 'cursor-none' : 'cursor-crosshair'
 
-  // Full screen: the page fills the screen and the toolbar and page strip
-  // float over it, so no height goes to anything but the board.
-  const overlay = layout === 'overlay'
+  // 'fill' (full screen): the page takes all the height it is given and
+  // widens to the space beside it, so the board is as wide as the screen.
+  const fill = layout === 'fill'
+  const pw = pageWidth(page)
 
   return (
-    <div className={overlay ? `relative ${className}` : `flex flex-col gap-2 ${className}`}>
-      <div className={overlay ? 'absolute top-2 left-1/2 z-10 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-card bg-surface/95 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]' : ''}>
+    <div className={fill ? `flex h-full min-h-0 flex-col gap-2 ${className}` : `flex flex-col gap-2 ${className}`}>
+      <div>
         <BoardToolbar
           state={state}
           dispatch={store.dispatch}
@@ -204,9 +226,18 @@ export function Whiteboard({
         />
       </div>
 
+      <div ref={boxRef} className={fill ? 'relative flex min-h-0 flex-1 items-center justify-center' : 'contents'}>
       <div
         ref={stageRef}
-        className={`relative aspect-video w-full overflow-hidden bg-white ${overlay ? '' : 'rounded-control border border-rule'}`}
+        className="relative w-full overflow-hidden rounded-control border border-rule bg-white"
+        style={
+          fill && box
+            ? {
+                width: Math.min(box.w, (box.h * pw) / BOARD_H),
+                height: Math.min(box.h, (box.w * BOARD_H) / pw),
+              }
+            : { aspectRatio: `${pw} / ${BOARD_H}` }
+        }
       >
         <canvas
           ref={canvasRef}
@@ -216,11 +247,12 @@ export function Whiteboard({
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
         />
         {page.figures.map((figure) => (
-          <FigureHandles key={figure.id} figure={figure} dispatch={store.dispatch} stageRef={stageRef} />
+          <FigureHandles key={figure.id} figure={figure} dispatch={store.dispatch} stageRef={stageRef} pageW={pw} />
         ))}
       </div>
+      </div>
 
-      <div className={overlay ? 'absolute bottom-2 left-1/2 z-10 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-card bg-surface/95 px-2 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]' : ''}>
+      <div>
         <PageStrip pages={state.pages} current={state.current} images={painter.images} dispatch={store.dispatch} />
       </div>
     </div>
@@ -348,10 +380,13 @@ function FigureHandles({
   figure,
   dispatch,
   stageRef,
+  pageW,
 }: {
   figure: PinnedFigure
   dispatch: (command: BoardCommand) => void
   stageRef: RefObject<HTMLDivElement | null>
+  /** The page's width in board units. */
+  pageW: number
 }) {
   const start = (mode: 'move' | 'resize') => (event: ReactPointerEvent<HTMLButtonElement>) => {
     const stage = stageRef.current
@@ -372,7 +407,7 @@ function FigureHandles({
     }
 
     const move = (moveEvent: PointerEvent) => {
-      const dx = ((moveEvent.clientX - originX) / Math.max(bounds.width, 1)) * BOARD_W
+      const dx = ((moveEvent.clientX - originX) / Math.max(bounds.width, 1)) * pageW
       const dy = ((moveEvent.clientY - originY) / Math.max(bounds.height, 1)) * BOARD_H
       if (mode === 'move') {
         rect = { ...from, x: from.x + dx, y: from.y + dy }
@@ -416,7 +451,7 @@ function FigureHandles({
 
   // A figure may hang off the board's edge. The grips go on the part still
   // showing, and never past the board, so it can always be taken hold of again.
-  const right = `${(Math.min(BOARD_W, figure.x + figure.w) / BOARD_W) * 100}%`
+  const right = `${(Math.min(pageW, figure.x + figure.w) / pageW) * 100}%`
   const top = `${(Math.max(0, figure.y) / BOARD_H) * 100}%`
   const bottom = `${(Math.min(BOARD_H, figure.y + figure.h) / BOARD_H) * 100}%`
 

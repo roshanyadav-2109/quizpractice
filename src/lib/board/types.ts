@@ -79,6 +79,21 @@ export interface BoardPage {
   bg: BoardBackground
   strokes: Stroke[]
   figures: PinnedFigure[]
+  /**
+   * Width in board units, when wider than the 16:9 page (BOARD_W). The height
+   * is always BOARD_H. A page widens to fill a full screen and never narrows,
+   * so nothing drawn at its edge is ever cut off.
+   */
+  w?: number
+}
+
+/** The widest a page may grow: a little over 32:9. */
+export const MAX_BOARD_W = 2560
+
+/** A page's width in board units. */
+export function pageWidth(page: { w?: number } | null | undefined): number {
+  const w = page?.w
+  return typeof w === 'number' && Number.isFinite(w) ? Math.min(MAX_BOARD_W, Math.max(BOARD_W, w)) : BOARD_W
 }
 
 export interface BoardRect {

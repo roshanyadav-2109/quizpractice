@@ -27,6 +27,7 @@ import {
   type InkTool,
   type PinnedFigure,
   type Stroke,
+  pageWidth,
 } from './types'
 
 type Ctx = CanvasRenderingContext2D
@@ -83,26 +84,26 @@ export function drawLiveStroke(ctx: Ctx, live: LiveStroke): void {
 // Paper
 // ---------------------------------------------------------------------------
 
-export function drawBackground(ctx: Ctx, bg: BoardBackground): void {
+export function drawBackground(ctx: Ctx, bg: BoardBackground, width: number = BOARD_W): void {
   ctx.save()
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, BOARD_W, BOARD_H)
+  ctx.fillRect(0, 0, width, BOARD_H)
   if (bg === 'grid') {
     ctx.beginPath()
-    for (let x = GRID_STEP; x < BOARD_W; x += GRID_STEP) {
+    for (let x = GRID_STEP; x < width; x += GRID_STEP) {
       ctx.moveTo(x, 0)
       ctx.lineTo(x, BOARD_H)
     }
     for (let y = GRID_STEP; y < BOARD_H; y += GRID_STEP) {
       ctx.moveTo(0, y)
-      ctx.lineTo(BOARD_W, y)
+      ctx.lineTo(width, y)
     }
     ctx.strokeStyle = GRID_COLOR
     ctx.lineWidth = 1
     ctx.stroke()
   } else if (bg === 'dots') {
     ctx.beginPath()
-    for (let x = GRID_STEP; x < BOARD_W; x += GRID_STEP) {
+    for (let x = GRID_STEP; x < width; x += GRID_STEP) {
       for (let y = GRID_STEP; y < BOARD_H; y += GRID_STEP) {
         ctx.moveTo(x + DOT_RADIUS, y)
         ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2)
@@ -252,7 +253,7 @@ export function drawFigure(ctx: Ctx, figure: PinnedFigure, images: FigureImages)
 
 /** Paper, figures, then ink, in board units: the caller sets the transform. */
 export function drawPage(ctx: Ctx, page: BoardPage, images: FigureImages): void {
-  drawBackground(ctx, page.bg)
+  drawBackground(ctx, page.bg, pageWidth(page))
   for (const figure of page.figures) drawFigure(ctx, figure, images)
   for (const stroke of page.strokes) drawStroke(ctx, stroke)
 }
@@ -282,11 +283,12 @@ export class PageLayer {
     const previous = this.page
     if (!resized && previous === page && this.imagesVersion === images.version) return canvas
 
-    ctx.setTransform(width / BOARD_W, 0, 0, height / BOARD_H, 0, 0)
+    const pw = pageWidth(page)
+    ctx.setTransform(width / pw, 0, 0, height / BOARD_H, 0, 0)
     if (!resized && previous && this.imagesVersion === images.version && appendsTo(previous, page)) {
       for (let i = previous.strokes.length; i < page.strokes.length; i++) drawStroke(ctx, page.strokes[i])
     } else {
-      ctx.clearRect(0, 0, BOARD_W, BOARD_H)
+      ctx.clearRect(0, 0, pw, BOARD_H)
       drawPage(ctx, page, images)
     }
     this.page = page
@@ -463,7 +465,17 @@ export class BoardPainter {
    * Draws the current page, the stroke in progress and the laser into any
    * canvas, filling dest (in that canvas's current units).
    */
-  paint(ctx: Ctx, dest: BoardRect): void {
+  paint(ctx: Ctx, area: BoardRect): void {
+    // A wide page keeps its shape: fitted into the area, centred, with the
+    // caller's own background showing above and below it.
+    const pw = pageWidth(this.currentPage())
+    const fit = Math.min(area.w / pw, area.h / BOARD_H)
+    const dest: BoardRect = {
+      x: area.x + (area.w - pw * fit) / 2,
+      y: area.y + (area.h - BOARD_H * fit) / 2,
+      w: pw * fit,
+      h: BOARD_H * fit,
+    }
     // The layer matches the pixels dest covers, so the ink is drawn at the output's own resolution.
     const transform = ctx.getTransform()
     const scaleX = Math.hypot(transform.a, transform.b) || 1
@@ -478,7 +490,7 @@ export class BoardPainter {
     ctx.clip()
     if (layer) ctx.drawImage(layer, dest.x, dest.y, dest.w, dest.h)
     ctx.translate(dest.x, dest.y)
-    ctx.scale(dest.w / BOARD_W, dest.h / BOARD_H)
+    ctx.scale(dest.w / pw, dest.h / BOARD_H)
     // The eraser's ring shows on the recording only while it is rubbing out.
     this.drawFeedback(ctx, performance.now(), false)
     ctx.restore()
@@ -519,7 +531,7 @@ export class BoardPainter {
       const layer = this.screenLayer.render(this.currentPage(), canvas.width, canvas.height, this.images)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       if (layer) ctx.drawImage(layer, 0, 0)
-      ctx.setTransform(canvas.width / BOARD_W, 0, 0, canvas.height / BOARD_H, 0, 0)
+      ctx.setTransform(canvas.width / pageWidth(this.currentPage()), 0, 0, canvas.height / BOARD_H, 0, 0)
       this.drawFeedback(ctx, now, true)
     }
 

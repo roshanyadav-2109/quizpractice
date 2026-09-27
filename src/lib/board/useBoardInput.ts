@@ -22,12 +22,13 @@ import {
   simulatedPressure,
   strokeStyle,
   constrainShape,
+  activePage,
   type BoardCommand,
   type BoardState,
 } from './model'
 import type { BoardPainter } from './render'
 import { simplifyStroke } from './simplify'
-import { BOARD_H, BOARD_W, PEN_COLORS, isShapeTool, type ShapeTool } from './types'
+import { BOARD_H, PEN_COLORS, isShapeTool, pageWidth, type ShapeTool } from './types'
 
 export interface BoardStore {
   getState(): BoardState
@@ -167,7 +168,7 @@ export function useBoardInput(canvasRef: RefObject<HTMLCanvasElement | null>, op
 
     const toBoard = (event: PointerEvent): [number, number] =>
       clampToBoard(
-        ((event.clientX - rect.left) / Math.max(rect.width, 1)) * BOARD_W,
+        ((event.clientX - rect.left) / Math.max(rect.width, 1)) * pageWidth(activePage(store.getState())),
         ((event.clientY - rect.top) / Math.max(rect.height, 1)) * BOARD_H,
       )
 

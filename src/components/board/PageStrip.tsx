@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { CaretLeft, CaretRight, FilePlus, Trash } from '@/components/ui/icons'
 import { pageIsEmpty, type BoardCommand } from '@/lib/board/model'
 import { drawPage, type FigureImages } from '@/lib/board/render'
-import { BOARD_H, BOARD_W, MAX_PAGES, type BoardPage } from '@/lib/board/types'
+import { BOARD_H, MAX_PAGES, pageWidth, type BoardPage } from '@/lib/board/types'
 
 const THUMB_W = 128
 const THUMB_H = 72
@@ -157,7 +157,10 @@ function PageThumb({ page, images, imagesVersion }: { page: BoardPage; images: F
       const ratio = Math.min(2, window.devicePixelRatio || 1)
       element.width = Math.round(THUMB_W * ratio)
       element.height = Math.round(THUMB_H * ratio)
-      ctx.setTransform(element.width / BOARD_W, 0, 0, element.height / BOARD_H, 0, 0)
+      // A wide page keeps its shape in the thumbnail, centred.
+      const pw = pageWidth(page)
+      const scale = Math.min(element.width / pw, element.height / BOARD_H)
+      ctx.setTransform(scale, 0, 0, scale, (element.width - pw * scale) / 2, (element.height - BOARD_H * scale) / 2)
       drawPage(ctx, page, images)
     }, 150)
     return () => window.clearTimeout(timer)
