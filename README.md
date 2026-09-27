@@ -58,26 +58,7 @@ types, taken from a live audit of the IITM course catalogue.
 Copy the project URL and both API keys into `.env.local`. The service-role key
 bypasses RLS — it is used only by the importer and must never reach a browser.
 
-### 2. Demo accounts
-
-```bash
-npm run demo:users
-```
-
-Creates two password accounts so you can sign in without waiting on email:
-
-| Account | Email | Password | Role |
-|---|---|---|---|
-| Demo Student | `demo@example.com` | `demo1234` | student |
-| Demo Admin | `admin@example.com` | `admin1234` | admin |
-
-They appear as one-click buttons on `/login`. Safe to re-run — it resets the
-password and role rather than duplicating the accounts.
-
-**Before the site is public**: delete both accounts and set
-`NEXT_PUBLIC_DEMO_LOGINS=false`, which removes the panel from the sign-in page.
-
-### 3. Make yourself an admin
+### 2. Make yourself an admin
 
 Sign in once at `/login` so a profile row exists, then in the SQL editor:
 
@@ -108,13 +89,13 @@ students in `/admin/educators`, through an RPC that refuses anyone who is not an
 admin. The admin role itself is still granted or removed only in the Supabase
 dashboard.
 
-### 4. Cloudinary
+### 3. Cloudinary
 
 Create a product environment and copy the cloud name, API key and secret. Only
 the cloud name is public. Uploads are signed server-side, so the secret never
 reaches the browser.
 
-### 5. Load a paper and run it
+### 4. Load a paper and run it
 
 ```bash
 npm run paper:validate -- schema/example-paper.json
@@ -215,7 +196,6 @@ Its README has the steps.
 | `npm run bank:migrate -- <config>` | Turns an exported question bank into paper JSON. `--manifest` lists the images to convert first |
 | `npm run icons:cut -- <sheet.png> <n>` | Cuts generated icon sheet `n` into `public/art/` and updates the icon manifest. Sheets and prompts: `docs/artwork-needed.md` |
 | `npm run media:orphans` | Lists unreferenced Cloudinary assets. `--delete` removes them |
-| `npm run demo:users` | Creates or resets the demo student and admin accounts |
 | `npm run db:push` | Applies the migrations to a hosted Supabase project via the Management API (needs `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`; no Docker or database password) |
 | `npm run seo:indexnow` | Submits the live sitemaps' URLs to IndexNow (Bing, Copilot and others). `--since <date>` for new papers only. See `docs/seo.md` |
 
@@ -411,10 +391,10 @@ them.
 
 ### Signing in
 
-Google, from a sign-in dialog available on every page. The demo student and
-demo admin show beside it until `NEXT_PUBLIC_DEMO_LOGINS=false`. Practising
-works fully signed-out — an attempt is marked and returned, it is just not
-saved.
+Google, from a sign-in dialog available on every page; there are no demo
+accounts. Signed out, a student can open learning mode and pick or type
+answers. Seeing an answer, the timed exam mode and submitting open the same
+sign-in dialog.
 
 ---
 

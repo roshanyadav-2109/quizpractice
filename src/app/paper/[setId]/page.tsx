@@ -209,7 +209,7 @@ export default async function PaperIntroPage({ params }: { params: Params }) {
             <p className="mt-0.5 truncate text-ui text-ink">{profile?.displayName ?? 'Guest'}</p>
             {profile ? null : (
               <p className="mt-1 text-meta text-ink-muted">
-                <SignInLink /> to keep this attempt and its analysis.
+                <SignInLink /> to take this paper as a timed mock test. Your attempt and its analysis are saved.
               </p>
             )}
 
@@ -223,7 +223,7 @@ export default async function PaperIntroPage({ params }: { params: Params }) {
             ) : null}
 
             <div className="mt-4 border-t border-rule pt-4">
-              <StartControls setId={setId} stacked />
+              <StartControls setId={setId} isSignedIn={Boolean(profile)} stacked />
             </div>
           </aside>
         </div>

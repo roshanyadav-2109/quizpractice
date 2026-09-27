@@ -46,7 +46,7 @@ function header(data: Awaited<ReturnType<typeof summary>>): string[] {
     `- ${formatCount(catalogue.papers.length)} papers, ${formatCount(questions)} questions, ${subjects.length} subjects; ${yearSpan(years)}.`,
     `- By exam: ${exams.map(({ exam, count }) => `${exam.name}: ${formatCount(count)} papers`).join(', ')}.`,
     ...(newest ? [`- Newest paper: ${shortName(newest.subject)} ${newest.examType.name}, sat ${sittingDate(newest.sessionDate)} (${termName(newest.term)}).`] : []),
-    '- Free to read and to take as mock tests. A Google sign-in is only needed to save attempts and see analysis.',
+    '- Papers, questions and answer keys are free to read with no account. Timed mock tests, answer checking in practice mode and saved attempts need a free Google sign-in.',
     "- Solutions: every question shows its correct answer (the answer key). Video solutions play on each question's own page, under the answer — they are not a separate channel or playlist.",
     '- Papers come from the answer-key papers IIT Madras releases after each exam; questions, options and the correct options are read from those papers, not retyped. Questions are rendered as text, tables, code and equations rather than screenshots.',
     `- Exam scope: Qualifier — ${examFact('qualifier')?.scope ?? ''} Quiz 1 — weeks 1–4. Quiz 2 — weeks 1–8. End Term — the whole course.`,

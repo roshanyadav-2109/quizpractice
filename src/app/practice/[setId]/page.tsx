@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { paperPathForSet } from '@/lib/seo/catalogue'
 import { absolute } from '@/lib/seo/site'
 import type { Metadata } from 'next'
@@ -44,15 +44,22 @@ export default async function PracticePage({
   const { mode: rawMode, q } = await searchParams
   const mode = rawMode === 'learning' ? 'learning' : 'exam'
 
-  // Exam mode never asks the database for is_correct, so the answer key is
-  // simply not in the page payload while a student is working through it.
+  // Picking and typing answers is open to everyone. The timed exam, and
+  // seeing an answer, ask for a Google sign-in: the attempt is saved and marked.
+  // A visitor sent to the exam lands in learning mode with the sign-in card
+  // open, and comes back to the exam once signed in.
+  const profile = await getCurrentProfile()
+  if (mode === 'exam' && !profile) {
+    redirect(`/practice/${setId}?mode=learning&login=1&next=${encodeURIComponent(`/practice/${setId}`)}`)
+  }
+
+  // Exam mode never asks the database for is_correct, and learning mode only
+  // for someone signed in, so the answer key is not in the page payload until
+  // a student may see it.
   //
   // Explanations are not loaded here: each is fetched when its answer is
   // opened, so a paper does not bring every explanation with it.
-  const [context, profile] = await Promise.all([
-    getSetContext(setId, { includeAnswers: mode === 'learning' }),
-    getCurrentProfile(),
-  ])
+  const context = await getSetContext(setId, { includeAnswers: mode === 'learning' && Boolean(profile) })
   if (!context) notFound()
 
   const totalMarks = context.questions.reduce(

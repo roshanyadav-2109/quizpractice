@@ -94,6 +94,19 @@ export async function proxy(request: NextRequest) {
     return redirect
   }
 
+  // The timed exam needs a sign-in; learning mode does not. A visitor sent to
+  // a paper's exam lands in its learning mode with the sign-in card open, and
+  // comes back to the exam once signed in. Answered here, before the page
+  // streams, so it is a real redirect rather than a refresh inside a 200.
+  const exam = request.nextUrl.pathname.match(/^\/practice\/([0-9a-f-]{36})$/)
+  if (exam && !userId && request.nextUrl.searchParams.get('mode') !== 'learning') {
+    const learning = new URL(`/practice/${exam[1]}`, request.url)
+    learning.searchParams.set('mode', 'learning')
+    learning.searchParams.set('login', '1')
+    learning.searchParams.set('next', `/practice/${exam[1]}`)
+    return redirectTo(learning)
+  }
+
   const area = areaOf(request.nextUrl.pathname)
   if (area) {
     if (!userId) {

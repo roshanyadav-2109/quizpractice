@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from '@/components/ui/icons'
 import { buttonClass } from '@/components/ui/primitives'
+import { useSignIn } from '@/components/site/AuthDialog'
 
 /**
  * The declaration and the way in. As in the real exam, starting needs a
@@ -12,19 +13,34 @@ import { buttonClass } from '@/components/ui/primitives'
  *
  * `stacked` lays it out for a narrow column: the buttons full width, one above
  * the other, the way in first.
+ *
+ * The timed exam is for signed-in students — the attempt is saved and marked —
+ * so for a visitor the way in is a Google sign-in that comes back to the paper.
  */
 export function StartControls({
   setId,
   note,
+  isSignedIn,
   stacked = false,
 }: {
   setId: string
   note?: ReactNode
+  isSignedIn: boolean
   stacked?: boolean
 }) {
   const [ready, setReady] = useState(false)
+  const { openSignIn } = useSignIn()
 
-  const start = ready ? (
+  const start = ready && !isSignedIn ? (
+    <button
+      type="button"
+      onClick={() => openSignIn(`/practice/${setId}`)}
+      className={buttonClass('primary', 'lg', stacked ? 'w-full' : 'w-full sm:w-auto')}
+    >
+      Sign in to begin
+      <ArrowRight size={16} aria-hidden="true" />
+    </button>
+  ) : ready ? (
     <Link href={`/practice/${setId}`} className={buttonClass('primary', 'lg', stacked ? 'w-full' : 'w-full sm:w-auto')}>
       I am ready to begin
       <ArrowRight size={16} aria-hidden="true" />

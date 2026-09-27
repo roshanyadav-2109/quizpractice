@@ -27,7 +27,7 @@ import { buttonClass } from '@/components/ui/primitives'
 import { PaletteLegend, QuestionPalette } from './QuestionPalette'
 import { PALETTE_LEGEND, PALETTE_ORDER, legendClasses, paletteStateFor, type PaletteState } from './palette-state'
 import { useQuestionTiming } from './useQuestionTiming'
-import { SignInLink } from '@/components/site/AuthDialog'
+import { SignInLink, useSignIn } from '@/components/site/AuthDialog'
 import { Trail } from '@/components/site/Page'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
@@ -113,6 +113,8 @@ const TYPE_LABEL: Record<QuestionWithOptions['type'], string> = {
  */
 export function ExamRunner(props: ExamRunnerProps) {
   const { setId, mode, questions, meta, isSignedIn, startAt, review } = props
+  // Picking and typing answers is open to all; seeing an answer and submitting ask for a Google sign-in.
+  const { openSignIn } = useSignIn()
   const router = useRouter()
   const learning = mode === 'learning'
   // Learning mode keeps its own scratch answers: checking yourself against the
@@ -315,6 +317,12 @@ export function ExamRunner(props: ExamRunnerProps) {
   }
 
   async function submit() {
+    // Answers are kept in the browser, so signing in and coming back loses none of them.
+    if (!isSignedIn) {
+      submitDialog.current?.close()
+      openSignIn(`/practice/${setId}`)
+      return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -508,7 +516,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           )}
         </div>
 
-        {review ? null : <ModeSwitch setId={setId} mode={mode} className="hidden md:flex" />}
+        {review ? null : <ModeSwitch setId={setId} mode={mode} isSignedIn={isSignedIn} className="hidden md:flex" />}
 
         {learning ? (
           <span className="rounded-control bg-surface-2 px-3 py-2 text-meta text-ink-muted md:hidden">
@@ -594,9 +602,22 @@ export function ExamRunner(props: ExamRunnerProps) {
                       Try again
                     </button>
                   ) : (
-                    <button type="button" onClick={() => checkAnswer(question.id)} className={buttonClass('primary', 'md')}>
-                      {answered ? 'Check answer' : 'Show answer'}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isSignedIn
+                            ? checkAnswer(question.id)
+                            : openSignIn(`/practice/${setId}?mode=learning&q=${question.number}`)
+                        }
+                        className={buttonClass('primary', 'md')}
+                      >
+                        {answered ? 'Check answer' : 'Show answer'}
+                      </button>
+                      {isSignedIn ? null : (
+                        <span className="text-meta text-ink-muted">Sign in with Google to see the answer. It is free.</span>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : null}
@@ -765,7 +786,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           />
           <div className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col rounded-t-card bg-surface">
             <div className="flex items-center justify-between gap-3 border-b border-rule px-4 py-3">
-              {review ? <span className="text-ui text-ink">Mistakes</span> : <ModeSwitch setId={setId} mode={mode} className="flex" />}
+              {review ? <span className="text-ui text-ink">Mistakes</span> : <ModeSwitch setId={setId} mode={mode} isSignedIn={isSignedIn} className="flex" />}
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
@@ -853,21 +874,31 @@ export function ExamRunner(props: ExamRunnerProps) {
 function ModeSwitch({
   setId,
   mode,
+  isSignedIn,
   className = '',
 }: {
   setId: string
   mode: 'exam' | 'learning'
+  isSignedIn: boolean
   className?: string
 }) {
+  const { openSignIn } = useSignIn()
   const item = (active: boolean) =>
     `flex h-9 items-center rounded-[8px] border px-3 text-meta transition-colors ${
       active ? 'border-rule bg-surface text-ink' : 'border-transparent text-ink-muted hover:text-ink'
     }`
   return (
     <nav aria-label="Mode" className={`${className} items-center gap-0.5 rounded-control bg-surface-2 p-0.5`}>
-      <Link href={`/practice/${setId}`} aria-current={mode === 'exam' ? 'page' : undefined} className={item(mode === 'exam')}>
-        Exam
-      </Link>
+      {isSignedIn ? (
+        <Link href={`/practice/${setId}`} aria-current={mode === 'exam' ? 'page' : undefined} className={item(mode === 'exam')}>
+          Exam
+        </Link>
+      ) : (
+        // The timed exam is for signed-in students: its attempt is saved and marked.
+        <button type="button" onClick={() => openSignIn(`/practice/${setId}`)} className={item(false)}>
+          Exam
+        </button>
+      )}
       <Link
         href={`/practice/${setId}?mode=learning`}
         aria-current={mode === 'learning' ? 'page' : undefined}
