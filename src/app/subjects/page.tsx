@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/seo/metadata'
+import { paths } from '@/lib/seo/paths'
 import { getBrowseTree, getCatalogueCounts, getQualifierSubjectIds } from '@/lib/queries'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
@@ -7,10 +9,12 @@ import { SHELL } from '@/components/site/Page'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Subjects',
-  description: 'Every IIT Madras BS degree subject with previous year papers, by programme and level.',
-}
+export const metadata: Metadata = pageMetadata({
+  title: 'All IITM BS Subjects — Previous Year Papers by Programme and Level',
+  description:
+    'Every IIT Madras BS degree subject with previous year question papers — Data Science and Electronic Systems, Foundation to degree level — with a search that understands the names students use.',
+  path: '/subjects',
+})
 
 type SearchParams = Promise<{ program?: string; level?: string }>
 
@@ -47,7 +51,7 @@ export default async function SubjectsPage({ searchParams }: { searchParams: Sea
             .map((subject) => ({
               id: subject.id,
               slug: subject.slug,
-              href: `/subject/${subject.slug}?exam=qualifier`,
+              href: paths.subjectExam(subject.slug, 'qualifier'),
               name: subject.name,
               code: subject.code,
               aliases: subject.aliases,
