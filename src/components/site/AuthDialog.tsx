@@ -55,10 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [next, setNext] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // The panel is only rendered while the dialog is open. Rendered always, its
+  // welcome text and demo buttons sat in every page's HTML, and a crawler or
+  // an assistant reading the page met the sign-in box before the paper.
+  const [open, setOpen] = useState(false)
 
   const openSignIn = useCallback((target?: string, message?: string) => {
     setNext(safePath(target))
     setNotice(message ?? null)
+    setOpen(true)
     dialog.current?.showModal()
   }, [])
 
@@ -73,13 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <dialog
         ref={dialog}
         aria-labelledby="auth-title"
+        onClose={() => setOpen(false)}
         className="m-auto w-[min(1040px,calc(100vw-1.5rem))] rounded-[10px] border border-rule bg-surface p-0 text-ink backdrop:bg-ink/40"
       >
-        <SignInPanel
-          next={next}
-          notice={notice}
-          onClose={() => dialog.current?.close()}
-        />
+        {open ? (
+          <SignInPanel
+            next={next}
+            notice={notice}
+            onClose={() => dialog.current?.close()}
+          />
+        ) : null}
       </dialog>
     </Context.Provider>
   )
