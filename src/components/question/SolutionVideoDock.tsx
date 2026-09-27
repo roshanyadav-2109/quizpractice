@@ -17,12 +17,16 @@ const HEADER_H = 48
 const GAP = 12
 const MAX_OPEN_W = 840
 
+/** Open, a frame with no video in it only has a note to show, so it grows less. */
+const NOTE_W = 440
+
 /**
  * The video solution, docked at the bottom left of the question pane, just
- * above the action bar — only for a question that has a video. Folded, it is
- * a "Watch the solution" card; a click grows it from that corner (the corner
- * stays put, the frame widens and rises) over part of the question, never
- * over the palette, and the video plays. Esc or the fold button shrinks it.
+ * above the action bar. Folded, it is a "Watch the solution" card; a click
+ * grows it from that corner (the corner stays put, the frame widens and rises)
+ * over part of the question, never over the palette, and the video plays.
+ * Esc or the fold button shrinks it. A question without a video yet keeps the
+ * same card, and opening it says the solution is on its way.
  *
  * It reads the explanations the explanation panel already loaded, so it costs
  * no extra request.
@@ -53,11 +57,10 @@ function Dock({ questionId, ...rest }: { questionId: string; caption: Caption } 
   const solutions = use(loadSolutions(questionId))
   const url = solutions?.find((solution) => solution.video_url)?.video_url ?? null
   const video = url ? parseYouTubeUrl(url) : null
-  if (!video) return null
   return <Frame video={video} {...rest} />
 }
 
-function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption: Caption } & Areas) {
+function Frame({ video, bounds, column, caption }: { video: YouTubeRef | null; caption: Caption } & Areas) {
   const [open, setOpen] = useState(false)
   const [room, setRoom] = useState({ width: 960, height: 640, contentLeft: 0 })
 
@@ -103,10 +106,12 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
   // off the top: 16:9 under the strip.
   const openWidth = Math.max(
     foldedWidth,
-    Math.round(Math.min(room.width - GAP * 2, MAX_OPEN_W, ((room.height - GAP * 2 - HEADER_H) * 16) / 9)),
+    Math.round(
+      Math.min(room.width - GAP * 2, video ? MAX_OPEN_W : NOTE_W, ((room.height - GAP * 2 - HEADER_H) * 16) / 9),
+    ),
   )
   const openHeight = Math.round((openWidth * 9) / 16) + HEADER_H
-  const embed = `${youTubeEmbedUrl(video)}${video.start ? '&' : '?'}autoplay=1&rel=0&modestbranding=1`
+  const embed = video ? `${youTubeEmbedUrl(video)}${video.start ? '&' : '?'}autoplay=1&rel=0&modestbranding=1` : null
 
   return (
     <div
@@ -133,14 +138,18 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
               <CornersIn size={18} aria-hidden="true" />
             </button>
           </div>
-          <iframe
-            src={embed}
-            title="Video solution"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="min-h-0 w-full flex-1 bg-black"
-          />
+          {embed ? (
+            <iframe
+              src={embed}
+              title="Video solution"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="min-h-0 w-full flex-1 bg-black"
+            />
+          ) : (
+            <ComingSoon />
+          )}
         </div>
       ) : (
         <button
@@ -157,6 +166,24 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
           </span>
         </button>
       )}
+    </div>
+  )
+}
+
+/** In place of the player, while the video for this question is still being made: on the same squared paper as the card. */
+function ComingSoon() {
+  return (
+    <div
+      role="status"
+      className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-1.5 bg-white px-6 text-center"
+      style={{
+        backgroundImage: `linear-gradient(to right, rgba(15,118,110,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,118,110,0.08) 1px, transparent 1px)`,
+        backgroundSize: '16px 16px',
+      }}
+    >
+      <p className="text-[1.5rem] leading-tight font-semibold text-ink">Uh oh!</p>
+      <p className="max-w-[26rem] text-ui text-ink-muted">We are working on the video solution for this question.</p>
+      <p className="mt-1 rounded-[4px] bg-[#d5eee9] px-2 py-0.5 text-meta font-medium text-[#0f766e]">Coming soon</p>
     </div>
   )
 }
