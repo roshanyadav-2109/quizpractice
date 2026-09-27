@@ -6,6 +6,9 @@ import type { UserRole } from '@/types/db'
  *
  * These are shown on the sign-in page while NEXT_PUBLIC_DEMO_LOGINS is not
  * "false". Turn that off — and delete the accounts — before the site is public.
+ *
+ * There is no demo admin: its password is public, so it was demoted once the
+ * site had a real admin. Admins are made in the database, never from here.
  */
 export interface DemoAccount {
   email: string
@@ -29,13 +32,6 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     displayName: 'Demo Teacher',
     role: 'teacher',
     blurb: 'The teaching desk and studio, for the subjects an admin assigns.',
-  },
-  {
-    email: 'admin@example.com',
-    password: 'admin1234',
-    displayName: 'Demo Admin',
-    role: 'admin',
-    blurb: 'Everything above, plus the full admin: taxonomy, import, queues.',
   },
 ]
 

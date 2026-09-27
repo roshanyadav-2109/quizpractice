@@ -2,9 +2,12 @@ import { cancelInvite, removeInviteAssignment } from '@/app/admin/educators/acti
 import { ActionButton } from '@/components/admin/ActionButton'
 import { AssignmentForm, type BranchOption } from '@/components/admin/educators/AssignmentForm'
 
+const ROLE_NAME: Record<PendingInvite['role'], string> = { teacher: 'Teacher', contributor: 'Contributor', admin: 'Admin' }
+
 export interface PendingInvite {
   email: string
-  role: 'teacher' | 'contributor'
+  /** 'admin' only when the site owner wrote it in the database; admins here cannot. */
+  role: 'teacher' | 'contributor' | 'admin'
   created_at: string
   invite_assignments: { program_id: string; subject_id: string }[]
 }
@@ -33,16 +36,20 @@ export function PendingInvites({ invites, branches }: { invites: PendingInvite[]
             <div className="min-w-0">
               <p className="truncate text-[0.9375rem] text-ink">{invite.email}</p>
               <p className="text-xs text-ink-muted">
-                {invite.role === 'teacher' ? 'Teacher' : 'Contributor'} · waiting for their first sign-in · invited{' '}
+                {ROLE_NAME[invite.role]} · waiting for their first sign-in · invited{' '}
                 {new Date(invite.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </p>
             </div>
-            <ActionButton
-              label="Cancel invite"
-              tone="danger"
-              confirm={`Cancel the invite for ${invite.email}? If they sign in later they will be a student.`}
-              action={cancelInvite.bind(null, invite.email)}
-            />
+            {invite.role === 'admin' ? (
+              <span className="text-xs text-ink-faint">Set by the site owner</span>
+            ) : (
+              <ActionButton
+                label="Cancel invite"
+                tone="danger"
+                confirm={`Cancel the invite for ${invite.email}? If they sign in later they will be a student.`}
+                action={cancelInvite.bind(null, invite.email)}
+              />
+            )}
           </div>
 
           {invite.role === 'teacher' ? (

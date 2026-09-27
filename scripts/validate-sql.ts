@@ -506,6 +506,22 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   check('invites: confirming the address applies the invite',
     (await one<{ role: string }>(`select role from public.profiles where id = '00000000-0000-4000-8000-00000000e002'`)).role === 'teacher')
   await db.exec(`delete from auth.users where id in ('00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-00000000e002')`)
+
+  // ---- admin by email: the owner only (0028) --------------------------------------
+  await db.exec(`insert into public.access_invites (email, role) values ('owner.pick@test.local', 'admin')`)
+  await actAs(ID.admin)
+  await refused('invites: a site admin cannot write an admin invite (42501)',
+    `insert into public.access_invites (email, role) values ('sneaky@test.local', 'admin')`, '42501')
+  await refused('invites: nor overwrite the owner admin invite (42501)', `select public.admin_invite('owner.pick@test.local', 'teacher')`, '42501')
+  await db.exec(`delete from public.access_invites where email = 'owner.pick@test.local'`)
+  check('invites: nor cancel it',
+    (await one<{ n: number }>(`select count(*)::int as n from public.access_invites where email = 'owner.pick@test.local'`)).n === 1)
+  await actAsOwner()
+  await db.exec(`insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at)
+    values ('00000000-0000-4000-8000-00000000e003', 'owner.pick@test.local', '{}', now())`)
+  check('invites: the owner admin invite makes an admin at first sign-in',
+    (await one<{ role: string }>(`select role from public.profiles where id = '00000000-0000-4000-8000-00000000e003'`)).role === 'admin')
+  await db.exec(`delete from auth.users where id = '00000000-0000-4000-8000-00000000e003'`)
   await actAs(ID.admin)
 
   await actAs(ID.teacher)
