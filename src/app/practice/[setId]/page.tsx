@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation'
+import { paperPathForSet } from '@/lib/seo/catalogue'
+import { absolute } from '@/lib/seo/site'
 import type { Metadata } from 'next'
 import { getSetContext, getSetOverview } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
@@ -17,12 +19,15 @@ type SearchParams = Promise<{ mode?: string; q?: string }>
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   if (!isSupabaseConfigured) return { title: 'Practice' }
   const { setId } = await params
-  const context = await getSetOverview(setId)
-  if (!context) return { title: 'Paper not found' }
+  const [context, readerPath] = await Promise.all([getSetOverview(setId), paperPathForSet(setId)])
+  if (!context) return { title: 'Paper not found', robots: { index: false } }
 
+  // The exam runner is a mode, not a page: its content is the paper's, and
+  // the paper's own page is the one to rank.
   return {
-    title: `${context.subject.name} ${context.examType.name} — practice`,
-    description: `Practise the ${context.subject.name} ${context.examType.name} paper from ${context.paper.session_date ?? 'a previous term'} with ${context.questions.length} questions and worked solutions.`,
+    title: `${context.subject.name} ${context.examType.name} — mock test`,
+    description: `Take the ${context.subject.name} ${context.examType.name} paper from ${context.paper.session_date ?? 'a previous term'} as a timed mock test: ${context.questions.length} questions, marked when you submit.`,
+    ...(readerPath ? { alternates: { canonical: absolute(readerPath) } } : {}),
   }
 }
 
