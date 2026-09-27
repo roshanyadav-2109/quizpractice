@@ -92,7 +92,8 @@ export default function TermsPage() {
 
         <Heading id="contact">Contact</Heading>
         <P>
-          Questions about these terms go to <Contact />.
+          Legal notices, takedown and copyright requests, and questions about these terms go to{' '}
+          <Contact kind="legal" />. Anything else about the site: <Contact />.
         </P>
       </article>
     </Page>
@@ -121,9 +122,13 @@ function External({ href, children }: { href: string; children: ReactNode }) {
   )
 }
 
-/** The owner's address from NEXT_PUBLIC_CONTACT_EMAIL; a visible placeholder until it is set. */
-function Contact() {
-  const email = publicEnv.contactEmail
+/**
+ * One of the site's two addresses: `legal` (NEXT_PUBLIC_LEGAL_EMAIL) for
+ * privacy, data, takedowns and legal notices, `desk` (NEXT_PUBLIC_CONTACT_EMAIL)
+ * for everything else. A visible placeholder until it is set.
+ */
+function Contact({ kind = 'desk' }: { kind?: 'desk' | 'legal' }) {
+  const email = kind === 'legal' ? publicEnv.legalEmail : publicEnv.contactEmail
   if (!email) return <span className="text-ink-muted">[contact email — the site owner adds it here]</span>
   return (
     <a href={`mailto:${email}`} className={LINK}>

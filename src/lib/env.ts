@@ -24,6 +24,8 @@ export const publicEnv = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
   /** Where visitors write about privacy and the terms. Empty until the owner sets it. */
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? '',
+  /** Privacy, data and deletion requests, takedowns, legal notices; the general address until it is set. */
+  legalEmail: process.env.NEXT_PUBLIC_LEGAL_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || '',
 }
 
 export function supabaseUrl(): string {

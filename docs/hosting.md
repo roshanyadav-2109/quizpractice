@@ -26,7 +26,8 @@ for what each one is.
 | `NEXT_PUBLIC_CLOUDINARY_TRANSFORMS` | `off`: images are served as uploaded |
 | `REVALIDATE_SECRET` | Guards `/api/revalidate` (`npm run cache:refresh`) |
 | `YOUTUBE_OAUTH_CLIENT_ID`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_TOKEN_KEY`, `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_ID`, `YOUTUBE_API_UPLOADS`, `CRON_SECRET` | See `docs/youtube.md`. Changing `YOUTUBE_TOKEN_KEY` means connecting the channel again. |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | Shown on `/privacy` and `/terms` |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `desk@unknowniitians.com`: general contact, in the footer and on `/privacy`, `/terms` |
+| `NEXT_PUBLIC_LEGAL_EMAIL` | `legal@hq.unknowniitians.com`: privacy, data and deletion requests, takedowns, legal notices |
 | `ANTHROPIC_API_KEY` | Only for the admin's question-extraction scripts |
 
 A `NEXT_PUBLIC_` variable is baked in at build time: after changing one,

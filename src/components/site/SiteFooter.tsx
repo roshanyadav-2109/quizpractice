@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { SHELL } from '@/components/site/Page'
+import { publicEnv } from '@/lib/env'
 
 /**
- * The foot of every page: a thin rule and the two policies, nothing else. The
+ * The foot of every page: a thin rule, the two policies and the contact address. The
  * navigation lives in the header; a footer that repeats it is one more thing
  * to keep in step.
  *
@@ -25,6 +26,16 @@ export function SiteFooter() {
         <Link href="/terms" className={link}>
           Terms
         </Link>
+        {publicEnv.contactEmail ? (
+          <>
+            <span aria-hidden="true" className="text-ink-faint">
+              ·
+            </span>
+            <a href={`mailto:${publicEnv.contactEmail}`} className={link}>
+              Contact
+            </a>
+          </>
+        ) : null}
       </nav>
     </footer>
   )

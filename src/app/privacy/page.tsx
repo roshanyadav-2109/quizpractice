@@ -161,8 +161,8 @@ export default function PrivacyPage() {
 
         <Heading id="contact">Contact</Heading>
         <P>
-          Questions or complaints about privacy, and deletion requests, go to <Contact />. We aim to answer within a
-          week.
+          Questions or complaints about privacy, requests for your data, and deletion requests go to{' '}
+          <Contact kind="legal" />. Anything else about the site: <Contact />. We aim to answer within a week.
         </P>
 
         <Heading>Changes</Heading>
@@ -205,9 +205,13 @@ function External({ href, children }: { href: string; children: ReactNode }) {
   )
 }
 
-/** The owner's address from NEXT_PUBLIC_CONTACT_EMAIL; a visible placeholder until it is set. */
-function Contact() {
-  const email = publicEnv.contactEmail
+/**
+ * One of the site's two addresses: `legal` (NEXT_PUBLIC_LEGAL_EMAIL) for
+ * privacy, data, takedowns and legal notices, `desk` (NEXT_PUBLIC_CONTACT_EMAIL)
+ * for everything else. A visible placeholder until it is set.
+ */
+function Contact({ kind = 'desk' }: { kind?: 'desk' | 'legal' }) {
+  const email = kind === 'legal' ? publicEnv.legalEmail : publicEnv.contactEmail
   if (!email) return <span className="text-ink-muted">[contact email — the site owner adds it here]</span>
   return (
     <a href={`mailto:${email}`} className={LINK}>
