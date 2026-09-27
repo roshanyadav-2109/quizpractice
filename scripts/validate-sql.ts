@@ -679,6 +679,26 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
              (select count(*)::int from public.solutions) as s, (select count(*)::int from public.subject_stats) as st`)
     check('anon: published questions, options, live explanations and stats still read', visible.q > 0 && visible.o > 0 && visible.s > 0 && visible.st > 0, visible)
     check('anon: reads explanations through solutions_for_question', (await forQ(ID.qC)).length >= 1)
+    const copies = await rows<{ question_id: string; copy_question_id: string; copy_set_id: string }>(
+      `select question_id, copy_question_id, copy_set_id from public.public_question_copies('${ID.setB}')`,
+    )
+    check(
+      'anon: public_question_copies names published copies in other sets, never drafts',
+      copies.some((row) => row.question_id === ID.qB && row.copy_question_id === ID.qC) &&
+        copies.every((row) => row.copy_set_id !== ID.setDraft && row.copy_question_id !== ID.qB),
+      copies,
+    )
+    const listed = await rows<{ question_id: string; canonical_id: string; text_blocks: string[]; substance: number }>(
+      `select question_id, canonical_id, text_blocks, substance from public.public_question_index(array['${ID.setB}', '${ID.setC}', '${ID.setDraft}']::uuid[])`,
+    )
+    const b = listed.find((row) => row.question_id === ID.qB)
+    const c = listed.find((row) => row.question_id === ID.qC)
+    check(
+      'anon: public_question_index gives copies one canonical, with their text, and skips drafts',
+      Boolean(b && c && b.canonical_id === c.canonical_id && b.substance > 0 && b.text_blocks.join(' ').includes('normal form')) &&
+        listed.every((row) => row.question_id !== ID.qDraft),
+      listed,
+    )
   } catch (error) {
     flag('anon: public reads', (error as Error).message)
   }
@@ -686,7 +706,8 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   await actAsOwner()
   const anonAllowed = [
     'active_students_by_subject', 'can_teach_question', 'is_admin', 'is_staff', 'is_teacher', 'popular_searches',
-    'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats', 'solutions_for_question',
+    'public_question_copies', 'public_question_index', 'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats',
+    'solutions_for_question',
   ]
   const authAllowed = [
     ...anonAllowed, 'admin_invite', 'admin_list_people', 'can_teach_subject', 'claim_question', 'duplicate_review', 'group_explanations',
