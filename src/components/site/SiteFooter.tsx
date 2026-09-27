@@ -17,6 +17,8 @@ import { SITE } from '@/lib/seo/site'
  * site that uploads, so they sit on every page that has chrome, with the
  * contact address beside them.
  */
+// Column titles are not headings: the footer is on every page, and headings
+// repeated on every page read as a duplicate outline of the page above.
 export async function SiteFooter() {
   const catalogue = isSupabaseConfigured ? await getSeoCatalogue().catch(() => null) : null
   const link = 'transition-colors hover:text-ink'
@@ -35,7 +37,7 @@ export async function SiteFooter() {
       <div className={`${SHELL} grid gap-8 py-10 text-meta sm:grid-cols-2 lg:grid-cols-4`}>
         {exams.length > 0 ? (
           <nav aria-label="PYQs by exam">
-            <h2 className="text-ui font-medium text-ink">PYQs by exam</h2>
+            <p className="text-ui font-medium text-ink">PYQs by exam</p>
             <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
               {exams.map((exam) => (
                 <li key={exam.id}>
@@ -55,7 +57,7 @@ export async function SiteFooter() {
 
         {programs.length > 0 ? (
           <nav aria-label="Programmes">
-            <h2 className="text-ui font-medium text-ink">Programmes</h2>
+            <p className="text-ui font-medium text-ink">Programmes</p>
             <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
               {programs.flatMap((program) => [
                 <li key={program.program.id}>
@@ -69,6 +71,7 @@ export async function SiteFooter() {
                     <li key={level.level.id} className="pl-3">
                       <Link href={level.path} className={link}>
                         {level.level.name}
+                        <span className="sr-only"> — {program.program.short_name ?? program.program.name}</span>
                       </Link>
                     </li>
                   )),
@@ -79,7 +82,7 @@ export async function SiteFooter() {
 
         {foundation ? (
           <nav aria-label={`${foundation.level.name} subjects`}>
-            <h2 className="text-ui font-medium text-ink">{foundation.level.name} PYQs</h2>
+            <p className="text-ui font-medium text-ink">{foundation.level.name} PYQs</p>
             <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
               {foundation.subjects
                 .filter((subject) => subject.paperCount > 0)
@@ -100,7 +103,7 @@ export async function SiteFooter() {
         ) : null}
 
         <div>
-          <h2 className="text-ui font-medium text-ink">{SITE.name}</h2>
+          <p className="text-ui font-medium text-ink">{SITE.name}</p>
           <p className="mt-3 leading-relaxed text-ink-muted">
             Free previous year papers of the IIT Madras BS degree, with answers and timed mock tests. An independent
             study resource, not affiliated with IIT Madras.
