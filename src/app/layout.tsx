@@ -23,12 +23,17 @@ const lexend = Lexend({
   display: 'swap',
 })
 
-/** Code blocks, and nothing else. */
+/**
+ * Code blocks, and nothing else — so it is not preloaded: most pages have no
+ * code, and a preloaded font is one more download standing between every
+ * visitor and the first paint. A page with code fetches it when it draws.
+ */
 const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains',
   subsets: ['latin'],
   weight: ['400'],
   display: 'swap',
+  preload: false,
 })
 
 export const metadata: Metadata = {
