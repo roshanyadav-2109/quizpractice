@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { TAG, refresh } from '@/lib/cache'
 import { getSetContext } from '@/lib/queries'
+import { openSet, recordSignal } from '@/lib/access'
 import { gradeAttempt } from '@/lib/scoring'
 import type { AnswerResponse } from '@/types/db'
 
@@ -50,6 +51,22 @@ export async function POST(request: NextRequest) {
 
   const { setId, mode, responses, durationSeconds, timings } = parsed.data
 
+  // Marking says which answers were right, so it is for signed-in students
+  // only, and each paper marked counts towards the account's paper limit —
+  // otherwise the answer key could be found by submitting guesses.
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return Response.json({ error: 'Sign in with Google to submit and see your marks.' }, { status: 401 })
+  }
+  const opened = await openSet(setId)
+  if (!opened.allowed) {
+    await recordSignal({ kind: 'limit', userId: user.id, setId, path: '/api/attempts' })
+    return Response.json({ error: 'Too many papers in a short time. Try again in a little while.' }, { status: 429 })
+  }
+
   const context = await getSetContext(setId, { includeAnswers: true })
   if (!context) {
     return Response.json({ error: 'That question set does not exist.' }, { status: 404 })
@@ -59,15 +76,6 @@ export async function POST(request: NextRequest) {
     context.questions,
     responses as Record<string, AnswerResponse>,
   )
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return Response.json({ saved: false, ...graded })
-  }
 
   const { data: attempt, error: attemptError } = await supabase
     .from('attempts')
