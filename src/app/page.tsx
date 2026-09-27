@@ -36,17 +36,14 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!isSupabaseConfigured) return {}
   const { papers, subjects } = await getSeoCatalogue()
   const withPapers = subjects.filter((subject) => subject.paperCount > 0).length
-  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
   return {
     ...pageMetadata({
       title: titles.home(),
-      description: `Free IIT Madras BS degree PYQs: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers with answer keys — ${formatCount(
-        questions,
-      )} questions across ${withPapers} Data Science and Electronic Systems subjects. Read or take as a timed mock test.`,
+      description: `Free IITM BS PYQs with answers: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers for ${withPapers} Data Science and ES subjects. Practise as timed mock tests.`,
       path: '/',
     }),
     // The home page carries the full brand whatever the length.
-    title: { absolute: `${titles.home()} | ${SITE.name}` },
+    title: { absolute: `${titles.home()} | ${SITE.shortName}` },
   }
 }
 
@@ -239,7 +236,7 @@ export default async function HomePage() {
       </section>
 
       {/* ------------------------------------------------------------- Exams */}
-      <Section title="PYQs by exam" link={{ href: '/papers', label: 'All papers' }}>
+      <Section title="PYQs by exam">
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {exams.map(({ exam, papers: list }) => (
             <li key={exam.id}>
@@ -247,7 +244,7 @@ export default async function HomePage() {
                 href={paths.exam(exam.slug)}
                 className="group flex h-full items-center gap-4 rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong"
               >
-                <Art src={artFor('exams', exam.slug)} size={48} />
+                <Art src={artFor('exams', exam.slug)} size={48} alt={`IITM BS ${exam.name}`} />
                 <span className="min-w-0">
                   <span className="block text-card text-ink group-hover:underline group-hover:underline-offset-4">
                     {exam.name} PYQ
@@ -277,43 +274,6 @@ export default async function HomePage() {
       {/* ---------------------------------------------------------- Branches */}
       <Section title="What are you preparing for?" link={{ href: '/subjects', label: 'All subjects' }}>
         <PreparingFor branches={branches} />
-      </Section>
-
-      {/* ------------------------------------------------ Every subject, A–Z */}
-      <Section title="Every subject" link={{ href: '/subjects', label: 'Find a subject' }}>
-        <div className="grid gap-8 md:grid-cols-2">
-          {programs
-            .filter((program) => program.levels.some((level) => level.subjects.some((node) => node.paperCount > 0)))
-            .map((program) => (
-              <div key={program.program.id}>
-                <h3 className="text-ui font-medium text-ink">
-                  <Link href={program.path} className="hover:underline">
-                    {program.program.short_name ?? program.program.name} PYQs
-                  </Link>
-                </h3>
-                {program.levels
-                  .filter((level) => level.subjects.some((node) => node.paperCount > 0))
-                  .map((level) => (
-                    <div key={level.level.id} className="mt-3">
-                      <p className="text-meta text-ink-faint">
-                        <Link href={level.path} className="hover:text-ink hover:underline">
-                          {level.level.name}
-                        </Link>
-                      </p>
-                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-ui">
-                        {level.subjects
-                          .filter((node) => node.paperCount > 0)
-                          .map((node) => (
-                            <Link key={node.subject.id} href={node.path} className="text-accent hover:underline">
-                              {shortName(node.subject)}
-                            </Link>
-                          ))}
-                      </p>
-                    </div>
-                  ))}
-              </div>
-            ))}
-        </div>
       </Section>
 
       {/* ---------------------------------------------------------- Why here */}
@@ -359,16 +319,19 @@ export default async function HomePage() {
 }
 
 function LatestCard({ paper }: { paper: PaperEntry }) {
+  // One link for the whole card, named for the paper — not a title and an
+  // "Open" button to the same place, eight "Open"s on the page.
   return (
-    <li>
-      <article className="flex h-full flex-col rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong">
+    <li className="flex flex-col">
+      <Link
+        href={paper.path}
+        className="group flex h-full flex-col rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong"
+      >
         <div className="flex items-start gap-3">
-          <Art src={artFor('subjects', paper.subject.slug)} size={40} />
+          <Art src={artFor('subjects', paper.subject.slug)} size={40} alt={shortName(paper.subject)} />
           <div className="min-w-0">
-            <h3 className="text-ui leading-snug text-ink">
-              <Link href={paper.path} className="hover:underline">
-                {shortName(paper.subject)} {paper.examType.name}
-              </Link>
+            <h3 className="text-ui leading-snug text-ink group-hover:underline group-hover:underline-offset-4">
+              {shortName(paper.subject)} {paper.examType.name}
             </h3>
             <p className="mt-0.5 text-meta text-ink-faint tabular-nums">
               <Trail parts={[sittingDate(paper.sessionDate), termName(paper.term)]} />
@@ -381,13 +344,13 @@ function LatestCard({ paper }: { paper: PaperEntry }) {
               .filter(Boolean)
               .join(' · ')}
           </p>
-          <BestScore setId={paper.setId} />
-          <Link href={paper.path} className={buttonClass('primary', 'sm')}>
+          <span aria-hidden="true" className={buttonClass('primary', 'sm')}>
             Open
-            <ArrowRight size={14} aria-hidden="true" />
-          </Link>
+            <ArrowRight size={14} />
+          </span>
         </div>
-      </article>
+      </Link>
+      <BestScore setId={paper.setId} className="mt-1 px-1" />
     </li>
   )
 }
