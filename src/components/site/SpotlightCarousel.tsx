@@ -146,7 +146,8 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
           <tone.Icon size={14} weight="duotone" aria-hidden="true" />
           {item.eyebrow}
         </span>
-        <h2 className="mt-3 text-[1.5rem] leading-tight font-normal text-balance sm:text-[2rem]">{item.title}</h2>
+        {/* Not a heading: a banner's title is not part of the page's outline. */}
+        <p className="mt-3 text-[1.5rem] leading-tight font-normal text-balance sm:text-[2rem]">{item.title}</p>
         {item.body ? <p className="mt-2 max-w-[48ch] text-ui font-light text-white/75">{item.body}</p> : null}
         <div className="mt-5 flex flex-wrap gap-2">
           <Action action={item.cta} primary />
@@ -170,7 +171,7 @@ function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
         <div className="rounded-t-[10px] bg-[#0d0d12] p-[6px] pb-[7px] ring-1 ring-white/15">
           <Image
             src={desktop}
-            alt=""
+            alt="Quiz Space on a laptop"
             width={960}
             height={600}
             sizes="296px"
@@ -186,7 +187,7 @@ function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
         <span className="absolute top-[9px] left-1/2 z-10 h-[5px] w-7 -translate-x-1/2 rounded-full bg-[#0d0d12]" />
         <Image
           src={mobile}
-          alt=""
+          alt="Quiz Space on a phone"
           width={360}
           height={779}
           sizes="84px"
