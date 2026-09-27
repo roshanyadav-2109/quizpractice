@@ -36,3 +36,12 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
 ]
 
 export const demoLoginsEnabled = process.env.NEXT_PUBLIC_DEMO_LOGINS !== 'false'
+
+/**
+ * A demo account: its password is public, so it can look around and record a
+ * take, but never publish to the real YouTube channel. Every demo address is
+ * on example.com, a reserved domain no Google account can have.
+ */
+export function isDemoAccount(email: string | null | undefined): boolean {
+  return typeof email === 'string' && email.toLowerCase().endsWith('@example.com')
+}

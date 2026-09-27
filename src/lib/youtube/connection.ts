@@ -15,6 +15,7 @@ import {
 import { GoogleApiError, myChannel, refreshAccessToken } from '@/lib/youtube/google'
 import { openToken, sealToken } from '@/lib/youtube/token-crypto'
 import type { UploadErrorCode } from '@/lib/teach/contracts'
+import { isDemoAccount } from '@/lib/demo-accounts'
 import type { VideoMime, VideoPrivacy, VideoUploadStatus } from '@/types/db'
 
 /**
@@ -418,6 +419,16 @@ export const RETRY_LATER =
 export async function uploader(): Promise<{ profile: CurrentProfile } | { response: Response }> {
   const profile = await getCurrentProfile()
   if (!profile) return { response: uploadError(401, 'not-signed-in', 'Sign in first.') }
+  // Demo passwords are public: anyone could otherwise post to the real channel.
+  if (isDemoAccount(profile.email)) {
+    return {
+      response: uploadError(
+        403,
+        'not-teacher',
+        'Demo accounts can record and watch back a take, but cannot upload to the channel. Sign in with your own Google account to upload.',
+      ),
+    }
+  }
   try {
     return { profile: await requireTeacher() }
   } catch (error) {

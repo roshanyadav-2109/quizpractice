@@ -155,6 +155,12 @@ can run it; the runs show under Project → Settings → Cron Jobs → View Logs
 
 ## 5. Google's audit (for v2)
 
+> **Checked 2026-09-27:** the Cloud project in use (1052266253506) is *not*
+> locked. A test upload through the connected channel asked for Unlisted and
+> stayed Unlisted after processing, embeddable. So `YOUTUBE_API_UPLOADS=on`
+> went live without the audit. If Google ever starts locking uploads Private,
+> the steps below still apply.
+
 Google checks the Cloud project that sends the upload, not the channel. Until
 **quizpractice-youtube** passes the YouTube API Services audit, every video it
 uploads is locked Private: it cannot be made Unlisted, cannot be appealed, and
