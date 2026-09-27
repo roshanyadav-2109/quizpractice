@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { paths } from '@/lib/seo/paths'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -125,13 +126,13 @@ export default async function ResultPage({ params }: { params: Params }) {
       <Breadcrumb
         crumbs={[
           { label: 'Dashboard', href: '/dashboard' },
-          { label: subject.name, href: `/subject/${subject.slug}` },
+          { label: subject.name, href: paths.subject(subject.slug) },
           { label: examType.name },
         ]}
       />
 
       <TitleCard
-        back={`/subject/${subject.slug}`}
+        back={paths.subject(subject.slug)}
         title="Your result"
         subtitle={[
           `${subject.name} · ${examType.name}`,
