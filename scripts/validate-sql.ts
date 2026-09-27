@@ -599,6 +599,49 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   await refused('student: no duplicate review (42501)', `select * from public.duplicate_review('largest')`, '42501')
   await refused('student: no people list (42501)', `select * from public.admin_list_people()`, '42501')
   check('student: cannot see unpublished questions', (await rows(`select id from public.questions where id = '${ID.qDraft}'`)).length === 0)
+  {
+    // 0035: published content comes through the server; the tables answer students nothing.
+    const direct = await one<{ q: number; o: number; s: number }>(`
+      select (select count(*)::int from public.questions) as q, (select count(*)::int from public.question_options) as o,
+             (select count(*)::int from public.solutions where author_id <> '${ID.student}') as s`)
+    check('student: reads no questions, options or others\u2019 explanations directly', direct.q === 0 && direct.o === 0 && direct.s === 0, direct)
+    await refused('student: solutions_for_question is the server\u2019s', `select * from public.solutions_for_question('${ID.qB}')`, '42501')
+    await refused('student: search_questions is the server\u2019s', `select * from public.search_questions('normal form')`, '42501')
+
+    // 0034: opening papers is recorded and limited; re-opening is free.
+    check('student: may not read an explanation before opening its paper', (await one<{ ok: boolean }>(`select public.may_read_question('${ID.qB}') as ok`)).ok === false)
+    const first = await one<{ allowed: boolean; opened_today: number }>(`select * from public.open_set('${ID.setB}')`)
+    const again = await one<{ allowed: boolean; opened_today: number }>(`select * from public.open_set('${ID.setB}')`)
+    check('student: opening a paper is allowed and counted once', first.allowed && again.allowed && again.opened_today === 1, [first, again])
+    check('student: may read an explanation of a paper they opened', (await one<{ ok: boolean }>(`select public.may_read_question('${ID.qB}') as ok`)).ok === true)
+    check('student: sees only their own paper openings', (await rows(`select id from public.content_access`)).length === 1)
+    await refused('student: cannot write paper openings themselves', `insert into public.content_access (user_id, set_id) values ('${ID.student}', '${ID.setC}')`, '42501')
+    await refused('student: cannot write copying signals', `insert into public.scrape_signals (kind) values ('trap')`, '42501')
+    await actAsOwner()
+    await db.exec(`
+      insert into public.content_access (user_id, set_id, opened_at)
+      select '${ID.student}', id, now() - interval '10 minutes' from public.question_sets where id <> '${ID.setB}';
+      insert into public.content_access (user_id, set_id, opened_at)
+      select '${ID.student}', '${ID.setC}', now() - (n || ' minutes')::interval from generate_series(1, 3) n;`)
+    const sets = (await one<{ n: number }>(`select count(distinct set_id)::int as n from public.content_access where user_id = '${ID.student}'`)).n
+    await db.exec(`
+      create temp table limit_sets as select gen_random_uuid() as id from generate_series(1, greatest(0, 31 - ${sets}));
+      insert into public.question_sets (id, paper_id, set_code)
+      select l.id, (select paper_id from public.question_sets where id = '${ID.setB}'), 'L' || row_number() over ()
+        from limit_sets l;
+      insert into public.content_access (user_id, set_id, opened_at)
+      select '${ID.student}', id, now() - interval '5 minutes' from limit_sets;
+      insert into limit_sets values ('00000000-0000-4000-8000-00000000abcd');
+      insert into public.question_sets (id, paper_id, set_code)
+      values ('00000000-0000-4000-8000-00000000abcd', (select paper_id from public.question_sets where id = '${ID.setB}'), 'LX');`)
+    await actAs(ID.student)
+    const refusedOpen = await one<{ allowed: boolean; opened_last_hour: number }>(`select * from public.open_set('00000000-0000-4000-8000-00000000abcd')`)
+    const reopen = await one<{ allowed: boolean }>(`select * from public.open_set('${ID.setB}')`)
+    check('student: a 31st paper in an hour is refused, a paper already open is not', !refusedOpen.allowed && refusedOpen.opened_last_hour >= 30 && reopen.allowed, [refusedOpen, reopen])
+    await actAsOwner()
+    await db.exec(`delete from public.content_access; delete from public.question_sets where id in (select id from limit_sets); drop table limit_sets;`)
+    await actAs(ID.student)
+  }
 
   // ---- desk and studio RPCs ------------------------------------------------------
   await actAs(ID.teacher)
@@ -673,17 +716,26 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   await refused('anon: set_user_role is not callable', `select public.set_user_role('${ID.student}', 'teacher')`, '42501')
   await refused('anon: the normaliser is not callable', `select public.fp_text('x')`, '42501')
   await refused('anon: review notes are not readable', `select review_note from public.solutions`, '42501')
+  await refused('anon: questions are not readable', `select id from public.questions limit 1`, '42501')
+  await refused('anon: options and the answer key are not readable', `select is_correct from public.question_options limit 1`, '42501')
+  await refused('anon: explanations are not readable', `select body from public.solutions limit 1`, '42501')
+  await refused('anon: solutions_for_question is the server\u2019s', `select * from public.solutions_for_question('${ID.qC}')`, '42501')
+  await refused('anon: public_question_index is the server\u2019s', `select * from public.public_question_index(array['${ID.setB}']::uuid[])`, '42501')
+  await refused('anon: public_question_copies is the server\u2019s', `select * from public.public_question_copies('${ID.setB}')`, '42501')
+  await refused('anon: public_video_solutions is the server\u2019s', `select * from public.public_video_solutions()`, '42501')
+  await refused('anon: search_questions is the server\u2019s', `select * from public.search_questions('normal form')`, '42501')
+  await refused('anon: cannot open a paper', `select * from public.open_set('${ID.setB}')`, '42501')
+  check('anon: the catalogue counts still read', (await one<{ n: number }>(`select count(*)::int as n from public.published_set_counts()`)).n > 0)
+
+  // What the server reads with its own key.
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false); set role service_role;`)
   try {
-    const visible = await one<{ q: number; o: number; s: number; st: number }>(`
-      select (select count(*)::int from public.questions) as q, (select count(*)::int from public.question_options) as o,
-             (select count(*)::int from public.solutions) as s, (select count(*)::int from public.subject_stats) as st`)
-    check('anon: published questions, options, live explanations and stats still read', visible.q > 0 && visible.o > 0 && visible.s > 0 && visible.st > 0, visible)
-    check('anon: reads explanations through solutions_for_question', (await forQ(ID.qC)).length >= 1)
+    check('server: reads explanations through solutions_for_question', (await forQ(ID.qC)).length >= 1)
     const copies = await rows<{ question_id: string; copy_question_id: string; copy_set_id: string }>(
       `select question_id, copy_question_id, copy_set_id from public.public_question_copies('${ID.setB}')`,
     )
     check(
-      'anon: public_question_copies names published copies in other sets, never drafts',
+      'server: public_question_copies names published copies in other sets, never drafts',
       copies.some((row) => row.question_id === ID.qB && row.copy_question_id === ID.qC) &&
         copies.every((row) => row.copy_set_id !== ID.setDraft && row.copy_question_id !== ID.qB),
       copies,
@@ -695,29 +747,28 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
     const c = listed.find((row) => row.question_id === ID.qC)
     const videos = await rows<{ question_id: string; video_url: string }>(`select question_id, video_url from public.public_video_solutions()`)
     check(
-      'anon: public_video_solutions lists only questions with an approved video',
+      'server: public_video_solutions lists only questions with an approved video',
       videos.every((row) => typeof row.video_url === 'string' && row.video_url.length > 0),
       videos,
     )
     check(
-      'anon: public_question_index gives copies one canonical, with their text, and skips drafts',
+      'server: public_question_index gives copies one canonical, with their text, and skips drafts',
       Boolean(b && c && b.canonical_id === c.canonical_id && b.substance > 0 && b.text_blocks.join(' ').includes('normal form')) &&
         listed.every((row) => row.question_id !== ID.qDraft),
       listed,
     )
   } catch (error) {
-    flag('anon: public reads', (error as Error).message)
+    flag('server: content reads', (error as Error).message)
   }
 
   await actAsOwner()
   const anonAllowed = [
     'active_students_by_subject', 'can_teach_question', 'is_admin', 'is_staff', 'is_teacher', 'popular_searches',
-    'public_question_copies', 'public_question_index', 'public_video_solutions', 'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats',
-    'solutions_for_question',
+    'published_set_counts', 'question_peer_stats', 'set_peer_stats',
   ]
   const authAllowed = [
     ...anonAllowed, 'admin_invite', 'admin_list_people', 'can_teach_subject', 'claim_question', 'duplicate_review', 'group_explanations',
-    'group_key', 'leaderboard', 'my_auto_publish', 'my_peer_gaps', 'question_group_members', 'release_claim',
+    'group_key', 'leaderboard', 'may_read_question', 'my_auto_publish', 'my_peer_gaps', 'open_set', 'question_group_members', 'release_claim',
     'set_auto_publish', 'set_user_role', 'teacher_exam_progress', 'teacher_queue', 'teacher_subject_summary',
   ]
   for (const [role, allowed] of [['anon', anonAllowed], ['authenticated', authAllowed]] as const) {
