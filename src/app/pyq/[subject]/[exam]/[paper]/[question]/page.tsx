@@ -202,7 +202,7 @@ export default async function QuestionPage({ params }: { params: Params }) {
             See the whole paper
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
-          <Link href={`/paper/${paper.setId}`} rel="nofollow" className={buttonClass('outline', 'md')}>
+          <Link href={`/paper/${paper.setId}`} className={buttonClass('outline', 'md')}>
             <Clock size={16} aria-hidden="true" />
             Take it as a mock test
           </Link>
