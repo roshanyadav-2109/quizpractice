@@ -3,6 +3,7 @@ import { paths } from '@/lib/seo/paths'
 import type { Metadata } from 'next'
 import { getMistakeBank, getQuestionsWithAnswers } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
+import { watermark } from '@/lib/watermark'
 import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { ExamRunner } from '@/components/exam/ExamRunner'
@@ -35,7 +36,8 @@ export default async function RetryMistakes({ searchParams }: { searchParams: Se
   const meta = new Map(due.map((m) => [m.questionId, m]))
 
   // Numbered 1…n for the palette; the original paper and number go under each.
-  const questions = loaded.map((question, index) => ({ ...question, number: index + 1 }))
+  // Marked with the account, like every full question a student is shown (src/lib/watermark.ts).
+  const questions = watermark(loaded, profile.id).map((question, index) => ({ ...question, number: index + 1 }))
   const sources = Object.fromEntries(
     loaded.flatMap((question) => {
       const m = meta.get(question.id)
