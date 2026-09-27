@@ -62,6 +62,11 @@ export interface ExamRunnerProps {
     durationMinutes: number | null
   }
   isSignedIn: boolean
+  /**
+   * A signed-out preview: only the paper's first questions are here. `total`
+   * is how many the paper has; the rest open after a Google sign-in.
+   */
+  locked?: { total: number }
   /** Question number to open on — "Solution →" in a result lands here. */
   startAt?: number
   /**
@@ -112,7 +117,7 @@ const TYPE_LABEL: Record<QuestionWithOptions['type'], string> = {
  * nobody has to scroll past the question to find it.
  */
 export function ExamRunner(props: ExamRunnerProps) {
-  const { setId, mode, questions, meta, isSignedIn, startAt, review } = props
+  const { setId, mode, questions, meta, isSignedIn, startAt, review, locked } = props
   // Picking and typing answers is open to all; seeing an answer and submitting ask for a Google sign-in.
   const { openSignIn } = useSignIn()
   const router = useRouter()
@@ -544,6 +549,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           <div ref={scroller} className="h-full overflow-y-auto">
             <div ref={questionColumn} className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-36 sm:pb-36' : ''}`}>
               {graded ? <GradedBanner graded={graded} isSignedIn={isSignedIn} /> : null}
+              {locked ? <LockedBanner setId={setId} shown={questions.length} total={locked.total} /> : null}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <h1 className="text-card font-medium text-ink tabular-nums">
@@ -1075,6 +1081,27 @@ function VerdictAwarePalette({
 }
 
 /** After an unsaved (signed-out) attempt: the score, and where to go next. */
+/** The preview's note: how much of the paper this is, and the sign-in that opens the rest. */
+function LockedBanner({ setId, shown, total }: { setId: string; shown: number; total: number }) {
+  const { openSignIn } = useSignIn()
+  if (total <= shown) return null
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-rule bg-surface-2 px-4 py-3">
+      <p className="text-ui text-ink">
+        Free preview: the first {shown} of {total} questions.{' '}
+        <span className="text-ink-muted">Sign in with Google to open the whole paper, its answers and explanations.</span>
+      </p>
+      <button
+        type="button"
+        onClick={() => openSignIn(`/practice/${setId}?mode=learning&q=${shown + 1}`)}
+        className={buttonClass('primary', 'sm', 'shrink-0')}
+      >
+        Sign in with Google
+      </button>
+    </div>
+  )
+}
+
 function GradedBanner({ graded, isSignedIn }: { graded: GradeResponse; isSignedIn: boolean }) {
   const percentage = graded.maxScore > 0 ? Math.round((graded.score / graded.maxScore) * 100) : 0
   return (
