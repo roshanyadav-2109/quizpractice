@@ -224,7 +224,6 @@ function releaseSpotlight(
   const exam = examTypes.find((type) => type.id === latest.exam_type_id)
   if (!term || !exam || daysBetween(latest.session_date, today) > RELEASE_WINDOW_DAYS) return null
 
-  const filter = `exam=${exam.slug}&year=${term.year}&term=${term.season}`
   const id = `new-${exam.slug}-${term.key}`
   const subject = context.subject
   if (subject) {
@@ -242,7 +241,7 @@ function releaseSpotlight(
     body: `${term.label}, sat ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}.`,
     cta: subject
       ? { label: 'Sit the new paper', href: paths.paper(subject.slug, exam.slug, `${term.season}-${term.year}`) }
-      : { label: 'See the new papers', href: `/papers?${filter}` },
+      : { label: 'See the new papers', href: paths.exam(exam.slug) },
     screens: SCREENS.release,
   }
 }
