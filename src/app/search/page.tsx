@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { paths } from '@/lib/seo/paths'
 import type { Metadata } from 'next'
 import { after } from 'next/server'
 import {
@@ -30,6 +31,9 @@ export const metadata: Metadata = {
   title: 'Search questions',
   description:
     'Search across every IITM BS question paper — question text, options, code and table contents.',
+  // Results pages are an endless set of near-duplicates: followed, never indexed.
+  robots: { index: false, follow: true },
+  alternates: { canonical: '/search' },
 }
 
 type SearchParams = Promise<{ q?: string; in?: string }>
@@ -233,7 +237,7 @@ async function BrowseSubjects() {
         {subjects.map(({ subject, papers }) => (
           <li key={subject.id}>
             <Link
-              href={`/subject/${subject.slug}`}
+              href={paths.subject(subject.slug)}
               className="flex items-center gap-3 rounded-control border border-rule bg-surface px-3 py-2.5 transition-colors hover:border-rule-strong"
             >
               <Art src={artFor('subjects', subject.slug)} size={32} />
