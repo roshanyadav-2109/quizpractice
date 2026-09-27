@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSolutionsForQuestion } from '@/lib/queries'
+import { getCurrentProfile } from '@/lib/supabase/server'
+import { mayReadQuestion } from '@/lib/access'
 
 /**
- * One question's explanations, asked for only when a student opens its
- * answer. Approved explanations are public, so the response is cached by the
- * CDN as well as the browser: a popular question is answered without reaching
- * the server at all.
+ * One question's explanations, asked for only when a signed-in student opens
+ * its answer — for a paper they have opened, or a question they have answered
+ * (may_read_question, 0034). Without that check the explanations could be
+ * walked question by question, so the answer is private to the student and
+ * never held by the CDN.
  *
- * Kept short because explanations now change while the site is live — a
- * teacher publishes, an admin approves or unpublishes. The server's own copy
- * is dropped at once (TAG.solutions); these headers bound how long a browser
- * (1 min) and the CDN (5 min, then one stale answer while it refetches) may
- * lag behind that.
+ * The server's own copy is dropped at once when an explanation changes
+ * (TAG.solutions); the browser may keep its copy for a minute.
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ questionId: string }> }) {
   const { questionId } = await params
@@ -20,12 +20,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ que
     return NextResponse.json({ error: 'Not a question id.' }, { status: 400 })
   }
 
+  const profile = await getCurrentProfile()
+  if (!profile) return NextResponse.json({ error: 'Sign in with Google to see the explanation.' }, { status: 401 })
+  if (!(await mayReadQuestion(questionId))) {
+    return NextResponse.json({ error: 'Open this question’s paper to see its explanation.' }, { status: 403 })
+  }
+
   try {
     const solutions = await getSolutionsForQuestion(questionId)
-    return NextResponse.json(
-      { solutions },
-      { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } },
-    )
+    return NextResponse.json({ solutions }, { headers: { 'Cache-Control': 'private, max-age=60' } })
   } catch {
     return NextResponse.json({ error: 'Could not load the explanation.' }, { status: 502 })
   }
