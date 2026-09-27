@@ -106,7 +106,8 @@ export function SpotlightCarousel({ items: all }: { items: Spotlight[] }) {
           >
             <CaretRight size={16} aria-hidden="true" />
           </button>
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+          {/* Each dot sits in a 24px button: small to see, big enough to tap. */}
+          <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2">
             {items.map((item, i) => (
               <button
                 key={item.id}
@@ -114,7 +115,7 @@ export function SpotlightCarousel({ items: all }: { items: Spotlight[] }) {
                 onClick={() => go(i)}
                 aria-label={`Show banner ${i + 1}`}
                 aria-current={i === active}
-                className="flex h-4 items-center"
+                className="flex h-6 min-w-6 items-center justify-center px-[3px]"
               >
                 <span
                   className={`block h-1.5 rounded-full transition-all duration-300 ${
@@ -160,6 +161,7 @@ function Slide({ item, position, current }: { item: Spotlight; position: string;
 /**
  * The site itself on a laptop, with a phone in front: real screens, framed.
  * Sits on the bottom edge of the band; only on screens wide enough for both.
+ * Lazy, so a phone — where the frames are hidden — never downloads them.
  */
 function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
   return (
@@ -172,7 +174,7 @@ function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
             width={960}
             height={600}
             sizes="296px"
-            loading="eager"
+            loading="lazy"
             className="block aspect-[16/10] w-full rounded-[3px] object-cover object-top"
           />
         </div>
@@ -188,7 +190,7 @@ function Devices({ desktop, mobile }: { desktop: string; mobile: string }) {
           width={360}
           height={779}
           sizes="84px"
-          loading="eager"
+          loading="lazy"
           className="block aspect-[360/779] w-full rounded-[13px] object-cover object-top"
         />
       </div>
