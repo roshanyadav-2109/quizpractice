@@ -20,12 +20,12 @@ students search: subject, then exam, then the day the paper was sat.
 | Exam × year | `/exam/quiz-1/2025` | every subject's paper from that exam and year, by term |
 | Term (several sets) | `/pyq/maths-1/qualifier/may-2024` | only where a term had more than one set; otherwise it redirects to the paper |
 | Paper | `/pyq/maths-1/quiz-1/16-feb-2025` | the sitting date, plus the set code when one day had several sets (`…/20-apr-2025-qdf2`) |
-| Question | `/pyq/maths-1/quiz-1/16-feb-2025/q12-consider-relation-delivery-fee` | the question number, then a few words of its own prose |
+| Question (retired) | `/pyq/maths-1/quiz-1/16-feb-2025/q12-…` | redirects permanently to its paper — see "Who sees what" |
 | Course code | `/course/BSMA1001` | redirects to the subject |
 
 Old addresses are redirected permanently: `/subject/<slug>?exam=…&year=…&term=…`
-in `src/proxy.ts`, `/program/ds` in the programme page, and a question whose
-words have changed to its current words (the number is what identifies it).
+in `src/proxy.ts`, `/program/ds` in the programme page, and every question
+address to its paper (`#qN` when the question is in the free preview).
 `/paper/<set id>` (the instructions before a mock test) and `/practice/<set id>`
 (the runner) stay as they are; they are app screens, pointed at the paper's
 page by `rel=canonical`.
@@ -52,6 +52,44 @@ back into a per-request render:
 Staff edits clear the caches as before (`refresh()` in `src/lib/cache.ts`),
 and a catalogue or taxonomy change also marks every rendered page stale.
 
+## Who sees what
+
+The full papers are behind a free Google sign-in; the public pages are what
+search engines index.
+
+- **Anyone, search engines included:** every hub, and each paper's page with
+  its details and its first three questions (`LEAD_IN` in `src/lib/access.ts`)
+  — no answers. A lock card (`src/components/seo/PaperLock.tsx`, class
+  `paper-locked`) ends the preview. Learning mode shows the same three.
+- **A signed-in student:** the whole paper in learning mode or as a timed
+  mock test, its answers and explanations, search, and their results.
+
+Everyone sees the same public page, so there is nothing to cloak. The paper's
+structured data lists only the preview's questions, without answers, and says
+the page is not free to access in full (`isAccessibleForFree: false`, with a
+`WebPageElement` naming `.paper-locked`) — Google's markup for content behind a
+login or paywall. Paid access later changes who passes the lock, not the page.
+
+How the questions are protected from copying:
+
+- **The database.** Questions, options, the answer key and explanations are
+  not readable with the anon key every browser has (migration 0035), nor are
+  the functions that return them. The server reads them with its own key
+  (`src/lib/supabase/content.ts`), which must only ever ask for published
+  content and never reach the browser.
+- **Per account.** Each paper a student opens is recorded (`open_set`,
+  migration 0034): 30 new papers an hour and 100 a day, re-opening free. An
+  explanation opens only for a paper opened in the last week or a question
+  answered (`may_read_question`); marking a paper counts as opening it, so the
+  key cannot be found by submitting guesses. Staff and teachers are not limited.
+- **A mark.** Every full paper shown to a student carries an invisible mark of
+  the account in its text (`src/lib/watermark.ts`). `npm run watermark:find --
+  copied.html` names the account a copy came from.
+- **A trap.** `/all-questions` is linked invisibly from every page and closed
+  in `robots.txt`; a visit is a scraper ignoring it, and is logged.
+- **Signals.** Refused openings and trap visits land in `scrape_signals`, for
+  staff to review with the IP, browser and account.
+
 ## What each page says
 
 Titles and headings come from `src/lib/seo/titles.ts`, built from search data
@@ -65,29 +103,20 @@ papers as a table, then questions students ask, answered. The exam facts in
 `src/lib/seo/exam-facts.ts` come from study.iitm.ac.in and name their sources;
 check them each term — IIT Madras revises the rules.
 
-The words students add to these searches are "with solutions", "answer key"
-and "video solutions", so titles, descriptions and questions-answered say what
-comes with each paper: the answer key for every question and a video solution
-on each question's own page. Videos live only there — under the answer, at
-`#video-solution` — never on separate pages or linked out to a channel. A
-question without its video yet says it is being recorded.
-
-Questions are indexed only when they are worth a result of their own: the
-first sitting of a repeated question (the others point to it with
-`rel=canonical`), with at least 60 characters of text or code that is not just a
-comprehension's shared stem. The rule lives in `src/lib/seo/question-text.ts`
-and is mirrored by `public_question_index()` (migration 0030), which feeds the
-sitemap — change them together, or the sitemap lists redirects.
+The words students add to these searches are "with solutions" and "answer
+key", so titles, descriptions and questions-answered say what comes with each
+paper — and, since September 2026, that the whole paper opens with a free
+Google sign-in. Video solutions play in learning mode, under a question's
+answer; the pages promise them only where they exist.
 
 ## Machine-readable
 
 | Address | What |
 |---|---|
 | `/robots.txt` | everything public open to every crawler, AI assistants named; private areas, the API and search results closed |
-| `/sitemap.xml` | index of `/sitemaps/pages.xml`, `/sitemaps/papers.xml`, `/sitemaps/videos.xml` (once a video exists) and `/sitemaps/questions-N.xml` (100 sets each); real `lastmod` dates only |
-| `/sitemaps/videos.xml` | the canonical, indexable question pages a video solution plays on, with thumbnail, title and player — from `public_video_solutions()` (migration 0033) |
+| `/sitemap.xml` | index of `/sitemaps/pages.xml` and `/sitemaps/papers.xml`; real `lastmod` dates only. The retired `questions-N.xml` and `videos.xml` answer 404 |
 | `/llms.txt`, `/llms-full.txt` | the site described for AI agents, generated from the catalogue |
-| JSON-LD | Organization + WebSite on every page; CollectionPage + ItemList on hubs; Quiz/LearningResource with each Question's accepted answer on papers and questions; a VideoObject on a question's canonical page once its video solution is up; BreadcrumbList everywhere |
+| JSON-LD | Organization + WebSite on every page; CollectionPage + ItemList on hubs; on papers, Quiz/LearningResource with the preview's questions (no answers), `isAccessibleForFree: false` and the locked part; BreadcrumbList everywhere |
 | `opengraph-image` | a card per subject, exam and paper for shared links |
 
 ## After adding papers
@@ -102,11 +131,12 @@ Google does not use IndexNow — it reads the sitemap.
 
 ## One-time setup (owner)
 
-1. **Google Search Console** — add the domain property
-   `quizspace.unknowniitians.com` (DNS TXT record), or set
-   `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` in Vercel and redeploy. Submit
-   `https://quizspace.unknowniitians.com/sitemap.xml`. Under Settings, keep
-   "Search generative AI features" on.
+1. **Google Search Console** — the verified `unknowniitians.com` Domain
+   property covers this subdomain (done, September 2026; `sitemap.xml`,
+   `pages.xml` and `papers.xml` are submitted). A DNS record on `quizspace`
+   itself would not work: that name is a CNAME to Vercel. Otherwise, add a
+   URL-prefix property and set `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` in Vercel.
+   Under Settings, keep "Search generative AI features" on.
 2. **Bing Webmaster Tools** — import the site from Search Console (or set
    `NEXT_PUBLIC_BING_SITE_VERIFICATION`), submit the sitemap, then run
    `npm run seo:indexnow` once to submit every page.
