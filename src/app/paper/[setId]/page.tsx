@@ -1,4 +1,7 @@
 import { notFound } from 'next/navigation'
+import { paperPathForSet } from '@/lib/seo/catalogue'
+import { absolute } from '@/lib/seo/site'
+import { paths } from '@/lib/seo/paths'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { getMyAttempts, getSetOverview, summariseMyAttempts } from '@/lib/queries'
@@ -21,9 +24,15 @@ type Params = Promise<{ setId: string }>
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   if (!isSupabaseConfigured) return { title: 'Paper' }
   const { setId } = await params
-  const context = await getSetOverview(setId)
-  if (!context) return { title: 'Paper not found' }
-  return { title: `${context.subject.name} ${context.examType.name} — instructions` }
+  const [context, readerPath] = await Promise.all([getSetOverview(setId), paperPathForSet(setId)])
+  if (!context) return { title: 'Paper not found', robots: { index: false } }
+  // The instructions before the clock starts: an app screen. Search engines
+  // are sent to the paper itself, with its questions and answers.
+  return {
+    title: `${context.subject.name} ${context.examType.name} — instructions`,
+    robots: { index: false, follow: true },
+    ...(readerPath ? { alternates: { canonical: absolute(readerPath) } } : {}),
+  }
 }
 
 /** The palette's symbols, in the order the exam's instructions list them. */
@@ -67,7 +76,7 @@ export default async function PaperIntroPage({ params }: { params: Params }) {
   const written = questions.filter((q) => q.type === 'subjective' || q.type === 'programming').length
 
   // Back goes to this exam's papers for the subject — where "Start paper" was.
-  const examHref = `/subject/${subject.slug}?exam=${examType.slug}`
+  const examHref = paths.subjectExam(subject.slug, examType.slug)
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-surface-2">
