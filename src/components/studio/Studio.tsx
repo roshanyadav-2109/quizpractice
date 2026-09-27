@@ -825,7 +825,7 @@ export function Studio({
                   className="mx-auto w-full"
                   style={{
                     maxWidth: fullBoard
-                      ? 'max(560px, calc((100dvh - 11rem) * 16 / 9))'
+                      ? 'max(560px, calc((100dvh - 13rem) * 16 / 9))'
                       : 'max(560px, calc((100dvh - 19rem) * 16 / 9))',
                   }}
                 >
