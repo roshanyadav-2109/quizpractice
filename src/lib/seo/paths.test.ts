@@ -66,3 +66,15 @@ test('a programme is addressed by its everyday name', () => {
   assert.equal(programSlug({ slug: 'ds', short_name: 'Data Science', name: 'BS in Data Science and Applications' }), 'data-science')
   assert.equal(programSlug({ slug: 'es', short_name: null, name: 'BS in Electronic Systems' }), 'bs-in-electronic-systems')
 })
+
+test('year pages sit beside the papers without ever matching a paper address', () => {
+  assert.equal(paths.year(2025), '/year/2025')
+  assert.equal(paths.examYear('quiz-1', 2025), '/exam/quiz-1/2025')
+  assert.equal(paths.subjectExamYear('maths-1', 'quiz-1', 2025), '/pyq/maths-1/quiz-1/2025')
+  // A paper's address always carries its day and month, so a bare year there is never a paper.
+  const slugs = paperSlugs([
+    { setId: 'a', subjectId: 's', examTypeId: 'q1', sessionDate: '2025-02-16', setCode: '1' },
+    { setId: 'b', subjectId: 's', examTypeId: 'q1', sessionDate: null, setCode: '2025' },
+  ])
+  for (const slug of slugs.values()) assert.doesNotMatch(slug, /^\d{4}$/)
+})
