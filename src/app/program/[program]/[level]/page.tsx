@@ -41,9 +41,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const subjects = level.subjects.filter((subject) => subject.paperCount > 0)
   return pageMetadata({
     title: titles.level(level.level, program.program, subjects.map((subject) => subject.subject)),
-    description: `Previous year papers for every ${level.level.name} subject of the IIT Madras ${program.program.name}: ${listOf(
-      subjects.slice(0, 6).map((subject) => shortName(subject.subject)),
-    )}${subjects.length > 6 ? ' and more' : ''} — ${formatCount(subjects.reduce((sum, subject) => sum + subject.paperCount, 0))} papers with answers.`,
+    description: `IITM BS ${level.level.name} PYQs with solutions for ${listOf(
+      subjects.slice(0, 5).map((subject) => shortName(subject.subject)),
+    )}${subjects.length > 5 ? ' and more' : ''}: ${formatCount(subjects.reduce((sum, subject) => sum + subject.paperCount, 0))} papers with answer keys and video solutions.`,
     path: level.path,
   })
 }
@@ -85,7 +85,8 @@ export default async function LevelHub({ params }: { params: Params }) {
           <p>
             {plural(subjects.length, `${level.level.name} subject`)} of the IIT Madras {program.program.name} with previous
             year papers — <strong className="font-medium text-ink">{formatCount(papers)} papers</strong> and{' '}
-            {formatCount(questions)} questions with answer keys, each paper free to read or take as a timed mock test.
+            {formatCount(questions)} questions with solutions and answer keys, a video solution on each question&rsquo;s page,
+            and every paper free to read or take as a timed mock test.
           </p>
         }
         stats={[
