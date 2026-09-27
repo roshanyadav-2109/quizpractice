@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { publicClient, memoise } from '@/lib/supabase/public'
+import { contentClient } from '@/lib/supabase/content'
 import { TAG, personal, shared } from '@/lib/cache'
 
 /** Anything that depends on other students' answers refreshes on its own this often. */
@@ -543,7 +544,8 @@ async function readSetRows(db: Pick<typeof publicClient, 'from'>, setId: string,
 function readPublishedSet(setId: string, includeAnswers: boolean) {
   return unstable_cache(
     async (id: string, answers: boolean) => {
-      const rows = await readSetRows(publicClient, id, answers)
+      // Questions are not readable with the anon key (0035): the server reads them with its own.
+      const rows = await readSetRows(contentClient(), id, answers)
       return rows && rows.row.paper?.status === 'published' ? rows : null
     },
     ['qp-shared', 'set'],
@@ -569,6 +571,9 @@ const loadSetContext = cache(async (setId: string, includeAnswers: boolean): Pro
 
   const parsed: QuestionWithOptions[] = (rows.questions as RawQuestion[]).map((question) => ({
     ...question,
+    // A typed answer's value is the answer key too: only when answers were asked for.
+    correct_answer: includeAnswers ? question.correct_answer : null,
+    answer_tolerance: includeAnswers ? question.answer_tolerance : null,
     body: parseBlocks(question.body),
     options: (question.options ?? [])
       .slice()
@@ -643,7 +648,7 @@ export async function getQuestionIndex(setIds: string[]): Promise<IndexedQuestio
 
   const read = unstable_cache(
     async (ids: string[]) => {
-      const { data, error } = await publicClient.rpc('public_question_index', { p_sets: ids })
+      const { data, error } = await contentClient().rpc('public_question_index', { p_sets: ids })
       if (error) throw new Error(`public_question_index failed — ${error.message}`)
       type Row = { question_id: string; set_id: string; number: number; text_blocks: string[] | null; substance: number; canonical_id: string }
       return ((data ?? []) as Row[]).map((row) => ({
@@ -665,39 +670,6 @@ export async function getQuestionIndex(setIds: string[]): Promise<IndexedQuestio
   return rows
 }
 
-export interface VideoSolution {
-  questionId: string
-  setId: string
-  number: number
-  solutionId: string
-  videoUrl: string
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * Every published question with a video solution — on every copy it plays
- * on (0033). Shared and small; cleared with the explanations.
- */
-export const getVideoSolutions = shared(
-  'video-solutions',
-  [TAG.solutions],
-  async (): Promise<VideoSolution[]> => {
-    const { data, error } = await publicClient.rpc('public_video_solutions')
-    if (error) throw new Error(`public_video_solutions failed — ${error.message}`)
-    type Row = { question_id: string; set_id: string; number: number; solution_id: string; video_url: string; created_at: string; updated_at: string }
-    return ((data ?? []) as Row[]).map((row) => ({
-      questionId: row.question_id,
-      setId: row.set_id,
-      number: row.number,
-      solutionId: row.solution_id,
-      videoUrl: row.video_url,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }))
-  },
-)
-
 export interface QuestionCopy {
   questionId: string
   setId: string
@@ -713,10 +685,11 @@ export interface PublicSet {
 
 /**
  * A published set with its answer key and where each question was asked
- * again, for the public paper and question pages. Anonymous reads only,
- * through the shared cache — never the session — so a page built from it is
- * the same for everyone and can be served from the CDN. A draft, or an id
- * that is not a set, is simply null.
+ * again, for the public paper page — which shows only its first questions,
+ * without the answers (src/lib/access.ts). Read by the server through the
+ * shared cache — never the session — so a page built from it is the same
+ * for everyone and can be served from the CDN. A draft, or an id that is
+ * not a set, is simply null.
  */
 export const getPublicSet = cache(async (setId: string): Promise<PublicSet | null> => {
   if (!/^[0-9a-f-]{36}$/i.test(setId)) return null
@@ -760,7 +733,7 @@ type CopyRow = {
 function readQuestionCopies(setId: string): Promise<CopyRow[]> {
   return unstable_cache(
     async (id: string) => {
-      const { data, error } = await publicClient.rpc('public_question_copies', { p_set: id })
+      const { data, error } = await contentClient().rpc('public_question_copies', { p_set: id })
       // Thrown, not returned empty, so a blip is not cached for a day.
       if (error) throw new Error(`public_question_copies failed — ${error.message}`)
       return (data ?? []) as CopyRow[]
@@ -820,7 +793,7 @@ async function getSubjectContextById(subjectId: string): Promise<SubjectContext 
 export async function getSolutionsForQuestion(questionId: string): Promise<PublicSolution[]> {
   const rows = await unstable_cache(
     async (id: string) => {
-      const { data, error } = await publicClient.rpc('solutions_for_question', { qid: id })
+      const { data, error } = await contentClient().rpc('solutions_for_question', { qid: id })
       if (error) throw new Error(`solutions failed — ${error.message}`)
       return (data ?? []) as (Omit<PublicSolution, 'body'> & { body: unknown })[]
     },
@@ -874,7 +847,7 @@ export async function searchWithOptions(
   const held = searches.get(key)
   if (held && held.expires > Date.now()) return held.results
 
-  const { data, error } = await publicClient.rpc('search_questions', {
+  const { data, error } = await contentClient().rpc('search_questions', {
     q,
     subject: filters.subjectId ?? null,
     exam_type: filters.examTypeId ?? null,
@@ -884,7 +857,7 @@ export async function searchWithOptions(
 
   const options = new Map<string, unknown[]>()
   if (hits.length > 0) {
-    const { data: rows } = await publicClient
+    const { data: rows } = await contentClient()
       .from('question_options')
       .select('question_id, content, sort_order')
       .in(
@@ -1223,6 +1196,26 @@ function hasResponse(response: unknown): boolean {
   return Object.keys(value).length > 0
 }
 
+interface QuestionFacts {
+  topics: string[] | null
+  marks: number | string
+  type: string
+}
+
+/** Type, marks and topics of some questions — no text, no answers — read by the server. */
+async function questionFacts(ids: string[]): Promise<Map<string, QuestionFacts>> {
+  const unique = [...new Set(ids)]
+  const facts = new Map<string, QuestionFacts>()
+  for (let i = 0; i < unique.length; i += 300) {
+    const { data } = await contentClient()
+      .from('questions')
+      .select('id, topics, marks, type')
+      .in('id', unique.slice(i, i + 300))
+    for (const row of (data ?? []) as (QuestionFacts & { id: string })[]) facts.set(row.id, row)
+  }
+  return facts
+}
+
 /**
  * Every answer this student has submitted, reduced to what the dashboard
  * shows: how answers split between right, wrong and skipped, the time spent,
@@ -1236,10 +1229,11 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
   return personal(`analytics:${topicLimit}`, async (supabase, userId) => {
     type Raw = {
       attempt_id: string
+      question_id: string
       is_correct: boolean | null
       response: unknown
       time_spent_seconds: number | null
-      questions: { topics: string[] | null; marks: number | string; type: string } | null
+      questions: QuestionFacts | null
     }
 
     const rows: Raw[] = []
@@ -1247,15 +1241,19 @@ export async function getMyAnswerAnalytics(topicLimit = 6): Promise<MyAnswerAnal
     for (let from = 0; from < 20_000; from += PAGE) {
       const { data } = await supabase
         .from('attempt_answers')
-        .select('attempt_id, is_correct, response, time_spent_seconds, questions(topics, marks, type), attempts!inner(user_id, submitted_at)')
+        .select('attempt_id, question_id, is_correct, response, time_spent_seconds, attempts!inner(user_id, submitted_at)')
         .eq('attempts.user_id', userId)
         .not('attempts.submitted_at', 'is', null)
         .order('id')
         .range(from, from + PAGE - 1)
-      const page = (data ?? []) as unknown as Raw[]
-      rows.push(...page)
+      const page = (data ?? []) as unknown as Omit<Raw, 'questions'>[]
+      rows.push(...page.map((row) => ({ ...row, questions: null })))
       if (page.length < PAGE) break
     }
+    // The answers are the student's own; what each question was — its type, marks
+    // and topics — is read by the server (0035 keeps questions off the student's key).
+    const facts = await questionFacts(rows.map((row) => row.question_id))
+    for (const row of rows) row.questions = facts.get(row.question_id) ?? null
 
     const breakdown = zero()
     const byAttempt: Record<string, AnswerBreakdown> = {}
@@ -1388,14 +1386,14 @@ export async function getUnattemptedPapers(
   attemptedSetIds: string[],
   limit = 5,
 ): Promise<SuggestedPaper[]> {
-  const supabase = await createClient()
-
-  let query = supabase
+  // Published papers only, the same for everyone: read by the server, which may count their questions.
+  let query = contentClient()
     .from('question_sets')
     .select(
       'id, question_papers!inner(session_date, status, exam_types(name), subjects(name, slug)), questions(id)',
     )
     .eq('question_papers.status', 'published')
+    .eq('questions.status', 'published')
     .limit(limit + attemptedSetIds.length)
 
   if (attemptedSetIds.length) {
@@ -1574,10 +1572,12 @@ export async function getMistakeBank(): Promise<MistakeItem[]> {
     const ids = [...states.keys()]
     const items: MistakeItem[] = []
     for (let i = 0; i < ids.length; i += 150) {
-      const { data } = await supabase
+      // Questions this student answered; read by the server, published ones only.
+      const { data } = await contentClient()
         .from('questions')
         .select('id, number, set_id, body, question_sets(question_papers(session_date, exam_types(name), subjects(name, slug)))')
         .in('id', ids.slice(i, i + 150))
+        .eq('status', 'published')
       type Raw = {
         id: string
         number: number
@@ -1623,11 +1623,14 @@ export async function getMistakeBank(): Promise<MistakeItem[]> {
 /**
  * Published questions by id, with their answer keys — for retrying mistakes,
  * where the student has already seen the paper's solutions.
+ *
+ * Read by the server with its own key, so the caller decides who may see
+ * them: only questions from the student's own mistake bank, or ones
+ * may_read_question() allows (0034).
  */
 export async function getQuestionsWithAnswers(ids: string[]): Promise<QuestionWithOptions[]> {
   if (!ids.length) return []
-  const supabase = await createClient()
-  const { data } = await supabase
+  const { data } = await contentClient()
     .from('questions')
     .select('*, options:question_options(id, question_id, label, content, is_correct, sort_order)')
     .in('id', ids)
