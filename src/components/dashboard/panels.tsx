@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { paths } from '@/lib/seo/paths'
 import Link from 'next/link'
 import type { AnswerBreakdown } from '@/lib/queries'
 import { formatCount, formatDuration, formatShortDate, istDayKey } from '@/lib/format'
@@ -95,7 +96,7 @@ export function SubjectBars({ subjects }: { subjects: SubjectScore[] }) {
     <ul className="flex flex-col gap-4">
       {subjects.map((subject) => (
         <li key={subject.slug}>
-          <Link href={`/subject/${subject.slug}`} className="group relative block outline-none">
+          <Link href={paths.subject(subject.slug)} className="group relative block outline-none">
             <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 truncate text-ui font-light text-ink group-hover:text-accent">{subject.name}</span>
               <span className="shrink-0 text-ui text-ink tabular-nums">{subject.percentage}%</span>
