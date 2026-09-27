@@ -142,6 +142,13 @@ export const paths = {
   question: (subject: string, exam: string, paper: string, question: string) =>
     `/pyq/${subject}/${exam}/${paper}/${question}`,
   exam: (exam: string) => `/exam/${exam}`,
+  /** One exam, one calendar year, every subject: /exam/quiz-1/2025. */
+  examYear: (exam: string, year: number) => `/exam/${exam}/${year}`,
+  /** Every paper sat in a year: /year/2025. */
+  year: (year: number) => `/year/${year}`,
+  /** One subject's exam in one year: /pyq/maths-1/quiz-1/2025. */
+  subjectExamYear: (subject: string, exam: string, year: number) => `/pyq/${subject}/${exam}/${year}`,
+
   program: (program: string) => `/program/${program}`,
   level: (program: string, level: string) => `/program/${program}/${level}`,
   /** The timed runner. An app screen, not a page to index. */
