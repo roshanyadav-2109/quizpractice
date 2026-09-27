@@ -5,16 +5,22 @@ import { teacherPageGate } from '@/lib/supabase/server'
 import { getSubjectBySlug } from '@/lib/queries'
 import {
   NotAssignedError,
+  QUEUE_SORTS,
   canTeachSubject,
+  getExamProgress,
   getMyClaims,
   getMyNeedingChanges,
   getQueue,
   getSubjectPapers,
+  isQueueSort,
+  type ExamProgress,
   type QueuePage,
+  type QueueSort,
 } from '@/lib/teach/queries'
 import { ROUTES } from '@/lib/teach/contracts'
 import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
-import { FilterRow } from '@/components/site/FilterSelect'
+import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
+import { seasonName, yearTermFilter } from '@/lib/terms'
 import {
   DEFAULT_FILTER,
   QueueFilters,
@@ -22,6 +28,7 @@ import {
   isDeskFilter,
   queueHref,
   type DeskFilter,
+  type QueueView,
 } from '@/components/teach/QueueFilters'
 import { PaperFilter } from '@/components/teach/PaperFilter'
 import { ExplanationList, QueueList } from '@/components/teach/QueueList'
@@ -32,7 +39,15 @@ import { buttonClass } from '@/components/ui/primitives'
 import { formatCount } from '@/lib/format'
 
 type Params = Promise<{ subjectSlug: string }>
-type SearchParams = Promise<{ filter?: string | string[]; paper?: string | string[]; page?: string | string[] }>
+type SearchParams = Promise<{
+  filter?: string | string[]
+  paper?: string | string[]
+  exam?: string | string[]
+  year?: string | string[]
+  term?: string | string[]
+  sort?: string | string[]
+  page?: string | string[]
+}>
 
 /** Pages past this are not a queue anyone is reading; the biggest subject has about 85. */
 const MAX_PAGE = 1000
@@ -75,18 +90,40 @@ export default async function TeachSubjectPage({
   // nothing — and only a paper of this subject is used; anything else is
   // ignored rather than refused.
   const papers = await getSubjectPapers(subject.id)
+
+  // Exam, then year and term within it, narrow the papers; the queue is then
+  // asked for those papers only. The term rules live in src/lib/terms.ts.
+  const exams = [...new Map(papers.map((p) => [p.examSlug, p])).values()].sort((a, b) => a.examOrder - b.examOrder)
+  const exam = exams.find((option) => option.examSlug === one(query.exam)) ?? null
+  const examPapers = exam ? papers.filter((p) => p.examSlug === exam.examSlug) : papers
+  const terms = yearTermFilter(examPapers, { year: one(query.year), term: one(query.term) })
+  const matching = examPapers.filter((p) => terms.matches(p.session_date))
+  const narrowed = exam !== null || terms.year !== null || terms.season !== null
   const rawPaper = one(query.paper)
-  const paper = papers.find((option) => option.id === rawPaper)?.id ?? null
+  const paper = matching.find((option) => option.id === rawPaper)?.id ?? null
+  const rawSort = one(query.sort)
+  const sort: QueueSort = isQueueSort(rawSort) ? rawSort : 'newest'
+  const view: Omit<QueueView, 'filter' | 'page'> = {
+    paper,
+    exam: exam?.examSlug ?? null,
+    year: terms.year !== null ? String(terms.year) : null,
+    term: terms.season,
+    sort,
+  }
 
   // The rest at once. The queue is refused outside the teacher's combos, so
   // its refusal is caught here and the gate below decides what to show.
-  const [allowed, changes, claims, queue] = await Promise.all([
+  const [allowed, changes, claims, progress, queue] = await Promise.all([
     canTeachSubject(subject.id),
     getMyNeedingChanges(),
     getMyClaims(),
+    getExamProgress(subject.id),
     filter === 'changes'
       ? Promise.resolve(null)
-      : getQueue(subject.id, filter, paper, pageNumber).catch((error: unknown) => {
+      : getQueue(subject.id, filter, paper, pageNumber, {
+          papers: narrowed ? matching.map((p) => p.id) : null,
+          sort,
+        }).catch((error: unknown) => {
           if (error instanceof NotAssignedError) return null
           throw error
         }),
@@ -109,7 +146,10 @@ export default async function TeachSubjectPage({
   }
 
   const changesHere = changes.filter((item) => item.place?.subjectId === subject.id)
-  const changesShown = paper ? changesHere.filter((item) => item.place?.paperId === paper) : changesHere
+  const inView = new Set(matching.map((p) => p.id))
+  const changesShown = changesHere.filter(
+    (item) => (!paper || item.place?.paperId === paper) && (!narrowed || (item.place && inView.has(item.place.paperId))),
+  )
 
   return (
     <div className={`${SHELL} py-6`}>
@@ -125,11 +165,52 @@ export default async function TeachSubjectPage({
         }
       />
 
+      {progress.length > 1 ? (
+        <ExamProgressStrip progress={progress} slug={subject.slug} view={view} filter={filter} />
+      ) : null}
+
       <div className="mt-5">
-        <QueueFilters slug={subject.slug} active={filter} paper={paper} changes={changesHere.length} />
+        <QueueFilters slug={subject.slug} active={filter} view={view} changes={changesHere.length} />
       </div>
       <FilterRow>
-        <PaperFilter papers={papers} value={paper} />
+        {exams.length > 1 ? (
+          <FilterSelect
+            name="exam"
+            label="Exam"
+            allLabel="All exams"
+            value={exam?.examSlug ?? null}
+            options={exams.map((option) => ({ value: option.examSlug, label: option.examName }))}
+            resets={['year', 'term', 'paper']}
+          />
+        ) : null}
+        {terms.years.length > 1 ? (
+          <FilterSelect
+            name="year"
+            label="Year"
+            allLabel="All years"
+            value={terms.year !== null ? String(terms.year) : null}
+            options={terms.years.map((year) => ({ value: String(year), label: String(year) }))}
+            resets={['term', 'paper']}
+          />
+        ) : null}
+        {terms.seasons.length > 1 ? (
+          <FilterSelect
+            name="term"
+            label="Term"
+            allLabel="All terms"
+            value={terms.season}
+            options={terms.seasons.map((season) => ({ value: season, label: seasonName(season) }))}
+            resets={['paper']}
+          />
+        ) : null}
+        <PaperFilter papers={matching} value={paper} />
+        <FilterSelect
+          name="sort"
+          label="Order"
+          allLabel={QUEUE_SORTS[0].label}
+          value={sort === 'newest' ? null : sort}
+          options={QUEUE_SORTS.slice(1).map((option) => ({ value: option.value, label: option.label }))}
+        />
       </FilterRow>
 
       {queue ? (
@@ -144,7 +225,8 @@ export default async function TeachSubjectPage({
               filter={filter}
               slug={subject.slug}
               subjectName={subject.name}
-              paper={paper}
+              view={view}
+              narrowed={narrowed || paper !== null}
               myClaims={claims.map((claim) => claim.groupKey)}
             />
           </div>
@@ -169,14 +251,17 @@ function QueueResults({
   filter,
   slug,
   subjectName,
-  paper,
+  view,
+  narrowed,
   myClaims,
 }: {
   queue: QueuePage
   filter: DeskFilter
   slug: string
   subjectName: string
-  paper: string | null
+  view: Omit<QueueView, 'filter' | 'page'>
+  /** An exam, term or paper is chosen. */
+  narrowed: boolean
   myClaims: string[]
 }) {
   if (queue.rows.length === 0) {
@@ -187,7 +272,7 @@ function QueueResults({
           art="no-results"
           title={`There is no page ${formatCount(queue.page)}`}
           actions={
-            <Link href={queueHref(slug, { filter, paper })} className={buttonClass('primary', 'md')}>
+            <Link href={queueHref(slug, { ...view, filter })} className={buttonClass('primary', 'md')}>
               Back to the first page
             </Link>
           }
@@ -200,9 +285,9 @@ function QueueResults({
       return (
         <EmptyState
           art="all-clear"
-          title={paper ? 'Every question in this paper has been started' : 'Every question here has been started'}
+          title={view.paper ? 'Every question in this paper has been started' : 'Every question here has been started'}
           actions={
-            <Link href={queueHref(slug, { filter: 'no_video', paper })} className={buttonClass('outline', 'md')}>
+            <Link href={queueHref(slug, { ...view, filter: 'no_video' })} className={buttonClass('outline', 'md')}>
               See what still needs a video
             </Link>
           }
@@ -213,14 +298,18 @@ function QueueResults({
     }
     return (
       <EmptyState art="no-results" title={`Nothing under “${filterLabel(filter)}”`}>
-        {paper ? 'Try all papers, or another filter.' : 'Try another filter.'}
+        {narrowed ? 'Try all exams and papers, or another filter.' : 'Try another filter.'}
       </EmptyState>
     )
   }
 
   const keep: Record<string, string> = {}
   if (filter !== DEFAULT_FILTER) keep.filter = filter
-  if (paper) keep.paper = paper
+  for (const key of ['exam', 'year', 'term', 'paper'] as const) {
+    const value = view[key]
+    if (value) keep[key] = value
+  }
+  if (view.sort && view.sort !== 'newest') keep.sort = view.sort
 
   return (
     <>
@@ -229,7 +318,7 @@ function QueueResults({
         page={queue.page}
         total={queue.total}
         pageSize={queue.pageSize}
-        href={(page) => queueHref(slug, { filter, paper, page })}
+        href={(page) => queueHref(slug, { ...view, filter, page })}
         action={ROUTES.teachSubject(slug)}
         keep={keep}
       />
@@ -258,5 +347,53 @@ function NotAssigned({ subjectName, programName }: { subjectName: string; progra
       You can explain questions only in the subjects an admin has assigned you.{' '}
       {`To work on ${subjectName} (${programName}), ask an admin to add it to your subjects.`}
     </EmptyState>
+  )
+}
+
+/**
+ * Progress per exam, as a strip of small cards: how many of each exam's
+ * questions are explained and how many have video. A card narrows the queue
+ * to that exam; the chosen one is outlined, and choosing it again clears it.
+ */
+function ExamProgressStrip({
+  progress,
+  slug,
+  view,
+  filter,
+}: {
+  progress: ExamProgress[]
+  slug: string
+  view: Omit<QueueView, 'filter' | 'page'>
+  filter: DeskFilter
+}) {
+  return (
+    <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {progress.map((row) => {
+        const active = view.exam === row.examSlug
+        const share = row.groups ? Math.round((row.explained / row.groups) * 100) : 0
+        return (
+          <li key={row.examSlug}>
+            <Link
+              href={queueHref(slug, { filter, sort: view.sort, exam: active ? null : row.examSlug })}
+              aria-current={active ? 'true' : undefined}
+              className={`block rounded-card border bg-surface px-4 py-3 transition-colors ${
+                active ? 'border-ink' : 'border-rule hover:border-rule-strong'
+              }`}
+            >
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="text-ui text-ink">{row.examName}</span>
+                <span className="text-meta text-ink-faint tabular-nums">{share}%</span>
+              </span>
+              <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                <span className="block h-full rounded-full bg-accent" style={{ width: `${share}%` }} />
+              </span>
+              <span className="mt-2 block text-meta font-light text-ink-muted tabular-nums">
+                {formatCount(row.explained)} of {formatCount(row.groups)} explained · {formatCount(row.withVideo)} with video
+              </span>
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

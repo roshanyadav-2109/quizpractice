@@ -25,40 +25,54 @@ const ORDER: DeskFilter[] = [
 
 const LABELS: Record<DeskFilter, string> = { ...QUEUE_FILTER_LABELS, changes: 'Needs changes' }
 
-/** The queue's address with its filter, paper and page; defaults are left out. */
+/** Everything that shapes the queue besides the subject. */
+export interface QueueView {
+  filter?: DeskFilter
+  paper?: string | null
+  /** Exam type slug, e.g. quiz-1. */
+  exam?: string | null
+  year?: string | null
+  /** jan | may | sep */
+  term?: string | null
+  sort?: string | null
+  page?: number
+}
+
+/** The queue's address with its filters, order and page; defaults are left out. */
 export function queueHref(
   slug: string,
-  {
-    filter = DEFAULT_FILTER,
-    paper = null,
-    page = 1,
-  }: { filter?: DeskFilter; paper?: string | null; page?: number } = {},
+  { filter = DEFAULT_FILTER, paper = null, exam = null, year = null, term = null, sort = null, page = 1 }: QueueView = {},
 ): string {
   const query = new URLSearchParams()
   if (filter !== DEFAULT_FILTER) query.set('filter', filter)
+  if (exam) query.set('exam', exam)
+  if (year) query.set('year', year)
+  if (term) query.set('term', term)
   if (paper) query.set('paper', paper)
+  if (sort && sort !== 'newest') query.set('sort', sort)
   if (page > 1) query.set('page', String(page))
   const suffix = query.toString()
   return suffix ? `${ROUTES.teachSubject(slug)}?${suffix}` : ROUTES.teachSubject(slug)
 }
 
-/** The filter chips. Changing the filter keeps the paper and goes back to page one. */
+/** The filter chips. Changing the filter keeps the exam, term, paper and order, and goes back to page one. */
 export function QueueFilters({
   slug,
   active,
-  paper,
+  view,
   changes,
 }: {
   slug: string
   active: DeskFilter
-  paper: string | null
+  /** The rest of the queue's view, kept when the filter changes. */
+  view: Omit<QueueView, 'filter' | 'page'>
   /** How many of the teacher's explanations here need changes. */
   changes: number
 }) {
   return (
     <FilterBar label="Show">
       {ORDER.map((filter) => (
-        <Chip key={filter} href={queueHref(slug, { filter, paper })} active={filter === active}>
+        <Chip key={filter} href={queueHref(slug, { ...view, filter })} active={filter === active}>
           {LABELS[filter]}
           {filter === 'changes' && changes > 0 ? <span className="ml-1.5 tabular-nums">{changes}</span> : null}
         </Chip>

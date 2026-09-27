@@ -106,6 +106,14 @@ export async function getQueue(
   filter: QueueFilter,
   paperId: string | null,
   page: number,
+  {
+    papers = null,
+    sort = 'newest',
+  }: {
+    /** Only these papers — the exam, year and term filters, resolved to papers. */
+    papers?: string[] | null
+    sort?: QueueSort
+  } = {},
 ): Promise<QueuePage> {
   const supabase = await createClient()
   const started = Date.now()
@@ -115,6 +123,8 @@ export async function getQueue(
     p_paper: paperId,
     p_limit: QUEUE_PAGE_SIZE,
     p_offset: (page - 1) * QUEUE_PAGE_SIZE,
+    p_papers: papers,
+    p_sort: sort,
   })
   const took = Date.now() - started
   if (took > SLOW_QUEUE_MS) {
@@ -130,18 +140,66 @@ export async function getQueue(
   return { rows, total: rows[0]?.total ?? 0, page, pageSize: QUEUE_PAGE_SIZE }
 }
 
+/** How the queue is ordered: newest papers first, oldest first, or most repeated first. */
+export type QueueSort = 'newest' | 'oldest' | 'copies'
+
+export const QUEUE_SORTS: { value: QueueSort; label: string }[] = [
+  { value: 'newest', label: 'Newest papers first' },
+  { value: 'oldest', label: 'Oldest papers first' },
+  { value: 'copies', label: 'Most repeated first' },
+]
+
+export function isQueueSort(value: unknown): value is QueueSort {
+  return QUEUE_SORTS.some((sort) => sort.value === value)
+}
+
 export interface PaperOption {
   id: string
   /** "Quiz 1 · 12 Apr 2026" */
   label: string
+  examSlug: string
+  examName: string
+  examOrder: number
+  session_date: string | null
 }
 
-/** A subject's published papers, newest sitting first, for the queue's paper filter. */
+/** A subject's published papers, newest sitting first, for the queue's filters. */
 export async function getSubjectPapers(subjectId: string): Promise<PaperOption[]> {
   const papers = await getPapersForSubject(subjectId)
   return papers.map((paper) => ({
     id: paper.id,
     label: `${paper.exam_type.name} · ${formatSession(paper.session_date)}`,
+    examSlug: paper.exam_type.slug,
+    examName: paper.exam_type.name,
+    examOrder: paper.exam_type.sort_order,
+    session_date: paper.session_date,
+  }))
+}
+
+export interface ExamProgress {
+  examSlug: string
+  examName: string
+  /** Questions to explain in this exam, counted in groups of copies. */
+  groups: number
+  explained: number
+  withVideo: number
+}
+
+/** A subject's progress per exam, in the admin's exam order. */
+export async function getExamProgress(subjectId: string): Promise<ExamProgress[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('teacher_exam_progress', { p_subject: subjectId })
+  if (error) {
+    if (refused(error)) return []
+    throw new Error(`teacher_exam_progress failed — ${error.message}`)
+  }
+  type Raw = { exam_slug: string; exam_name: string; groups: number | string; explained: number | string; with_video: number | string }
+  return ((data ?? []) as Raw[]).map((row) => ({
+    examSlug: row.exam_slug,
+    examName: row.exam_name,
+    groups: Number(row.groups),
+    explained: Number(row.explained),
+    withVideo: Number(row.with_video),
   }))
 }
 
