@@ -6,10 +6,23 @@ import { Notebook } from './icons'
  * one has been made, a quiet notebook holds its place at the same size, so
  * rows line up whether or not their icon exists yet.
  *
- * Always decorative: the name is next to it.
+ * Decorative — the name is next to it — so it is hidden from screen readers,
+ * which would otherwise read the name twice. `alt` still names what it is,
+ * for image search and for crawlers that read an empty alt as a gap.
  */
-export function Art({ src, size = 40 }: { src: string | null; size?: number }) {
-  if (src) return <Image src={src} alt="" width={size} height={size} className="shrink-0" />
+export function Art({ src, size = 40, alt = '' }: { src: string | null; size?: number; alt?: string }) {
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt={alt ? `${alt} icon` : ''}
+        aria-hidden={alt ? true : undefined}
+        width={size}
+        height={size}
+        className="shrink-0"
+      />
+    )
+  }
   return (
     <span
       aria-hidden
