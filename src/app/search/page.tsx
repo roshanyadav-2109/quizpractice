@@ -240,7 +240,7 @@ async function BrowseSubjects() {
               href={paths.subject(subject.slug)}
               className="flex items-center gap-3 rounded-control border border-rule bg-surface px-3 py-2.5 transition-colors hover:border-rule-strong"
             >
-              <Art src={artFor('subjects', subject.slug)} size={32} />
+              <Art src={artFor('subjects', subject.slug)} size={32} alt={subject.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-ui text-ink">{subject.name}</span>
                 <ActiveCount count={active[subject.id]} compact />
