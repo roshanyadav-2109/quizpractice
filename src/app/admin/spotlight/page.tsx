@@ -178,7 +178,7 @@ export default async function SpotlightAdminPage() {
               <TextAreaField label="Text" name="body" placeholder="One short line." rows={2} />
               <Field label="Small label above the title" name="eyebrow" hint="Optional. Defaults to the kind." />
               <Field label="Button label" name="cta_label" placeholder="Watch one" />
-              <Field label="Button link" name="cta_href" placeholder="/subject/dbms" />
+              <Field label="Button link" name="cta_href" placeholder="/pyq/dbms" />
               <fieldset className="flex flex-col gap-1">
                 <legend className="label mb-1">Show on</legend>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
