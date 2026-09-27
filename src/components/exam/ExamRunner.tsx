@@ -533,7 +533,7 @@ export function ExamRunner(props: ExamRunnerProps) {
           {/* The question scrolls; the video dock sits over its bottom-left corner. */}
           <div ref={questionPane} className="relative min-h-0 flex-1">
           <div ref={scroller} className="h-full overflow-y-auto">
-            <div className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-28 sm:pb-28' : ''}`}>
+            <div className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-36 sm:pb-36' : ''}`}>
               {graded ? <GradedBanner graded={graded} isSignedIn={isSignedIn} /> : null}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

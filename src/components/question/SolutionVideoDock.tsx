@@ -5,31 +5,24 @@ import { CornersIn, Play } from '@/components/ui/icons'
 import { parseYouTubeUrl, youTubeEmbedUrl, type YouTubeRef } from '@/lib/youtube/url'
 import { loadSolutions } from './LazySolutionPanel'
 
-/** The folded frame on a narrow pane, where there is no margin to sit in. */
-const FOLDED_W = 320
-/** The question column's width (max-w-4xl); the margin beside it is the dock's home. */
-const COLUMN_W = 896
-/** Margins this wide hold the card as a row (picture beside the words)… */
-const MIN_MARGIN_W = 240
-/** …and down to this, as a stack (picture above the words). */
-const MIN_STACK_W = 124
-const MAX_STACK_W = 220
-/** The stacked card's words under the picture (a line more when the title wraps), and its padding. */
-const STACK_TEXT_H = 64
-const STACK_PAD = 8
-const FOLDED_H = 84
+/** The folded card. */
+const FOLDED_W = 400
+const FOLDED_H = 104
+const PAD = 12
 /** The open frame's own strip above the player. */
-const HEADER_H = 44
-/** Room kept between the open frame and the edges of the question pane. */
+const HEADER_H = 48
+/** Room kept between the frame and the edges of the question pane. */
 const GAP = 12
-const MAX_OPEN_W = 820
+const MAX_OPEN_W = 840
+/** A dark, screen-like card: it stands apart from the white page and runs straight into the player. */
+const SCREEN = 'linear-gradient(135deg, #292524 0%, #0c0a09 100%)'
 
 /**
  * The video solution, docked at the bottom left of the question pane, just
  * above the action bar — only for a question that has a video. Folded, it is
- * a small "Watch the solution" card; a click grows it from that corner (the
- * corner stays put, the frame widens and rises) over part of the question,
- * never over the palette, and the video plays. The same click folds it back.
+ * a "Watch the solution" card; a click grows it from that corner (the corner
+ * stays put, the frame widens and rises) over part of the question, never
+ * over the palette, and the video plays. Esc or the fold button shrinks it.
  *
  * It reads the explanations the explanation panel already loaded, so it costs
  * no extra request.
@@ -75,22 +68,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // Folded, the frame fills the white margin left of the question column, so
-  // on a wide screen it covers nothing; where that margin is too thin, it is a
-  // fixed slip over the corner (the question keeps room below to scroll clear).
-  const margin = Math.floor((room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2)
-  const stacked = margin >= MIN_STACK_W && margin < MIN_MARGIN_W
-  const foldedWidth = Math.max(
-    0,
-    margin >= MIN_MARGIN_W
-      ? Math.min(margin, 380)
-      : stacked
-        ? Math.min(margin, MAX_STACK_W)
-        : Math.min(FOLDED_W, room.width - GAP * 2),
-  )
-  const foldedHeight = stacked
-    ? Math.round(((foldedWidth - STACK_PAD * 2) * 9) / 16) + STACK_PAD * 2 + STACK_TEXT_H + (foldedWidth < 176 ? 24 : 0)
-    : FOLDED_H
+  const foldedWidth = Math.max(0, Math.min(FOLDED_W, room.width - GAP * 2))
   // As wide as the pane allows, and short enough that the player never runs
   // off the top: 16:9 under the strip.
   const openWidth = Math.max(
@@ -103,22 +81,25 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
 
   return (
     <div
-      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-card border border-ink/10 bg-pal-marked shadow-[0_14px_40px_-16px_rgba(12,10,9,0.45)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
-      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight }}
+      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[14px] border border-white/10 text-white shadow-[0_22px_48px_-20px_rgba(12,10,9,0.7),0_2px_6px_-2px_rgba(12,10,9,0.25)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
+      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : FOLDED_H, background: SCREEN }}
     >
       {open ? (
         <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-2 px-3" style={{ height: HEADER_H }}>
-            <p className="flex items-center gap-2 text-ui font-medium text-ink">
-              <Play size={16} weight="fill" aria-hidden="true" />
-              Watch the solution
+          <div className="flex shrink-0 items-center gap-3 px-4" style={{ height: HEADER_H }}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white">
+              <Play size={12} weight="fill" aria-hidden="true" />
+            </span>
+            <p className="min-w-0 flex-1 truncate">
+              <span className="text-ui font-semibold">Video solution</span>
+              <span className="ml-2 hidden text-meta text-white/50 sm:inline">Esc to fold away</span>
             </p>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Fold the video away"
               title="Fold away (Esc)"
-              className="flex h-8 w-8 items-center justify-center rounded-control text-ink hover:bg-ink/10"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <CornersIn size={18} aria-hidden="true" />
             </button>
@@ -138,53 +119,34 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
           onClick={() => setOpen(true)}
           aria-expanded={false}
           aria-label="Watch the video solution"
-          className={`group flex h-full w-full text-left ${stacked ? 'flex-col gap-2' : 'items-center gap-3 px-3'}`}
-          style={stacked ? { padding: STACK_PAD } : undefined}
+          className="group flex h-full w-full items-center gap-4 text-left"
+          style={{ padding: PAD }}
         >
-          <span
-            className={`relative shrink-0 overflow-hidden rounded-control bg-ink/80 ring-2 ring-ink/10 ${
-              stacked ? 'aspect-video w-full' : 'h-[3.25rem] w-[5.75rem]'
-            }`}
-          >
+          <span className="relative aspect-video h-full shrink-0 overflow-hidden rounded-[10px] bg-black ring-1 ring-white/15">
             {/* eslint-disable-next-line @next/next/no-img-element -- YouTube's own thumbnail, not a site image */}
             <img
               src={thumbnail}
               alt=""
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="h-full w-full object-cover opacity-90 transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
             />
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface text-ink shadow transition-transform duration-200 group-hover:scale-110">
-                <Play size={14} weight="fill" aria-hidden="true" />
+            <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-lg transition-transform duration-200 group-hover:scale-110">
+                <Play size={15} weight="fill" />
               </span>
             </span>
           </span>
-          <span className="min-w-0 px-0.5">
-            <span className="block text-ui leading-tight font-semibold text-ink">Watch the solution</span>
-            <span className="mt-0.5 line-clamp-2 block text-meta leading-snug text-ink/75">
-              Popcorn optional, aha moment included.
+          <span className="flex min-w-0 flex-1 flex-col items-start">
+            <span className="text-[0.6875rem] font-semibold tracking-[0.1em] text-white/55 uppercase">Video solution</span>
+            <span className="mt-0.5 text-card leading-tight font-semibold">Watch the solution</span>
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-meta font-medium text-white transition-colors group-hover:bg-accent-hover">
+              <Play size={11} weight="fill" aria-hidden="true" />
+              Play here
             </span>
           </span>
-          {stacked ? null : <Squiggle />}
         </button>
       )}
     </div>
-  )
-}
-
-/** A hand-drawn flourish in the card's free corner. */
-function Squiggle() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 40 40" className="ml-auto hidden h-8 w-8 shrink-0 text-ink/40 min-[360px]:block">
-      <path
-        d="M4 30c6-10 10 4 16-6s8-10 14-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <path d="M30 14l5 6-7 2" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }
