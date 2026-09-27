@@ -1,4 +1,8 @@
 import type { Metadata } from 'next'
+import { getSeoCatalogue } from '@/lib/seo/catalogue'
+import { pageMetadata } from '@/lib/seo/metadata'
+import { paths } from '@/lib/seo/paths'
+import { absolute } from '@/lib/seo/site'
 import {
   getActiveStudents,
   getBrowseTree,
@@ -24,9 +28,24 @@ import { EmptyState } from '@/components/ui/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'All papers',
-  description: 'Every published IIT Madras BS degree question paper, newest sitting first.',
+/**
+ * The unfiltered list is a page worth finding; every filtered or later page
+ * of it is a view onto pages that have their own addresses — an exam's hub,
+ * a subject's exam — so those views are followed but not indexed, and point
+ * at the page that is.
+ */
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const query = await searchParams
+  const filtered = Object.values(query).some((value) => typeof value === 'string' && value !== '')
+  const base = pageMetadata({
+    title: 'All IITM BS Question Papers — Newest First',
+    description:
+      'Every IIT Madras BS degree previous year question paper, newest sitting first — Qualifier, Quiz 1, Quiz 2 and End Term, filterable by branch, level, subject, year and term.',
+    path: '/papers',
+    index: !filtered,
+  })
+  if (filtered && query.exam && !query.subject) base.alternates = { canonical: absolute(paths.exam(query.exam)) }
+  return base
 }
 
 type SearchParams = Promise<{
@@ -49,7 +68,7 @@ const PAGE_SIZE = 24
 export default async function PapersPage({ searchParams }: { searchParams: SearchParams }) {
   if (!isSupabaseConfigured) return <SetupNotice />
 
-  const [query, examTypes, tree, profile, papers, attempts, active] = await Promise.all([
+  const [query, examTypes, tree, profile, papers, attempts, active, catalogue] = await Promise.all([
     searchParams,
     getExamTypes(),
     getBrowseTree(),
@@ -58,6 +77,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
     // Secured to their owner; empty for a visitor, and no wait on the profile.
     getMyAttempts(200),
     getActiveStudents(),
+    getSeoCatalogue(),
   ])
   const myAttempts = profile ? attempts : []
   const { bySet } = summariseMyAttempts(myAttempts)
@@ -240,6 +260,7 @@ export default async function PapersPage({ searchParams }: { searchParams: Searc
               <li key={set.id}>
                 <PaperCard
                   setId={set.id}
+                  href={catalogue.paperBySetId.get(set.id)?.path}
                   title={paper.subject.name}
                   tags={[paper.exam_type.name, ...(paper.sets.length > 1 ? [`Set ${set.set_code}`] : [])]}
                   date={formatSession(paper.session_date)}
