@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from '@/lib/env'
 import { artFor } from '@/lib/art'
 import { formatCount } from '@/lib/format'
 import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
+import { getVideoIndex } from '@/lib/seo/video-solutions'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { webPage } from '@/lib/seo/jsonld'
 import { listOf, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
@@ -20,6 +21,8 @@ import { SignInButton } from '@/components/site/AuthDialog'
 import { SignedOut } from '@/components/site/Viewer'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
 import { MistakesCta } from '@/components/home/MistakesCta'
+import { WhyPractise } from '@/components/home/WhyPractise'
+import { ProductShowcase } from '@/components/home/ProductShowcase'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { Faq, type FaqItem } from '@/components/seo/Faq'
 import { BestScore } from '@/components/seo/BestScore'
@@ -59,9 +62,10 @@ export default async function HomePage() {
   const catalogue = await getSeoCatalogue()
   const { papers, programs, examTypes } = catalogue
   const subjects = catalogue.subjects.filter((subject) => subject.paperCount > 0)
-  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
   const allYears = [...new Set(papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))]
-  const updated = papers.map((paper) => paper.updatedAt).filter(Boolean).sort().at(-1) ?? null
+  const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
+  // Video solutions are mentioned only once there is one to watch.
+  const hasVideos = (await getVideoIndex()).all.length > 0
 
   const exams = examTypes
     .map((exam) => ({ exam, papers: papers.filter((paper) => paper.examType.id === exam.id) }))
@@ -112,6 +116,17 @@ export default async function HomePage() {
 
   const faq: FaqItem[] = [
     {
+      q: 'What does Quiz Space have for IITM BS students?',
+      a: (
+        <>
+          Every Qualifier, Quiz 1, Quiz 2 and End Term paper of the IIT Madras BS degree: {formatCount(papers.length)}{' '}
+          papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)} — every
+          question with its solution and answer key,{hasVideos ? <> video solutions on each question&rsquo;s page,</> : null}{' '}
+          and every paper ready for quiz practice as a timed mock test. Free.
+        </>
+      ),
+    },
+    {
       q: 'Where can I find IITM BS previous year question papers?',
       a: (
         <>
@@ -127,7 +142,8 @@ export default async function HomePage() {
         <>
           Yes. Every question shows its solution — the correct option or value from IIT Madras&rsquo;s answer key — on
           its paper and on its own page, and the video solution for a question plays on that question&rsquo;s page.
-          All of it is free; a Google sign-in is only needed to save attempts and see your analysis.
+          Reading the papers, questions and answer keys needs no account. Timed mock tests, checking answers while you
+          practise and saving attempts are free too, with a Google sign-in.
         </>
       ),
     },
@@ -170,19 +186,6 @@ export default async function HomePage() {
           },
         ]
       : []),
-    {
-      q: 'Is Quiz Space an official IIT Madras website?',
-      a: (
-        <>
-          No. {SITE.name} is an independent study resource run by Unknown IITians, and it is not affiliated with IIT
-          Madras or with any other practice site of a similar name. Official information about the programme is at{' '}
-          <a href="https://study.iitm.ac.in/" rel="noopener" className="text-accent hover:underline">
-            study.iitm.ac.in
-          </a>
-          .
-        </>
-      ),
-    },
   ]
 
   return (
@@ -200,13 +203,10 @@ export default async function HomePage() {
       <section className={`${SHELL} pt-12 pb-10 text-center lg:pt-16`}>
         <ProductBy className="mb-4" />
         <h1 className="mx-auto max-w-3xl text-[2rem] leading-[1.15] font-medium text-balance text-ink sm:text-[2.5rem]">
-          {titles.homeHeading()}
+          Previous year papers for the IIT Madras BS degree
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-body text-ink-muted">
-          Every Qualifier, Quiz 1, Quiz 2 and End Term paper of the IIT Madras BS degree: {formatCount(papers.length)}{' '}
-          papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)} — every
-          question with its solution and answer key, video solutions on each question&rsquo;s page, and every paper
-          ready for quiz practice as a timed mock test. Free.
+          Qualifier, Quiz 1, Quiz 2 and End Term papers from every term, with answers and explanations.
         </p>
 
         <form action="/search" method="get" role="search" className="mx-auto mt-7 flex max-w-2xl gap-2 text-left">
@@ -230,51 +230,21 @@ export default async function HomePage() {
         </form>
 
         <MistakesCta />
-
-        <dl className="mx-auto mt-8 flex max-w-2xl flex-wrap justify-center gap-x-10 gap-y-3">
-          {[
-            ['Papers', formatCount(papers.length)],
-            ['Questions', formatCount(questions)],
-            ['Subjects', String(subjects.length)],
-            ['Years', yearSpan(allYears)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-meta text-ink-faint">{label}</dt>
-              <dd className="text-[1.25rem] text-ink tabular-nums">{value}</dd>
-            </div>
-          ))}
-        </dl>
       </section>
 
       {/* ------------------------------------------------------------- Exams */}
       <Section title="PYQs by exam">
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {exams.map(({ exam, papers: list }) => (
+          {exams.map(({ exam }) => (
             <li key={exam.id}>
               <Link
                 href={paths.exam(exam.slug)}
                 className="group flex h-full items-center gap-4 rounded-card border border-rule bg-surface p-4 transition-colors hover:border-rule-strong"
               >
                 <Art src={artFor('exams', exam.slug)} size={48} alt={`IITM BS ${exam.name}`} />
-                <span className="min-w-0">
-                  <span className="block text-card text-ink group-hover:underline group-hover:underline-offset-4">
-                    {exam.name} PYQ
-                  </span>
-                  <span className="block text-meta text-ink-faint tabular-nums">{formatCount(list.length)} papers</span>
+                <span className="min-w-0 text-card text-ink group-hover:underline group-hover:underline-offset-4">
+                  {exam.name} PYQ
                 </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Section>
-
-      {/* ------------------------------------------------------------ Years */}
-      <Section title="PYQs by year">
-        <ul className="flex flex-wrap gap-2">
-          {[...allYears].sort((a, b) => b - a).map((year) => (
-            <li key={year}>
-              <Link href={paths.year(year)} className={buttonClass('outline', 'md')}>
-                IITM BS PYQ {year}
               </Link>
             </li>
           ))}
@@ -301,29 +271,17 @@ export default async function HomePage() {
       </Section>
 
       {/* ---------------------------------------------------------- Why here */}
+      {/* --------------------------------------------------- The product tour */}
+      <Section title="See Quiz Space in action">
+        <ProductShowcase />
+      </Section>
+
       <Section title="Why practise on Quiz Space">
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            ['Real questions, as text', 'Tables, code, equations and ER diagrams are drawn from data, not pasted as screenshots — searchable, sharp on a phone and correct in dark mode.'],
-            ['The exam screen you will sit', 'The same palette, timer and Save & Next / Mark for Review controls as the IITM exam portal, so nothing is new on the day.'],
-            ['Answers for every question', 'Every paper shows its answer key. Mock tests are marked the moment you submit, with where you lost time and marks.'],
-            ['Free, and every subject', `${subjects.length} subjects from Foundation to degree, Data Science and Electronic Systems, from ${Math.min(...allYears)} onwards. No paywall.`],
-          ].map(([title, body]) => (
-            <li key={title} className="rounded-card border border-rule bg-surface p-5">
-              <h3 className="text-ui font-medium text-ink">{title}</h3>
-              <p className="mt-1.5 text-meta leading-relaxed text-ink-muted">{body}</p>
-            </li>
-          ))}
-        </ul>
+        <WhyPractise subjects={subjects.length} since={Math.min(...allYears)} />
       </Section>
 
       <div className={`${SHELL} pb-14`}>
-        <Faq items={faq} />
-        {updated ? (
-          <p className="mt-4 text-meta text-ink-faint">
-            Papers last updated <time dateTime={updated.slice(0, 10)}>{sittingDate(updated.slice(0, 10))}</time>.
-          </p>
-        ) : null}
+        <Faq items={faq} variant="accordion" />
       </div>
 
       {/* ------------------------------------------------------------ Sign in */}

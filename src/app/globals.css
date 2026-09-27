@@ -302,3 +302,86 @@ mark {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Product showcase (home page): the motion of each scene. The showcase sets
+ * an animation only on the scene playing, so each element's resting style is
+ * its final pose.
+ * ------------------------------------------------------------------------- */
+@keyframes sc-rise {
+  from { opacity: 0; transform: translateY(var(--sc-dy, 48px)) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sc-tilt {
+  from { opacity: 0; transform: perspective(1600px) rotateX(26deg) rotateY(-14deg) translateY(90px) scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sc-from-right {
+  from { opacity: 0; transform: translateX(28%) rotate(6deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sc-from-left {
+  from { opacity: 0; transform: translateX(-28%) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sc-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes sc-word {
+  from { transform: translateY(110%); }
+  to { transform: none; }
+}
+@keyframes sc-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sc-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-12px); }
+}
+@keyframes sc-zoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+@keyframes sc-caret {
+  50% { opacity: 0; }
+}
+@keyframes sc-ripple {
+  from { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+@keyframes sc-cell {
+  from { background: rgb(255 255 255 / 0.1); }
+  to { background: #16a34a; }
+}
+@keyframes sc-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes sc-grow {
+  from { transform: translate(-38%, 34%) scale(0.42); }
+  to { transform: none; }
+}
+@keyframes sc-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes sc-glow {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(8%, -6%) scale(1.15); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.sc-stage[data-paused] *,
+.sc-stage[data-paused] *::before,
+.sc-stage[data-paused] *::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-stage *,
+  .sc-stage *::before,
+  .sc-stage *::after {
+    animation: none !important;
+  }
+}
