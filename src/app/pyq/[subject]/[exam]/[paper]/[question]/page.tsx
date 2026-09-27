@@ -6,10 +6,11 @@ import { getPublicSet, getQuestionIndex, getSolutionsForQuestion, type PublicSet
 import { findPaper, getSeoCatalogue, type PaperEntry, type SeoCatalogue } from '@/lib/seo/catalogue'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { courseEntity, questionPage } from '@/lib/seo/jsonld'
-import { shortName, sittingDate, termName } from '@/lib/seo/names'
+import { shortName, sittingDate, termName, termShort } from '@/lib/seo/names'
 import { paths, questionNumberFromSlug, questionSlug } from '@/lib/seo/paths'
 import { slugTextOf } from '@/lib/seo/question-text'
 import { absolute } from '@/lib/seo/site'
+import { getVideoIndex } from '@/lib/seo/video-solutions'
 import { answerText, isSubstantial, plain, questionSlugOf, titleText, toQuizQuestion } from '@/lib/seo/question-view'
 import type { QuestionWithOptions } from '@/types/db'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -86,11 +87,17 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const short = shortName(paper.subject)
   const substantial = isSubstantial(question)
   const answer = answerText(question)
+  // What comes with the question leads, so a long stem is what gets cut — not "answer and video solution".
+  const lead = `${short} ${paper.examType.name} ${termShort(paper.term)} Q${question.number} with answer and video solution`
+    .replace(/\s+/g, ' ')
+    .trim()
+  const answerPart = answer ? ` Answer: ${plain(answer, 50)}.` : ''
+  const room = 155 - lead.length - answerPart.length - 3
   const metadata = pageMetadata({
     title: titles.question(substantial ? headline(question, 120) : '', paper, question.number),
-    description: `${short} ${paper.examType.name} (${termName(paper.term)}) Q${question.number}${
-      substantial ? `: ${headline(question, 100)}` : ''
-    }${answer ? ` Answer: ${plain(answer, 60)}.` : ''} IIT Madras BS PYQ with the answer key and the full paper.`,
+    description: substantial
+      ? `${lead}: ${headline(question, Math.max(room, 40))}${answerPart}`
+      : `${lead}.${answerPart} Every question of this IITM BS paper, with its answer key.`,
     path: canonicalPath,
     index: substantial,
   })
@@ -118,7 +125,11 @@ export default async function QuestionPage({ params }: { params: Params }) {
   const examNode = node.exams.find((entry) => entry.examType.id === paper.examType.id)!
   const programLabel = paper.program.short_name ?? paper.program.name
   const programNode = catalogue.programs.find((entry) => entry.program.id === paper.program.id)
-  const solutions = await getSolutionsForQuestion(question.id).catch(() => [])
+  const [solutions, videos] = await Promise.all([getSolutionsForQuestion(question.id).catch(() => []), getVideoIndex()])
+  const withVideo = solutions.filter((solution) => solution.video_url)
+  const written = solutions.filter((solution) => !solution.video_url)
+  // Video markup only on the copy search engines are pointed at, so one video is one result.
+  const video = loaded.isCopy ? undefined : videos.byQuestion.get(question.id)
 
   const questions = set.questions
   const position = questions.findIndex((entry) => entry.id === question.id)
@@ -164,6 +175,17 @@ export default async function QuestionPage({ params }: { params: Params }) {
           paperName: `IITM BS ${paperLabel} question paper`,
           educationalLevel: paper.level.name,
           modified: paper.updatedAt,
+          video:
+            video && video.thumbnailUrl
+              ? {
+                  name: video.title,
+                  description: video.description,
+                  thumbnailUrl: video.thumbnailUrl,
+                  uploadDate: video.createdAt,
+                  embedUrl: video.embedUrl,
+                  contentUrl: video.watchUrl,
+                }
+              : undefined,
         })}
       />
 
@@ -189,12 +211,26 @@ export default async function QuestionPage({ params }: { params: Params }) {
           <AnswerFold question={question} open />
         </div>
 
-        {solutions.length > 0 ? (
+        <section className="mt-6" aria-labelledby="video-solution">
+          <h2 id="video-solution" className="mb-3 scroll-mt-20 text-[1.25rem] font-medium text-ink">
+            Video solution
+          </h2>
+          {withVideo.length > 0 ? (
+            <SolutionPanel solutions={withVideo} showAuthor={false} />
+          ) : (
+            <p className="max-w-[72ch] text-ui leading-relaxed text-ink-muted">
+              The video solution to this question is being recorded and will play here. Until then, the answer key is above
+              {written.length > 0 ? ', and a written explanation below' : ''}.
+            </p>
+          )}
+        </section>
+
+        {written.length > 0 ? (
           <section className="mt-6" aria-labelledby="explanation">
             <h2 id="explanation" className="mb-3 text-[1.25rem] font-medium text-ink">
               Explanation
             </h2>
-            <SolutionPanel solutions={solutions} showAuthor={false} />
+            <SolutionPanel solutions={written} showAuthor={false} />
           </section>
         ) : null}
 
