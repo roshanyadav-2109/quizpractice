@@ -1,6 +1,6 @@
 import 'server-only'
 import { cache } from 'react'
-import { revalidateTag, unstable_cache } from 'next/cache'
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAnonKey, supabaseUrl } from '@/lib/env'
@@ -106,4 +106,12 @@ export async function personal<T>(
 /** Drops cached entries now, so the next read goes to the database. */
 export function refresh(...tags: string[]): void {
   for (const tag of tags) revalidateTag(tag, { expire: 0 })
+  // The catalogue pages are rendered once and served from the CDN, and they
+  // read the taxonomy and paper list through an in-process memo, so a tag
+  // alone does not reach them. When either changes, every rendered page is
+  // marked stale; each is rebuilt, from the caches, on its next visit.
+  // (Explanations are read without the memo, so their tag reaches the pages.)
+  if (tags.includes(TAG.catalogue) || tags.includes(TAG.taxonomy)) {
+    revalidatePath('/', 'layout')
+  }
 }
