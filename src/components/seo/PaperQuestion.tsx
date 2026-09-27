@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { QuestionWithAnswer } from '@/components/question/QuestionWithAnswer'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
-import { CheckCircle } from '@/components/ui/icons'
+import { CheckCircle, Play } from '@/components/ui/icons'
 import type { QuestionWithOptions } from '@/types/db'
 
 export interface CopyLink {
@@ -19,11 +19,14 @@ export function PaperQuestion({
   question,
   href,
   copies,
+  hasVideo = false,
 }: {
   question: QuestionWithOptions
   /** The question's own page. */
   href: string
   copies: CopyLink[]
+  /** A video solution plays on the question's own page. */
+  hasVideo?: boolean
 }) {
   return (
     <section id={`q${question.number}`} className="scroll-mt-20 rounded-card border border-rule bg-surface px-5 py-5 sm:px-6">
@@ -31,6 +34,16 @@ export function PaperQuestion({
       <AnswerFold question={question} />
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-muted">
+        {hasVideo ? (
+          <Link
+            href={`${href}#video-solution`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-accent hover:underline"
+          >
+            <Play size={12} weight="fill" aria-hidden="true" />
+            Video solution
+            <span className="sr-only"> for question {question.number}</span>
+          </Link>
+        ) : null}
         <Link href={href} className="hover:text-ink hover:underline">
           Question {question.number} on its own page
         </Link>
