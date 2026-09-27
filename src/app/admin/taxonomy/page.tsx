@@ -220,6 +220,12 @@ export default async function TaxonomyPage() {
                 required
                 placeholder="Database Management Systems"
               />
+              <Field
+                label="Search name"
+                name="short_name"
+                placeholder="DBMS"
+                hint="What students type into Google. Leads the page titles."
+              />
               <Field label="Course code" name="code" placeholder="BSCS2001" />
               <Field
                 label="Aliases"
