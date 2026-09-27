@@ -1,7 +1,9 @@
 # Hosting
 
 The site runs on Vercel, in the **ui-premium** team, project **quizdesk**,
-served at `https://quizpractice-chi.vercel.app` (moved there on 27 Sept 2026).
+served at **`https://quizspace.unknowniitians.com`** (custom domain, 27 Sept 2026;
+DNS is a CNAME to Vercel). `quizpractice-chi.vercel.app` is the project's
+Vercel address and should redirect to the custom domain.
 The project is linked to this repository: every push to `main` deploys to
 production.
 
@@ -17,7 +19,7 @@ for what each one is.
 | Variable | Notes |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase project |
-| `NEXT_PUBLIC_SITE_URL` | `https://quizpractice-chi.vercel.app`, until a custom domain replaces it |
+| `NEXT_PUBLIC_SITE_URL` | `https://quizspace.unknowniitians.com` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google sign-in client (its secret lives in Supabase Auth → Google, not here) |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_UPLOAD_FOLDER` | Main image account |
 | `CLOUDINARY_SHEETS_CLOUD_NAME`, `CLOUDINARY_SHEETS_API_KEY`, `CLOUDINARY_SHEETS_API_SECRET` | Second image account |
@@ -30,7 +32,9 @@ for what each one is.
 A `NEXT_PUBLIC_` variable is baked in at build time: after changing one,
 redeploy.
 
-## Moving to a custom domain
+## Changing the domain
+
+Done once for `quizspace.unknowniitians.com`; repeat for any new one.
 
 1. Add the domain to the quizdesk project (Settings → Domains).
 2. Set `NEXT_PUBLIC_SITE_URL` to it and redeploy.
