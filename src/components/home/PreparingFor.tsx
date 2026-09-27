@@ -39,9 +39,6 @@ export function PreparingFor({ branches }: { branches: Branch[] }) {
   const branch = branches.find((b) => b.slug === slug) ?? branches[0]
   if (!branch) return null
 
-  const [first, second, ...rest] = branch.stages
-  const large = [first, second].filter((stage): stage is Stage => Boolean(stage))
-
   return (
     <div>
       {/* The tabs, tops aligned. The chosen one is taller and runs down into
@@ -56,7 +53,7 @@ export function PreparingFor({ branches }: { branches: Branch[] }) {
               type="button"
               role="tab"
               aria-selected={active}
-              aria-controls="branch-panel"
+              aria-controls={`branch-${b.slug}`}
               onClick={() => setSlug(b.slug)}
               className={`flex min-w-[15rem] items-center justify-between gap-4 rounded-card border border-rule px-5 text-left transition-colors ${
                 active
@@ -65,46 +62,61 @@ export function PreparingFor({ branches }: { branches: Branch[] }) {
               }`}
             >
               <span className="text-card leading-snug">{b.label}</span>
-              <Art src={b.icon} size={48} />
+              <Art src={b.icon} size={48} alt={b.label} />
             </button>
           )
         })}
       </div>
 
-      <div
-        id="branch-panel"
-        role="tabpanel"
-        aria-label={branch.label}
-        // Square only where the first tab flows straight down into it.
-        className={`rounded-card border border-rule bg-surface-2 p-4 sm:p-6 ${
-          branches[0]?.slug === branch.slug ? 'rounded-tl-none' : ''
-        }`}
-      >
-        {large.length > 0 ? (
-          <div className={`grid gap-4 ${large.length > 1 ? 'lg:grid-cols-2' : ''}`}>
-            {large.map((stage) => (
-              <StageCard key={stage.slug} stage={stage} large wide={large.length === 1} />
-            ))}
-          </div>
-        ) : null}
-        {rest.length > 0 ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {rest.map((stage) => (
-              <StageCard key={stage.slug} stage={stage} />
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {/* Every branch's panel is in the page, the others hidden: a crawler —
+          and anyone without JavaScript — reaches every subject from here, not
+          only the first branch's. */}
+      {branches.map((b) => (
+        <BranchPanel key={b.slug} branch={b} hidden={b.slug !== branch.slug} first={branches[0]?.slug === b.slug} />
+      ))}
+    </div>
+  )
+}
+
+function BranchPanel({ branch, hidden, first }: { branch: Branch; hidden: boolean; first: boolean }) {
+  const [one, two, ...rest] = branch.stages
+  const large = [one, two].filter((stage): stage is Stage => Boolean(stage))
+  return (
+    <div
+      id={`branch-${branch.slug}`}
+      role="tabpanel"
+      aria-label={branch.label}
+      hidden={hidden}
+      // Square only where the first tab flows straight down into it.
+      className={`rounded-card border border-rule bg-surface-2 p-4 sm:p-6 ${first ? 'rounded-tl-none' : ''}`}
+    >
+      {large.length > 0 ? (
+        <div className={`grid gap-4 ${large.length > 1 ? 'lg:grid-cols-2' : ''}`}>
+          {large.map((stage) => (
+            <StageCard key={stage.slug} stage={stage} branch={branch.label} large wide={large.length === 1} />
+          ))}
+        </div>
+      ) : null}
+      {rest.length > 0 ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {rest.map((stage) => (
+            <StageCard key={stage.slug} stage={stage} branch={branch.label} />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
 
 function StageCard({
   stage,
+  branch,
   large = false,
   wide = false,
 }: {
   stage: Stage
+  /** Both branches have a Foundation, a Qualifier…: the branch keeps each card's words its own. */
+  branch: string
   large?: boolean
   /** The only large card in its row, with the width to use. */
   wide?: boolean
@@ -112,8 +124,11 @@ function StageCard({
   return (
     <article className="relative flex h-full flex-col overflow-hidden rounded-card bg-surface p-5">
       <div className="flex items-center gap-3">
-        <Art src={stage.icon} size={large ? 64 : 52} />
-        <h3 className={`${large ? 'text-section' : 'text-card'} leading-tight font-medium text-ink`}>{stage.name}</h3>
+        <Art src={stage.icon} size={large ? 64 : 52} alt={stage.name} />
+        <h3 className={`${large ? 'text-section' : 'text-card'} leading-tight font-medium text-ink`}>
+          {stage.name}
+          <span className="sr-only"> — {branch}</span>
+        </h3>
       </div>
 
       <ul className={`mt-4 flex flex-wrap gap-2 ${large ? (wide ? 'max-w-2xl pr-2' : 'max-w-[28rem] pr-2') : ''}`}>
@@ -124,6 +139,11 @@ function StageCard({
               className="inline-flex max-w-full rounded-control border border-rule px-2.5 py-1 text-meta leading-snug text-ink-muted transition-colors hover:border-rule-strong hover:text-ink"
             >
               {subject.name}
+              {/* The same subject is listed under several stages; the words say which one this opens. */}
+              <span className="sr-only">
+                {' '}
+                — {stage.name}, {branch}
+              </span>
             </Link>
           </li>
         ))}
@@ -134,6 +154,7 @@ function StageCard({
           <div className="mt-auto pt-6">
             <Link href={stage.href} className={buttonClass('primary', 'md')}>
               Explore {stage.name}
+              <span className="sr-only"> — {branch}</span>
               <ArrowRight size={15} aria-hidden="true" />
             </Link>
           </div>
@@ -141,7 +162,7 @@ function StageCard({
           <div aria-hidden className="pointer-events-none absolute right-4 bottom-4 hidden items-end sm:flex">
             {stage.subjects.slice(0, 3).map((subject, i) => (
               <span key={subject.slug} className={i > 0 ? '-ml-3' : ''} style={{ transform: `translateY(${i % 2 ? -10 : 0}px)` }}>
-                <Art src={subject.icon} size={64} />
+                <Art src={subject.icon} size={64} alt={subject.name} />
               </span>
             ))}
           </div>
@@ -151,7 +172,7 @@ function StageCard({
           href={stage.href}
           className="mt-auto flex items-center gap-1 pt-5 text-meta text-ink underline-offset-4 hover:underline"
         >
-          Explore
+          Explore<span className="sr-only"> {stage.name} — {branch}</span>
           <CaretRight size={13} aria-hidden="true" />
         </Link>
       )}
