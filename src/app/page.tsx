@@ -6,7 +6,6 @@ import { isSupabaseConfigured } from '@/lib/env'
 import { artFor } from '@/lib/art'
 import { formatCount } from '@/lib/format'
 import { getSeoCatalogue, type PaperEntry } from '@/lib/seo/catalogue'
-import { getVideoIndex } from '@/lib/seo/video-solutions'
 import { pageMetadata } from '@/lib/seo/metadata'
 import { webPage } from '@/lib/seo/jsonld'
 import { listOf, shortName, sittingDate, termName, yearSpan } from '@/lib/seo/names'
@@ -42,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     ...pageMetadata({
       title: titles.home(),
-      description: `Free IITM BS PYQs with solutions, answer keys and video solutions: ${formatCount(papers.length)} papers for ${withPapers} subjects, for quiz practice.`,
+      description: `Free IITM BS PYQs with solutions and answer keys: ${formatCount(papers.length)} papers for ${withPapers} subjects, for quiz practice and mock tests.`,
       path: '/',
     }),
     // The home page carries the full brand whatever the length.
@@ -64,8 +63,6 @@ export default async function HomePage() {
   const subjects = catalogue.subjects.filter((subject) => subject.paperCount > 0)
   const allYears = [...new Set(papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))]
   const questions = papers.reduce((sum, paper) => sum + paper.questionCount, 0)
-  // Video solutions are mentioned only once there is one to watch.
-  const hasVideos = (await getVideoIndex()).all.length > 0
 
   const exams = examTypes
     .map((exam) => ({ exam, papers: papers.filter((paper) => paper.examType.id === exam.id) }))
@@ -121,8 +118,8 @@ export default async function HomePage() {
         <>
           Every Qualifier, Quiz 1, Quiz 2 and End Term paper of the IIT Madras BS degree: {formatCount(papers.length)}{' '}
           papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)} — every
-          question with its solution and answer key,{hasVideos ? <> video solutions on each question&rsquo;s page,</> : null}{' '}
-          and every paper ready for quiz practice as a timed mock test. Free.
+          question with its solution and answer key, and every paper ready for quiz practice as a timed mock test. Free,
+          with a Google sign-in.
         </>
       ),
     },
@@ -132,7 +129,8 @@ export default async function HomePage() {
         <>
           On Quiz Space: {formatCount(papers.length)} IIT Madras BS papers — Qualifier, Quiz 1, Quiz 2 and End Term — for{' '}
           {subjects.length} subjects of the Data Science and Electronic Systems degrees, {yearSpan(allYears)}. Pick a
-          subject or an exam above; every paper opens with its questions and answer key.
+          subject or an exam above. Every paper opens with its first questions; sign in with Google to see all of them
+          with the answer key.
         </>
       ),
     },
@@ -140,19 +138,9 @@ export default async function HomePage() {
       q: 'Are there IITM BS PYQs with solutions?',
       a: (
         <>
-          Yes. Every question shows its solution — the correct option or value from IIT Madras&rsquo;s answer key — on
-          its paper and on its own page, and the video solution for a question plays on that question&rsquo;s page.
-          Reading the papers, questions and answer keys needs no account. Timed mock tests, checking answers while you
-          practise and saving attempts are free too, with a Google sign-in.
-        </>
-      ),
-    },
-    {
-      q: 'Where are the IITM BS PYQ video solutions?',
-      a: (
-        <>
-          On each question&rsquo;s own page, right under its answer. Open any paper, pick a question, and its video
-          solution is there with the question and the answer key.
+          Yes. Every question has its solution — the correct option or value from IIT Madras&rsquo;s answer key — and
+          its explanation where one has been written, in learning mode. The first questions of every paper are open to
+          everyone; the whole paper, its answers, the timed mock test and your saved attempts need a free Google sign-in.
         </>
       ),
     },
