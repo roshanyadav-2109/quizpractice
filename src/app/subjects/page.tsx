@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = pageMetadata({
   title: 'All IITM BS Subjects: PYQs with Solutions & Answer Keys',
   description:
-    'Every IIT Madras BS subject with previous year question papers, solutions and video solutions — Data Science and Electronic Systems, Foundation to degree.',
+    'Every IIT Madras BS subject with previous year question papers, solutions and answer keys — Data Science and Electronic Systems, Foundation to degree.',
   path: '/subjects',
 })
 
