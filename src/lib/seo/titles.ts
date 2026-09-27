@@ -37,7 +37,8 @@ function programShort(program: Pick<Program, 'name' | 'short_name'>): string {
 }
 
 export const titles = {
-  home: () => 'IITM BS PYQ Practice: Quiz 1, Quiz 2, End Term & Qualifier Papers',
+  // Under 60 characters with " | Quiz Space": the whole title shows in results.
+  home: () => 'IITM BS PYQ: Quiz, End Term & Qualifier Papers',
   homeHeading: () => 'IITM BS PYQs — every Quiz 1, Quiz 2, End Term and Qualifier paper, with answers',
 
   program(program: Pick<Program, 'name' | 'short_name'>, courses: number): string {
@@ -54,7 +55,8 @@ export const titles = {
     // As many subject names as fit a results-page title.
     const names: string[] = []
     for (const subject of subjects.map(shortName)) {
-      if (`${base}: ${[...names, subject].join(', ')}`.length > 62) break
+      // A long name that does not fit is skipped, not the end of the list.
+      if (`${base}: ${[...names, subject].join(', ')}`.length > 60) continue
       names.push(subject)
     }
     return names.length > 0 ? `${base}: ${names.join(', ')}` : base
@@ -66,7 +68,7 @@ export const titles = {
     const short = shortName(subject)
     const list = listOf(exams.map((exam) => exam.name)).replace(/ and ([^,]*)$/, ' & $1')
     const withPapers = `${short} PYQ IITM BS: ${list} Papers`
-    return withPapers.length <= 64 ? withPapers : `${short} PYQ IITM BS: ${list}`
+    return withPapers.length <= 60 ? withPapers : `${short} PYQ IITM BS: ${list}`
   },
   subjectHeading(subject: Named): string {
     const short = shortName(subject)
