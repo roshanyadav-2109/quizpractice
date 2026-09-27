@@ -693,6 +693,12 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
     )
     const b = listed.find((row) => row.question_id === ID.qB)
     const c = listed.find((row) => row.question_id === ID.qC)
+    const videos = await rows<{ question_id: string; video_url: string }>(`select question_id, video_url from public.public_video_solutions()`)
+    check(
+      'anon: public_video_solutions lists only questions with an approved video',
+      videos.every((row) => typeof row.video_url === 'string' && row.video_url.length > 0),
+      videos,
+    )
     check(
       'anon: public_question_index gives copies one canonical, with their text, and skips drafts',
       Boolean(b && c && b.canonical_id === c.canonical_id && b.substance > 0 && b.text_blocks.join(' ').includes('normal form')) &&
@@ -706,7 +712,7 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   await actAsOwner()
   const anonAllowed = [
     'active_students_by_subject', 'can_teach_question', 'is_admin', 'is_staff', 'is_teacher', 'popular_searches',
-    'public_question_copies', 'public_question_index', 'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats',
+    'public_question_copies', 'public_question_index', 'public_video_solutions', 'published_set_counts', 'question_peer_stats', 'search_questions', 'set_peer_stats',
     'solutions_for_question',
   ]
   const authAllowed = [
