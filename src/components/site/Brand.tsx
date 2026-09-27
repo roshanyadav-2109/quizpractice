@@ -10,7 +10,7 @@ export function BrandLogo() {
     <span className="flex items-center">
       <Image
         src="/brand/quizspace-mark.png"
-        alt=""
+        alt="Q"
         width={34}
         height={34}
         unoptimized
@@ -37,7 +37,8 @@ export function ProductBy({ className = '' }: { className?: string }) {
       >
         <Image
           src="/brand/unknown-iitians.png"
-          alt=""
+          alt="Unknown IITians logo"
+          aria-hidden="true"
           width={18}
           height={18}
           unoptimized
