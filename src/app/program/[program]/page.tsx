@@ -69,7 +69,7 @@ export default async function ProgramHub({ params }: { params: Params }) {
       />
       <HubHeader
         crumbs={[{ label: 'Home', href: '/' }, { label: name }]}
-        icon={art ? <Art src={art} size={56} /> : undefined}
+        icon={art ? <Art src={art} size={56} alt={name} /> : undefined}
         eyebrow={program.program.name}
         title={titles.programHeading(program.program, subjects.length)}
         lead={
