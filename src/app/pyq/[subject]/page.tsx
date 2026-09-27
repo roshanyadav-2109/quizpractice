@@ -8,6 +8,8 @@ import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
 import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
+import { getVideoIndex } from '@/lib/seo/video-solutions'
+import { VideoSolutionList } from '@/components/seo/VideoSolutionList'
 import { formatCount } from '@/lib/format'
 import { absolute } from '@/lib/seo/site'
 import { artFor } from '@/lib/art'
@@ -49,7 +51,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const exams = data.node.exams.map((exam) => exam.examType.name)
   return pageMetadata({
     title: titles.subject(subject, data.node.exams.map((exam) => exam.examType)),
-    description: `${plural(data.node.paperCount, 'free IITM BS ' + short + ' previous year paper')} (${listOf(exams)}), ${yearSpan(data.node.years)}, ${formatCount(data.node.questionCount)} questions with answer keys. Read each ${subject.name} paper or take it as a timed mock test.`,
+    description: `${plural(data.node.paperCount, `IITM BS ${short} PYQ`)} with solutions: ${listOf(exams)} papers, ${yearSpan(
+      data.node.years,
+    )}, with answer keys, video solutions and free mock tests for ${subject.name}.`,
     path: data.node.path,
   })
 }
@@ -60,6 +64,7 @@ export default async function SubjectHub({ params }: { params: Params }) {
   const { catalogue, node } = data
   const { subject, level, program } = node
   const short = shortName(subject)
+  const videos = (await getVideoIndex()).bySubject.get(subject.id) ?? []
   const programNode = catalogue.programs.find((entry) => entry.program.id === program.id)
   const levelNode = programNode?.levels.find((entry) => entry.level.id === level.id)
   const programLabel = program.short_name ?? program.name
@@ -94,9 +99,9 @@ export default async function SubjectHub({ params }: { params: Params }) {
   const lead = (
     <p>
       Quiz Space has <strong className="font-medium text-ink">{plural(node.paperCount, `${short} previous year paper`)}</strong>{' '}
-      from the IIT Madras BS {programLabel} programme — {breakdown} — sat {termRange(terms)}. Every paper
-      shows its questions with the answer key, and each can be taken as a timed mock test on the real exam
-      screen. Free, no sign-up needed.
+      from the IIT Madras BS {programLabel} programme — {breakdown} — sat {termRange(terms)}: the whole {short} question
+      bank of {formatCount(node.questionCount)} questions, each with its solution from the answer key and a video solution
+      on its own page. Every paper can be taken as a timed mock test on the real exam screen. Free, no sign-up needed.
       {aliases.length > 0 ? (
         <span className="mt-2 block text-meta text-ink-faint">
           Also searched as {aliases.join(', ')}
@@ -125,11 +130,30 @@ export default async function SubjectHub({ params }: { params: Params }) {
       ),
     },
     {
-      q: `Are the ${short} PYQs free, and do they have answers?`,
+      q: `Are there ${short} PYQs with solutions?`,
       a: (
         <>
-          Yes. Every paper is free to read and practise, with the correct option marked for each question. Signing
-          in with Google is only needed to save your attempts and see your analysis.
+          Yes. Every {short} question shows its solution — the correct option or value from IIT Madras&rsquo;s answer
+          key — on its paper and on its own page. It is all free; signing in with Google only saves your attempts and
+          analysis.
+        </>
+      ),
+    },
+    {
+      q: `Where are the ${short} PYQ video solutions?`,
+      a: (
+        <>
+          Each video solution plays on its question&rsquo;s own page, right under the answer. Open a {short} paper, pick a
+          question, and its video solution is there with the question and the answer key.
+        </>
+      ),
+    },
+    {
+      q: `Is there a ${short} answer key?`,
+      a: (
+        <>
+          Yes — the official answer key of every {short} paper is built into its page: each question marks its correct
+          option, or gives the value for a numerical answer.
         </>
       ),
     },
@@ -246,7 +270,7 @@ export default async function SubjectHub({ params }: { params: Params }) {
               </Link>
             </div>
             <p className="mb-4 max-w-[72ch] text-ui text-ink-muted">
-              {plural(exam.papers.length, `${short} ${exam.examType.name} paper`)} from{' '}
+              {plural(exam.papers.length, `${short} ${exam.examType.name} paper`)} with solutions from{' '}
               {yearSpan(exam.papers.flatMap((paper) => (paper.term ? [paper.term.year] : [])))}.
               {fact ? ` ${fact.scope}` : ''}
             </p>
@@ -261,6 +285,18 @@ export default async function SubjectHub({ params }: { params: Params }) {
           </section>
         )
       })}
+
+      <section className="mt-12" aria-labelledby="solutions">
+        <h2 id="solutions" className="text-[1.375rem] leading-tight font-medium text-ink">
+          {short} PYQ solutions, answer keys and video solutions
+        </h2>
+        <p className="mt-2 max-w-[72ch] text-ui leading-relaxed text-ink-muted">
+          Every {short} question comes with its solution from the official answer key, on the paper and on the
+          question&rsquo;s own page. Video solutions play on each question&rsquo;s page, beside its answer
+          {videos.length > 0 ? ` — ${plural(videos.length, `${short} question`)} with a video solution so far:` : '.'}
+        </p>
+        <VideoSolutionList videos={videos} />
+      </section>
 
       <Faq className="mt-12" items={faq} />
 
