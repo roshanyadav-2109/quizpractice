@@ -139,6 +139,9 @@ export function RecordPanel({
   const [warned, setWarned] = useState(false)
   const [count, setCount] = useState<number | null>(null)
   const [rasterWanted, setRasterWanted] = useState(false)
+  // In the browser's full screen only the full-screen element is drawn: the
+  // live preview (and the webcam in it) must be inside it to stay visible.
+  const [fullscreenHost, setFullscreenHost] = useState<Element | null>(null)
   // The card's pictures are made as soon as the board is on screen, so the
   // question can go on the board at once, before any recording.
   const rasterOn = rasterWanted || active
@@ -163,6 +166,12 @@ export function RecordPanel({
     setPhaseState(next)
     onPhase(next)
   }
+
+  useEffect(() => {
+    const onChange = () => setFullscreenHost(document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
 
   // A take left unfinished on an earlier visit, offered back.
   useEffect(() => {
@@ -668,7 +677,7 @@ export function RecordPanel({
                 <RasterSource question={question} hideLabels={orderVaries} plainRef={plainRef} answerRef={answerRef} />
               ) : null}
             </>,
-            document.body,
+            fullscreenHost ?? document.body,
           )
         : null}
     </section>

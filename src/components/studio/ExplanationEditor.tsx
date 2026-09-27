@@ -688,6 +688,9 @@ function SketchEditor({ block, disabled, onChange }: { block: SketchBlock; disab
  * drawing (vectors, no image upload), with the description students who
  * cannot see it will hear.
  */
+/** The page picker's value for adding every board page at once. */
+const ALL_PAGES = -1
+
 export function InsertBoardPage({
   boardRef,
   questionNumber,
@@ -728,6 +731,10 @@ export function InsertBoardPage({
   function insert() {
     const board = boardRef.current
     if (!board) return
+    if (page === ALL_PAGES) {
+      insertAll()
+      return
+    }
     const target = board.pages()[page]
     if (!target || pageIsEmpty(target)) {
       setError('That board page is empty. Draw on it in the Board & record tab first.')
@@ -746,6 +753,38 @@ export function InsertBoardPage({
       dialog.current?.close()
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'That page could not be added.')
+    }
+  }
+
+  /** Every page with something on it, in order, as one sketch each. */
+  function insertAll() {
+    const board = boardRef.current
+    if (!board) return
+    if (!alt.trim()) {
+      setError('Describe what the drawings show, in a sentence.')
+      return
+    }
+    const filled = board
+      .pages()
+      .map((one, index) => ({ one, index }))
+      .filter(({ one }) => !pageIsEmpty(one))
+    if (filled.length === 0) {
+      setError('Every board page is empty. Draw on the board in the Board & record tab first.')
+      return
+    }
+    try {
+      const blocks = filled.map(({ index }, n) => {
+        const sketch = board.toSketch(index, filled.length > 1 ? `${alt.trim()} (page ${n + 1} of ${filled.length})` : alt)
+        const withCaption: SketchBlock =
+          n === 0 && caption.trim() ? { ...sketch, caption: caption.trim().slice(0, 2000) } : sketch
+        const checked = sketchBlockSchema.safeParse(withCaption)
+        if (!checked.success) throw new Error(checked.error.issues[0]?.message ?? `Page ${index + 1} could not be added.`)
+        return checked.data
+      })
+      for (const block of blocks) onInsert(block)
+      dialog.current?.close()
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'The pages could not be added.')
     }
   }
 
@@ -781,6 +820,7 @@ export function InsertBoardPage({
                 onChange={(event) => setPage(Number(event.target.value))}
                 className="h-8 rounded-control border border-rule bg-surface px-2 text-meta text-ink"
               >
+                <option value={ALL_PAGES}>All pages ({pages})</option>
                 {Array.from({ length: pages }, (_, index) => (
                   <option key={index} value={index}>
                     {index + 1}

@@ -247,6 +247,18 @@ export function Studio({
   const [take, setTake] = useState<Take | null>(null)
   /** YouTube has the take: it can go without asking. */
   const [takeSaved, setTakeSaved] = useState(false)
+
+  // A finished take is reviewed in the normal layout, not over the board.
+  useEffect(() => {
+    if (!take || !fullBoard) return
+    const leave = () => {
+      setFullBoard(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    // Deferred a frame: leaving full screen is a response to the take arriving.
+    const frame = requestAnimationFrame(leave)
+    return () => cancelAnimationFrame(frame)
+  }, [take, fullBoard])
   const [boardNotice, setBoardNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
 
   // The hold on the question's group.
@@ -726,11 +738,16 @@ export function Studio({
                 aria-labelledby="tab-board"
                 hidden={tab !== 'board'}
                 className={
-                  fullBoard
-                    ? 'fixed inset-0 z-50 flex w-full flex-col gap-3 overflow-y-auto bg-surface p-3 sm:p-4'
-                    : 'flex w-full flex-col gap-4 p-4 sm:p-6'
+                  fullBoard ? 'fixed inset-0 z-50 w-full bg-white' : 'flex w-full flex-col gap-4 p-4 sm:p-6'
                 }
               >
+                <div
+                  className={
+                    fullBoard
+                      ? 'absolute bottom-3 left-3 z-20 max-h-[45dvh] w-[min(560px,calc(100vw-1.5rem))] overflow-y-auto rounded-card shadow-[0_10px_30px_-12px_rgba(12,10,9,0.4)]'
+                      : 'contents'
+                  }
+                >
                 <RecordPanel
                   question={question}
                   orderVaries={orderVaries}
@@ -742,6 +759,7 @@ export function Studio({
                   onActivity={touch}
                   onCardReady={onCardReady}
                 />
+                </div>
 
                 {take ? (
                   <ReviewPanel
@@ -786,7 +804,13 @@ export function Studio({
                   </ReviewPanel>
                 ) : null}
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className={
+                    fullBoard
+                      ? 'absolute top-3 right-3 z-20 flex max-w-[min(420px,calc(100vw-1.5rem))] flex-wrap items-center justify-end gap-1.5 rounded-card bg-surface/95 p-1.5 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]'
+                      : 'flex flex-wrap items-center gap-2'
+                  }
+                >
                   <QuestionOnBoard boardRef={boardRef} ready={cardReady} onResult={setBoardNotice} />
                   <PinFigure boardRef={boardRef} question={question} onResult={setBoardNotice} />
                   <InsertBoardPage
@@ -800,7 +824,7 @@ export function Studio({
                     type="button"
                     onClick={toggleFullBoard}
                     aria-pressed={fullBoard}
-                    className={`${buttonClass(fullBoard ? 'primary' : 'outline', 'sm')} ml-auto`}
+                    className={`${buttonClass(fullBoard ? 'primary' : 'outline', 'sm')} ${fullBoard ? '' : 'ml-auto'}`}
                   >
                     {fullBoard ? <CornersIn size={16} aria-hidden="true" /> : <CornersOut size={16} aria-hidden="true" />}
                     {fullBoard ? 'Exit full screen' : 'Full screen'}
@@ -821,16 +845,18 @@ export function Studio({
                 </div>
 
                 {/* As wide as the column allows, but never taller than the screen can show whole. */}
-                <div
-                  className="mx-auto w-full"
-                  style={{
-                    maxWidth: fullBoard
-                      ? 'max(560px, calc((100dvh - 13rem) * 16 / 9))'
-                      : 'max(560px, calc((100dvh - 19rem) * 16 / 9))',
-                  }}
-                >
-                  <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} />
-                </div>
+                {fullBoard ? (
+                  // The page as large as the screen allows: full width on a 16:9 screen.
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div style={{ width: 'min(100vw, calc(100dvh * 16 / 9))' }}>
+                      <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} layout="overlay" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mx-auto w-full" style={{ maxWidth: 'max(560px, calc((100dvh - 19rem) * 16 / 9))' }}>
+                    <Whiteboard handleRef={boardRef} storageKey={`studio:${question.id}`} />
+                  </div>
+                )}
               </section>
             </div>
           </main>

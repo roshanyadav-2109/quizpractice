@@ -116,8 +116,9 @@ function createBoardStore(): BoardStore {
 export function Whiteboard({
   handleRef,
   className = '',
-  storageKey,
-}: {
+  storageKey, layout = 'stacked' }: {
+  /** 'overlay': the toolbar and page strip float over a board that fills its box (full screen). */
+  layout?: 'stacked' | 'overlay'
   handleRef?: Ref<WhiteboardHandle>
   className?: string
   storageKey?: string
@@ -187,17 +188,26 @@ export function Whiteboard({
   const page = state.pages[state.current]
   const cursor = state.tool === 'eraser' || state.tool === 'laser' ? 'cursor-none' : 'cursor-crosshair'
 
-  return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <BoardToolbar
-        state={state}
-        dispatch={store.dispatch}
-        penSeen={penSeen}
-        fingerDraw={fingerDraw}
-        onFingerDrawChange={setFingerDraw}
-      />
+  // Full screen: the page fills the screen and the toolbar and page strip
+  // float over it, so no height goes to anything but the board.
+  const overlay = layout === 'overlay'
 
-      <div ref={stageRef} className="relative aspect-video w-full overflow-hidden rounded-control border border-rule bg-white">
+  return (
+    <div className={overlay ? `relative ${className}` : `flex flex-col gap-2 ${className}`}>
+      <div className={overlay ? 'absolute top-2 left-1/2 z-10 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-card bg-surface/95 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]' : ''}>
+        <BoardToolbar
+          state={state}
+          dispatch={store.dispatch}
+          penSeen={penSeen}
+          fingerDraw={fingerDraw}
+          onFingerDrawChange={setFingerDraw}
+        />
+      </div>
+
+      <div
+        ref={stageRef}
+        className={`relative aspect-video w-full overflow-hidden bg-white ${overlay ? '' : 'rounded-control border border-rule'}`}
+      >
         <canvas
           ref={canvasRef}
           role="img"
@@ -210,7 +220,9 @@ export function Whiteboard({
         ))}
       </div>
 
-      <PageStrip pages={state.pages} current={state.current} images={painter.images} dispatch={store.dispatch} />
+      <div className={overlay ? 'absolute bottom-2 left-1/2 z-10 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-card bg-surface/95 px-2 shadow-[0_6px_24px_-10px_rgba(12,10,9,0.35)]' : ''}>
+        <PageStrip pages={state.pages} current={state.current} images={painter.images} dispatch={store.dispatch} />
+      </div>
     </div>
   )
 }

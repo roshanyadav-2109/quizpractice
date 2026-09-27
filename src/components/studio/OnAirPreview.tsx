@@ -122,7 +122,7 @@ export function OnAirPreview({
 
   return (
     <div
-      className={`fixed z-40 ${CORNER_CLASS[corner]} ${shown ? '' : 'hidden'} rounded-card border border-rule bg-surface p-1.5`}
+      className={`fixed z-[70] ${CORNER_CLASS[corner]} ${shown ? '' : 'hidden'} rounded-card border border-rule bg-surface p-1.5`}
       style={{ width: width + 14 }}
       role="region"
       aria-label="What is being recorded"
