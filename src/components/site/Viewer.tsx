@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from 'react'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 
 /**
  * Who is looking at the page, known in the browser rather than on the server.
@@ -60,6 +59,14 @@ const STORAGE_KEY = 'qs:viewer'
 const STALE_MS = 15_000
 
 const Context = createContext<ViewerContext>({ ...EMPTY, reload: () => {} })
+
+/** Sent on window when someone has just signed in, so the viewer starts watching the session. */
+export const AUTH_EVENT = 'qs:signed-in'
+
+/** Whether Supabase has left a session cookie ("sb-<ref>-auth-token", maybe split into .0, .1…). */
+function hasSessionCookie(): boolean {
+  return document.cookie.split(/;\s*/).some((cookie) => /^sb-[^=]+-auth-token(\.\d+)?=./.test(cookie))
+}
 
 export function useViewer(): ViewerContext {
   return useContext(Context)
@@ -112,23 +119,47 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    const supabase = createClient()
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        signedIn.current = false
-        hold(null)
+    let unsubscribe: (() => void) | null = null
+    let stopped = false
+
+    // The Supabase client is a large bundle and most visitors — and every
+    // crawler — never sign in. It is loaded only when the browser already
+    // holds a session, or once someone signs in (the sign-in dialog says so
+    // with an AUTH_EVENT); everyone else is simply signed out.
+    async function watch() {
+      if (unsubscribe || stopped) return
+      if (!hasSessionCookie()) {
         setState(SIGNED_OUT)
         return
       }
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        signedIn.current = true
-        // Paint what this tab already knew at once; the fresh copy follows.
-        const held = event === 'INITIAL_SESSION' ? readHeld() : null
-        if (held) setState(held)
-        void load()
-      }
-    })
-    return () => data.subscription.unsubscribe()
+      const { createClient } = await import('@/lib/supabase/client')
+      if (stopped || unsubscribe) return
+      const { data } = createClient().auth.onAuthStateChange((event, session) => {
+        if (!session) {
+          signedIn.current = false
+          hold(null)
+          setState(SIGNED_OUT)
+          return
+        }
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          signedIn.current = true
+          // Paint what this tab already knew at once; the fresh copy follows.
+          const held = event === 'INITIAL_SESSION' ? readHeld() : null
+          if (held) setState(held)
+          void load()
+        }
+      })
+      unsubscribe = () => data.subscription.unsubscribe()
+    }
+
+    void watch()
+    const onAuth = () => void watch()
+    window.addEventListener(AUTH_EVENT, onAuth)
+    return () => {
+      stopped = true
+      window.removeEventListener(AUTH_EVENT, onAuth)
+      unsubscribe?.()
+    }
   }, [load])
 
   // A submitted paper changes a best score: pick it up on the next page.
