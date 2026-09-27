@@ -23,6 +23,26 @@ export const SITE = {
   language: 'en-IN',
 } as const
 
+export type SocialNetwork = 'youtube' | 'instagram' | 'linkedin' | 'telegram' | 'whatsapp' | 'medium' | 'linktree'
+
+/**
+ * Unknown IITians' own profiles — exactly those its Linktree and YouTube
+ * channel list (checked September 2026, each link opened and confirmed).
+ * Shown in the footer and named as sameAs in the structured data, so search
+ * engines and assistants connect the site to the channel students know.
+ * Add a network here only once its profile exists; a dead social link is
+ * worse than none.
+ */
+export const SOCIALS: { network: SocialNetwork; label: string; url: string }[] = [
+  { network: 'youtube', label: 'YouTube', url: 'https://www.youtube.com/@UnknownIITians' },
+  { network: 'instagram', label: 'Instagram', url: 'https://www.instagram.com/unknown_iitians/' },
+  { network: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/company/unknown-iitians/' },
+  { network: 'telegram', label: 'Telegram', url: 'https://t.me/bsdatascience_iitm' },
+  { network: 'whatsapp', label: 'WhatsApp channel', url: 'https://whatsapp.com/channel/0029VayHsVwIiRorIdVX9n1l' },
+  { network: 'medium', label: 'Medium', url: 'https://medium.com/@unknowniitians' },
+  { network: 'linktree', label: 'Linktree', url: 'https://linktr.ee/unknowniitians' },
+]
+
 /** The production origin, with no trailing slash. Canonicals always point here, even from a preview. */
 export const ORIGIN = publicEnv.siteUrl.replace(/\/+$/, '')
 
