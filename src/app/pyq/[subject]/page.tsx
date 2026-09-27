@@ -8,8 +8,6 @@ import { collectionPage, courseEntity } from '@/lib/seo/jsonld'
 import { listOf, plural, shortName, sittingDate, termName, termRange, yearSpan } from '@/lib/seo/names'
 import { examFact } from '@/lib/seo/exam-facts'
 import { paths } from '@/lib/seo/paths'
-import { getVideoIndex } from '@/lib/seo/video-solutions'
-import { VideoSolutionList } from '@/components/seo/VideoSolutionList'
 import { formatCount } from '@/lib/format'
 import { absolute } from '@/lib/seo/site'
 import { artFor } from '@/lib/art'
@@ -54,7 +52,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: titles.subject(subject, data.node.exams.map((exam) => exam.examType)),
     description: `${plural(data.node.paperCount, `IITM BS ${short} PYQ`)} with solutions: ${listOf(exams)} papers, ${yearSpan(
       data.node.years,
-    )}, with answer keys, video solutions and free mock tests for ${subject.name}.`,
+    )}, with answer keys and free mock tests for ${subject.name} after a Google sign-in.`,
     path: data.node.path,
   })
 }
@@ -74,7 +72,6 @@ export default async function SubjectHub({ params }: { params: Params }) {
   const { catalogue, node } = data
   const { subject, level, program } = node
   const short = shortName(subject)
-  const videos = (await getVideoIndex()).bySubject.get(subject.id) ?? []
   const programNode = catalogue.programs.find((entry) => entry.program.id === program.id)
   const levelNode = programNode?.levels.find((entry) => entry.level.id === level.id)
   const programLabel = program.short_name ?? program.name
@@ -110,9 +107,9 @@ export default async function SubjectHub({ params }: { params: Params }) {
     <p>
       Quiz Space has <strong className="font-medium text-ink">{plural(node.paperCount, `${short} previous year paper`)}</strong>{' '}
       from the IIT Madras BS {programLabel} programme — {breakdown} — sat {termRange(terms)}: the whole {short} question
-      bank of {formatCount(node.questionCount)} questions, each with its solution from the answer key and a video solution
-      on its own page. Every paper can also be taken as a free timed mock test on a screen laid out like the real exam,
-      with a Google sign-in.
+      bank of {formatCount(node.questionCount)} questions, each with its solution from the answer key. Every paper shows
+      its first questions to anyone; sign in with Google — it is free — to see whole papers with their answers, practise
+      them in learning mode or take them as timed mock tests on a screen laid out like the real exam.
       {aliases.length > 0 ? (
         <span className="mt-2 block text-ui text-ink-muted">
           Also searched as {aliases.join(', ')}
@@ -135,8 +132,8 @@ export default async function SubjectHub({ params }: { params: Params }) {
             : `All ${plural(node.paperCount, `${subject.name} paper`)} are on this page${
                 onlyExam ? ` — ${breakdown}` : `, grouped by exam: ${breakdown}`
               }.`}{' '}
-          Open any paper to read
-          it with answers, or start it as a timed mock test.
+          Open any paper to see its first questions, and sign in with Google to read it whole with answers or start
+          it as a timed mock test.
         </>
       ),
     },
@@ -144,18 +141,9 @@ export default async function SubjectHub({ params }: { params: Params }) {
       q: `Are there ${short} PYQs with solutions?`,
       a: (
         <>
-          Yes. Every {short} question shows its solution — the correct option or value from IIT Madras&rsquo;s answer
-          key — on its paper and on its own page. It is all free; the answers need no account, and a Google sign-in lets
-          you take timed mock tests, check answers while you practise and keep your attempts.
-        </>
-      ),
-    },
-    {
-      q: `Where are the ${short} PYQ video solutions?`,
-      a: (
-        <>
-          Each video solution plays on its question&rsquo;s own page, right under the answer. Open a {short} paper, pick a
-          question, and its video solution is there with the question and the answer key.
+          Yes. Every {short} question has its solution — the correct option or value from IIT Madras&rsquo;s answer
+          key — and its explanation where one has been written. It is free with a Google sign-in, which opens whole
+          papers with their answers, learning mode, timed mock tests and your saved attempts.
         </>
       ),
     },
@@ -163,8 +151,8 @@ export default async function SubjectHub({ params }: { params: Params }) {
       q: `Is there a ${short} answer key?`,
       a: (
         <>
-          Yes — the official answer key of every {short} paper is built into its page: each question marks its correct
-          option, or gives the value for a numerical answer.
+          Yes — the official answer key of every {short} paper is built in: after a Google sign-in, each question marks
+          its correct option, or gives the value for a numerical answer.
         </>
       ),
     },
@@ -305,13 +293,12 @@ export default async function SubjectHub({ params }: { params: Params }) {
         })}
 
         <section aria-labelledby="solutions">
-          <SeoHeading id="solutions">{short} PYQ solutions, answer keys and video solutions</SeoHeading>
+          <SeoHeading id="solutions">{short} PYQ solutions and answer keys</SeoHeading>
           <p>
-            Every {short} question comes with its solution from the official answer key, on the paper and on the
-            question&rsquo;s own page. Video solutions play on each question&rsquo;s page, beside its answer
-            {videos.length > 0 ? ` — ${plural(videos.length, `${short} question`)} with a video solution so far:` : '.'}
+            Every {short} question comes with its solution from the official answer key, and its explanation where one
+            has been written. Sign in with Google to see them: in learning mode, question by question, or after a timed
+            mock test, with every mark explained.
           </p>
-          <VideoSolutionList videos={videos} />
         </section>
 
         <Faq className="mt-12" items={faq} variant="accordion" />
