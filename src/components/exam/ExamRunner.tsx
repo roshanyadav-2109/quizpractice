@@ -638,7 +638,16 @@ export function ExamRunner(props: ExamRunnerProps) {
               ) : null}
             </div>
           </div>
-          {revealed && learning ? <SolutionVideoDock questionId={question.id} bounds={questionPane} column={questionColumn} /> : null}
+          {revealed && learning ? <SolutionVideoDock
+              questionId={question.id}
+              bounds={questionPane}
+              column={questionColumn}
+              caption={{
+                number: question.number,
+                // A short code where the subject's slug is one (DBMS), else its name.
+                subject: review ? null : /^[a-z0-9]{2,6}$/.test(meta.subjectSlug) ? meta.subjectSlug.toUpperCase() : meta.subjectName,
+              }}
+            /> : null}
           </div>
 
           {/* The CBT action bar, pinned under the question. We save as you go,

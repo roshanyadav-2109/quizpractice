@@ -34,24 +34,30 @@ interface Areas {
   column: RefObject<HTMLElement | null>
 }
 
-export function SolutionVideoDock({ questionId, ...areas }: { questionId: string } & Areas) {
+/** What the designed thumbnail says: the question's number and, where known, its subject. */
+interface Caption {
+  number: number
+  subject?: string | null
+}
+
+export function SolutionVideoDock({ questionId, ...rest }: { questionId: string; caption: Caption } & Areas) {
   return (
     <Suspense fallback={null}>
       {/* Keyed by question: moving on folds the frame and stops the video. */}
-      <Dock key={questionId} questionId={questionId} {...areas} />
+      <Dock key={questionId} questionId={questionId} {...rest} />
     </Suspense>
   )
 }
 
-function Dock({ questionId, ...areas }: { questionId: string } & Areas) {
+function Dock({ questionId, ...rest }: { questionId: string; caption: Caption } & Areas) {
   const solutions = use(loadSolutions(questionId))
   const url = solutions?.find((solution) => solution.video_url)?.video_url ?? null
   const video = url ? parseYouTubeUrl(url) : null
   if (!video) return null
-  return <Frame video={video} {...areas} />
+  return <Frame video={video} {...rest} />
 }
 
-function Frame({ video, bounds, column }: { video: YouTubeRef } & Areas) {
+function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption: Caption } & Areas) {
   const [open, setOpen] = useState(false)
   const [room, setRoom] = useState({ width: 960, height: 640, contentLeft: 0 })
 
@@ -100,7 +106,6 @@ function Frame({ video, bounds, column }: { video: YouTubeRef } & Areas) {
     Math.round(Math.min(room.width - GAP * 2, MAX_OPEN_W, ((room.height - GAP * 2 - HEADER_H) * 16) / 9)),
   )
   const openHeight = Math.round((openWidth * 9) / 16) + HEADER_H
-  const thumbnail = `https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`
   const embed = `${youTubeEmbedUrl(video)}${video.start ? '&' : '?'}autoplay=1&rel=0&modestbranding=1`
 
   return (
@@ -146,24 +151,7 @@ function Frame({ video, bounds, column }: { video: YouTubeRef } & Areas) {
           className="group flex h-full w-full flex-col text-left"
           style={{ padding: PAD, gap: PAD }}
         >
-          <span
-            className="relative w-full shrink-0 overflow-hidden rounded-[4px] bg-surface ring-1 ring-accent/20"
-            style={{ height: frameH }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- YouTube's own thumbnail, not a site image */}
-            <img
-              src={thumbnail}
-              alt=""
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-            />
-            <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white shadow-md transition-transform duration-200 group-hover:scale-110">
-                <Play size={14} weight="fill" />
-              </span>
-            </span>
-          </span>
+          <BoardThumbnail caption={caption} height={frameH} />
           <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-ink group-hover:text-accent" style={{ minHeight: textH }}>
             Watch the solution
           </span>
@@ -172,3 +160,60 @@ function Frame({ video, bounds, column }: { video: YouTubeRef } & Areas) {
     </div>
   )
 }
+
+/**
+ * The frame's picture, drawn rather than taken from the video: a page of the
+ * teacher's board — squared paper, the question's number written large with a
+ * marker stroke under it, the subject in the corner and a play button. It
+ * stays sharp at any size and costs no image request.
+ */
+function BoardThumbnail({ caption, height }: { caption: Caption; height: number }) {
+  // Everything scales with the frame, so a narrow card reads like a wide one.
+  const unit = Math.max(0.7, Math.min(1.4, height / 110))
+  const grid = Math.round(14 * unit)
+  return (
+    <span
+      aria-hidden="true"
+      className="relative block w-full shrink-0 overflow-hidden rounded-[4px] bg-white ring-1 ring-accent/20"
+      style={{
+        height,
+        backgroundImage: `linear-gradient(to right, rgba(29,78,216,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(29,78,216,0.07) 1px, transparent 1px)`,
+        backgroundSize: `${grid}px ${grid}px`,
+      }}
+    >
+      {caption.subject ? (
+        <span
+          className="absolute top-[7%] left-[6%] max-w-[70%] truncate rounded-[3px] bg-accent-soft px-1.5 py-0.5 font-medium tracking-[0.06em] text-accent uppercase"
+          style={{ fontSize: 9 * unit }}
+        >
+          {caption.subject}
+        </span>
+      ) : null}
+
+      <span className="absolute bottom-[14%] left-[6%] flex flex-col items-start">
+        <span className="relative leading-none font-semibold text-ink tabular-nums" style={{ fontSize: 34 * unit }}>
+          Q{caption.number}
+          {/* The marker stroke under the number, as a teacher would underline it. */}
+          <svg
+            viewBox="0 0 100 12"
+            preserveAspectRatio="none"
+            className="absolute -bottom-[0.28em] left-[-4%] h-[0.3em] w-[112%] text-accent"
+          >
+            <path d="M2 8 C 20 3, 45 11, 62 6 S 90 4, 98 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span className="mt-[0.55em] text-ink-muted" style={{ fontSize: 11 * unit }}>
+          solution
+        </span>
+      </span>
+
+      <span
+        className="absolute right-[7%] bottom-[12%] flex items-center justify-center rounded-full bg-accent text-white shadow-[0_6px_14px_-6px_rgba(29,78,216,0.8)] transition-transform duration-200 group-hover:scale-110"
+        style={{ width: 30 * unit, height: 30 * unit }}
+      >
+        <Play size={Math.round(13 * unit)} weight="fill" />
+      </span>
+    </span>
+  )
+}
+
