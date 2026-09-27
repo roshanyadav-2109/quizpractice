@@ -5,8 +5,11 @@ import { CornersIn, Play } from '@/components/ui/icons'
 import { parseYouTubeUrl, youTubeEmbedUrl, type YouTubeRef } from '@/lib/youtube/url'
 import { loadSolutions } from './LazySolutionPanel'
 
-/** The folded frame: a slip of a card that fits the empty end of the action bar. */
+/** The folded frame on a narrow pane, where there is no margin to sit in. */
 const FOLDED_W = 320
+/** The question column's width (max-w-4xl); the margin beside it is the dock's home. */
+const COLUMN_W = 896
+const MIN_MARGIN_W = 240
 const FOLDED_H = 84
 /** The open frame's own strip above the player. */
 const HEADER_H = 44
@@ -65,7 +68,14 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  const foldedWidth = Math.max(0, Math.min(FOLDED_W, room.width - GAP * 2))
+  // Folded, the frame fills the white margin left of the question column, so
+  // on a wide screen it covers nothing; where that margin is too thin, it is a
+  // fixed slip over the corner (the question keeps room below to scroll clear).
+  const margin = (room.width - Math.min(room.width, COLUMN_W)) / 2 - GAP * 2
+  const foldedWidth = Math.max(
+    0,
+    margin >= MIN_MARGIN_W ? Math.min(margin, 380) : Math.min(FOLDED_W, room.width - GAP * 2),
+  )
   // As wide as the pane allows, and short enough that the player never runs
   // off the top: 16:9 under the strip.
   const openWidth = Math.max(
@@ -132,7 +142,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
           </span>
           <span className="min-w-0">
             <span className="block text-ui font-semibold text-ink">Watch the solution</span>
-            <span className="block truncate text-meta text-ink/75">Popcorn optional, aha moment included.</span>
+            <span className="line-clamp-2 block text-meta leading-snug text-ink/75">Popcorn optional, aha moment included.</span>
           </span>
           <Squiggle />
         </button>
