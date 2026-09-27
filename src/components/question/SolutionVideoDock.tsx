@@ -18,8 +18,6 @@ const HEADER_H = 48
 /** Room kept between the frame and the edges of the question pane. */
 const GAP = 12
 const MAX_OPEN_W = 840
-/** A dark, screen-like card: it stands apart from the white page and runs straight into the player. */
-const SCREEN = 'linear-gradient(135deg, #292524 0%, #0c0a09 100%)'
 
 /**
  * The video solution, docked at the bottom left of the question pane, just
@@ -93,25 +91,25 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
 
   return (
     <div
-      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[14px] border border-white/10 text-white shadow-[0_22px_48px_-20px_rgba(12,10,9,0.7),0_2px_6px_-2px_rgba(12,10,9,0.25)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
-      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight, background: SCREEN }}
+      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[6px] border border-accent/25 bg-accent-soft text-ink shadow-[0_14px_36px_-18px_rgba(29,78,216,0.45),0_2px_5px_-2px_rgba(12,10,9,0.12)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
+      style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight }}
     >
       {open ? (
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 items-center gap-3 px-4" style={{ height: HEADER_H }}>
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-accent text-white">
               <Play size={12} weight="fill" aria-hidden="true" />
             </span>
             <p className="min-w-0 flex-1 truncate">
               <span className="text-ui font-semibold">Video solution</span>
-              <span className="ml-2 hidden text-meta text-white/50 sm:inline">Esc to fold away</span>
+              <span className="ml-2 hidden text-meta text-ink-muted sm:inline">Esc to fold away</span>
             </p>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Fold the video away"
               title="Fold away (Esc)"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-accent/10 hover:text-ink"
             >
               <CornersIn size={18} aria-hidden="true" />
             </button>
@@ -135,7 +133,7 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
           style={{ padding: PAD, gap: PAD }}
         >
           <span
-            className="relative w-full shrink-0 overflow-hidden rounded-[8px] bg-black ring-1 ring-white/15"
+            className="relative w-full shrink-0 overflow-hidden rounded-[4px] bg-surface ring-1 ring-accent/20"
             style={{ height: frameH }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- YouTube's own thumbnail, not a site image */}
@@ -144,15 +142,15 @@ function Frame({ video, bounds }: { video: YouTubeRef; bounds: RefObject<HTMLEle
               alt=""
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             />
             <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink shadow-lg transition-transform duration-200 group-hover:scale-110">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white shadow-md transition-transform duration-200 group-hover:scale-110">
                 <Play size={14} weight="fill" />
               </span>
             </span>
           </span>
-          <span className="flex items-center gap-1.5 px-0.5 text-ui leading-tight font-semibold text-white" style={{ minHeight: textH }}>
+          <span className="flex items-center px-0.5 text-ui leading-tight font-semibold text-ink group-hover:text-accent" style={{ minHeight: textH }}>
             Watch the solution
           </span>
         </button>
