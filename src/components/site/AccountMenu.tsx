@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { ChalkboardTeacher, Gauge, ShieldCheck, SignOut } from '@/components/ui/icons'
 
 /** "Roshan Singh" → "RS"; an email falls back to its first letter. */
@@ -103,6 +102,8 @@ export function AccountMenu({
 
   async function signOut() {
     setSigningOut(true)
+    // Loaded here rather than with the page: only someone signing out needs it now.
+    const { createClient } = await import('@/lib/supabase/client')
     await createClient().auth.signOut()
     setOpen(false)
     router.push('/')
