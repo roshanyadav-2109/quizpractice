@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     ...pageMetadata({
       title: titles.home(),
-      description: `Free IITM BS PYQs with answers: ${formatCount(papers.length)} Qualifier, Quiz 1, Quiz 2 and End Term papers for ${withPapers} subjects, as timed mock tests.`,
+      description: `Free IITM BS PYQs with solutions, answer keys and video solutions: ${formatCount(papers.length)} papers for ${withPapers} subjects, for quiz practice.`,
       path: '/',
     }),
     // The home page carries the full brand whatever the length.
@@ -122,19 +122,29 @@ export default async function HomePage() {
       ),
     },
     {
-      q: 'Are the IITM BS PYQs free, with answers?',
+      q: 'Are there IITM BS PYQs with solutions?',
       a: (
         <>
-          Yes. Every paper is free to read and to take as a mock test, and every question shows its answer key. A Google
-          sign-in is only needed to save your attempts, see your analysis and keep a mistake bank.
+          Yes. Every question shows its solution — the correct option or value from IIT Madras&rsquo;s answer key — on
+          its paper and on its own page, and the video solution for a question plays on that question&rsquo;s page.
+          All of it is free; a Google sign-in is only needed to save attempts and see your analysis.
         </>
       ),
     },
     {
-      q: 'Can I take an IITM BS mock test here?',
+      q: 'Where are the IITM BS PYQ video solutions?',
       a: (
         <>
-          Any paper can be taken as a timed mock test on a screen laid out like the real IITM exam: the same question
+          On each question&rsquo;s own page, right under its answer. Open any paper, pick a question, and its video
+          solution is there with the question and the answer key.
+        </>
+      ),
+    },
+    {
+      q: 'Can I do IITM BS quiz practice and mock tests here?',
+      a: (
+        <>
+          Yes — any paper can be taken as a timed mock test on a screen laid out like the real IITM exam: the same question
           palette, Save &amp; Next, Mark for Review and Clear Response. It is marked the moment you submit, with a
           question-by-question analysis.
         </>
@@ -194,8 +204,9 @@ export default async function HomePage() {
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-body text-ink-muted">
           Every Qualifier, Quiz 1, Quiz 2 and End Term paper of the IIT Madras BS degree: {formatCount(papers.length)}{' '}
-          papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)}. Read each
-          with its answer key, or take it as a timed mock test. Free.
+          papers and {formatCount(questions)} questions across {subjects.length} subjects, {yearSpan(allYears)} — every
+          question with its solution and answer key, video solutions on each question&rsquo;s page, and every paper
+          ready for quiz practice as a timed mock test. Free.
         </p>
 
         <form action="/search" method="get" role="search" className="mx-auto mt-7 flex max-w-2xl gap-2 text-left">
@@ -251,6 +262,19 @@ export default async function HomePage() {
                   </span>
                   <span className="block text-meta text-ink-faint tabular-nums">{formatCount(list.length)} papers</span>
                 </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      {/* ------------------------------------------------------------ Years */}
+      <Section title="PYQs by year">
+        <ul className="flex flex-wrap gap-2">
+          {[...allYears].sort((a, b) => b - a).map((year) => (
+            <li key={year}>
+              <Link href={paths.year(year)} className={buttonClass('outline', 'md')}>
+                IITM BS PYQ {year}
               </Link>
             </li>
           ))}
