@@ -110,13 +110,13 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
 
   return (
     <div
-      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[6px] border border-accent/25 bg-accent-soft text-ink shadow-[0_14px_36px_-18px_rgba(29,78,216,0.45),0_2px_5px_-2px_rgba(12,10,9,0.12)] transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
+      className="absolute bottom-3 left-3 z-20 overflow-hidden rounded-[6px] border border-[#0f766e]/25 bg-[#e6f4f1] text-ink transition-[width,height] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
       style={{ width: open ? openWidth : foldedWidth, height: open ? openHeight : foldedHeight }}
     >
       {open ? (
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 items-center gap-3 px-4" style={{ height: HEADER_H }}>
-            <span className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-accent text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-[#0f766e] text-white">
               <Play size={12} weight="fill" aria-hidden="true" />
             </span>
             <p className="min-w-0 flex-1 truncate">
@@ -128,7 +128,7 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
               onClick={() => setOpen(false)}
               aria-label="Fold the video away"
               title="Fold away (Esc)"
-              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-accent/10 hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-[#0f766e]/10 hover:text-ink"
             >
               <CornersIn size={18} aria-hidden="true" />
             </button>
@@ -152,7 +152,7 @@ function Frame({ video, bounds, column, caption }: { video: YouTubeRef; caption:
           style={{ padding: PAD, gap: PAD }}
         >
           <BoardThumbnail caption={caption} height={frameH} />
-          <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-ink group-hover:text-accent" style={{ minHeight: textH }}>
+          <span className="flex items-center px-0.5 text-ui leading-tight font-normal text-ink group-hover:text-[#0f766e]" style={{ minHeight: textH }}>
             Watch the solution
           </span>
         </button>
@@ -174,16 +174,16 @@ function BoardThumbnail({ caption, height }: { caption: Caption; height: number 
   return (
     <span
       aria-hidden="true"
-      className="relative block w-full shrink-0 overflow-hidden rounded-[4px] bg-white ring-1 ring-accent/20"
+      className="relative block w-full shrink-0 overflow-hidden rounded-[4px] bg-white ring-1 ring-[#0f766e]/20"
       style={{
         height,
-        backgroundImage: `linear-gradient(to right, rgba(29,78,216,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(29,78,216,0.07) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(to right, rgba(15,118,110,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,118,110,0.08) 1px, transparent 1px)`,
         backgroundSize: `${grid}px ${grid}px`,
       }}
     >
       {caption.subject ? (
         <span
-          className="absolute top-[7%] left-[6%] max-w-[70%] truncate rounded-[3px] bg-accent-soft px-1.5 py-0.5 font-medium tracking-[0.06em] text-accent uppercase"
+          className="absolute top-[7%] left-[6%] max-w-[70%] truncate rounded-[3px] bg-[#d5eee9] px-1.5 py-0.5 font-medium tracking-[0.06em] text-[#0f766e] uppercase"
           style={{ fontSize: 9 * unit }}
         >
           {caption.subject}
@@ -197,7 +197,7 @@ function BoardThumbnail({ caption, height }: { caption: Caption; height: number 
           <svg
             viewBox="0 0 100 12"
             preserveAspectRatio="none"
-            className="absolute -bottom-[0.28em] left-[-4%] h-[0.3em] w-[112%] text-accent"
+            className="absolute -bottom-[0.28em] left-[-4%] h-[0.3em] w-[112%] text-[#0f766e]"
           >
             <path d="M2 8 C 20 3, 45 11, 62 6 S 90 4, 98 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
           </svg>
@@ -208,7 +208,7 @@ function BoardThumbnail({ caption, height }: { caption: Caption; height: number 
       </span>
 
       <span
-        className="absolute right-[7%] bottom-[12%] flex items-center justify-center rounded-full bg-accent text-white shadow-[0_6px_14px_-6px_rgba(29,78,216,0.8)] transition-transform duration-200 group-hover:scale-110"
+        className="absolute right-[7%] bottom-[12%] flex items-center justify-center rounded-full bg-[#0f766e] text-white transition-transform duration-200 group-hover:scale-110"
         style={{ width: 30 * unit, height: 30 * unit }}
       >
         <Play size={Math.round(13 * unit)} weight="fill" />
