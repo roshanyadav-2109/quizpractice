@@ -1,5 +1,7 @@
+'use client'
+
 import Link from 'next/link'
-import { getMistakeBank } from '@/lib/queries'
+import { useViewer } from '@/components/site/Viewer'
 import { buttonClass } from '@/components/ui/primitives'
 import { ArrowCounterClockwise, ArrowRight } from '@/components/ui/icons'
 
@@ -7,11 +9,12 @@ const BATCH = 10
 
 /**
  * Under the home page search, for a signed-in student with questions still
- * wrong: one click straight into retrying them, ten at a time.
+ * wrong: one click straight into retrying them, ten at a time. Filled in by
+ * the browser — the home page itself is the same for everyone.
  */
-export async function MistakesCta() {
-  const due = (await getMistakeBank()).filter((m) => m.state !== 'fixed').length
-  if (due === 0) return null
+export function MistakesCta() {
+  const { status, mistakesDue: due } = useViewer()
+  if (status !== 'signed-in' || due === 0) return null
 
   return (
     <Link
