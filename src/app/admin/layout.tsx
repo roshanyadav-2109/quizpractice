@@ -20,6 +20,7 @@ const SECTIONS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: ROUTES.adminDuplicates, label: 'Duplicates' },
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/spotlight', label: 'Banners' },
+  { href: '/admin/payment-test', label: 'Payment test', adminOnly: true },
 ]
 
 /**
