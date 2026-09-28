@@ -8,6 +8,7 @@ import { SiteFooter } from '@/components/site/SiteFooter'
 import { AuthProvider } from '@/components/site/AuthDialog'
 import { OfflineBanner } from '@/components/site/OfflineBanner'
 import { RouteProgress } from '@/components/site/RouteProgress'
+import { GoogleAnalytics } from '@/components/site/GoogleAnalytics'
 import { ViewerProvider } from '@/components/site/Viewer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { ORIGIN, SITE } from '@/lib/seo/site'
@@ -113,6 +114,8 @@ export default function RootLayout({
         <OfflineBanner />
         {/* Vercel Web Analytics: page views, without cookies. Sends nothing in development. */}
         <Analytics />
+        {/* Google Analytics 4, on production only. */}
+        <GoogleAnalytics />
       </body>
     </html>
   )
