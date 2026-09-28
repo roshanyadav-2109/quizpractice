@@ -7,5 +7,6 @@ export function staticPages(): SitemapUrl[] {
     { loc: absolute('/about'), changefreq: 'monthly', priority: 0.5 },
     { loc: absolute('/privacy'), changefreq: 'yearly', priority: 0.2 },
     { loc: absolute('/terms'), changefreq: 'yearly', priority: 0.2 },
+    { loc: absolute('/refunds'), changefreq: 'yearly', priority: 0.2 },
   ]
 }
