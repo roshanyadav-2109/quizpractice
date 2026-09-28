@@ -1,28 +1,21 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { SHELL } from '@/components/site/Page'
+import { SocialLogo } from '@/components/site/SocialLogo'
 import { isSupabaseConfigured, publicEnv } from '@/lib/env'
 import { getSeoCatalogue } from '@/lib/seo/catalogue'
 import { shortName } from '@/lib/seo/names'
 import { paths } from '@/lib/seo/paths'
-import { SITE, SOCIALS, type SocialNetwork } from '@/lib/seo/site'
-import {
-  InstagramLogo,
-  LinkedinLogo,
-  LinktreeLogo,
-  MediumLogo,
-  TelegramLogo,
-  WhatsappLogo,
-  YoutubeLogo,
-} from '@/components/ui/icons'
+import { SITE, SOCIALS } from '@/lib/seo/site'
 
-const SOCIAL_ICONS: Record<SocialNetwork, typeof YoutubeLogo> = {
-  youtube: YoutubeLogo,
-  instagram: InstagramLogo,
-  linkedin: LinkedinLogo,
-  telegram: TelegramLogo,
-  whatsapp: WhatsappLogo,
-  medium: MediumLogo,
-  linktree: LinktreeLogo,
+/** One group of links under its title. */
+function Group({ label, title, children }: { label: string; title: ReactNode; children: ReactNode }) {
+  return (
+    <nav aria-label={label}>
+      <p className="text-card font-medium text-ink">{title}</p>
+      <ul className="mt-4 flex flex-col gap-3 text-ui text-ink-muted">{children}</ul>
+    </nav>
+  )
 }
 
 /**
@@ -56,13 +49,41 @@ export async function SiteFooter() {
   const foundation = programs[0]?.levels.find((level) => level.subjects.some((subject) => subject.paperCount > 0))
 
   return (
-    <footer className="border-t border-rule bg-surface">
-      <div className={`${SHELL} grid gap-8 py-10 text-meta sm:grid-cols-2 lg:grid-cols-4`}>
-        {exams.length > 0 ? (
-          <div>
-            <nav aria-label="PYQs by exam">
-              <p className="text-ui font-medium text-ink">PYQs by exam</p>
-              <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
+    <footer className="bg-surface-2">
+      <div className={`${SHELL} grid gap-12 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-16 lg:py-14`}>
+        {/* The brand, what the site is, and where else to find the team. */}
+        <div className="max-w-[26rem]">
+          <Link href="/" className="text-[1.5rem] leading-none font-semibold tracking-[-0.015em] text-ink">
+            Quiz Space
+          </Link>
+          <p className="mt-1.5 text-meta text-ink-muted">A product by {SITE.publisher}</p>
+          <p className="mt-5 text-ui leading-relaxed text-ink-muted">
+            Free previous year papers of the IIT Madras BS degree, with answers and timed mock tests.
+          </p>
+
+          <p className="mt-8 text-card font-medium text-ink">Follow {SITE.publisher}</p>
+          <ul aria-label={`${SITE.publisher} elsewhere`} className="mt-4 flex flex-wrap items-center gap-4">
+            {SOCIALS.map((social) => (
+              <li key={social.network}>
+                <a
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={social.label}
+                  className="flex transition-transform hover:-translate-y-0.5"
+                >
+                  <SocialLogo network={social.network} />
+                  <span className="sr-only">{social.label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-8 gap-y-12 lg:grid-cols-3">
+          <div className="flex flex-col gap-12">
+            {exams.length > 0 ? (
+              <Group label="PYQs by exam" title="PYQs by exam">
                 {exams.map((exam) => (
                   <li key={exam.id}>
                     <Link href={paths.exam(exam.slug)} className={link}>
@@ -75,39 +96,34 @@ export async function SiteFooter() {
                     All papers, newest first
                   </Link>
                 </li>
-              </ul>
-            </nav>
+              </Group>
+            ) : null}
+
             {years.length > 0 ? (
-              <nav aria-label="PYQs by year" className="mt-6">
-                <p className="text-ui font-medium text-ink">PYQs by year</p>
-                <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
-                  {years.map((year) => (
-                    <li key={year}>
-                      <Link href={paths.year(year)} className={link}>
-                        IITM BS PYQ {year}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+              <Group label="PYQs by year" title="PYQs by year">
+                {years.map((year) => (
+                  <li key={year}>
+                    <Link href={paths.year(year)} className={link}>
+                      IITM BS PYQ {year}
+                    </Link>
+                  </li>
+                ))}
+              </Group>
             ) : null}
           </div>
-        ) : null}
 
-        {programs.length > 0 ? (
-          <nav aria-label="Programmes">
-            <p className="text-ui font-medium text-ink">Programmes</p>
-            <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
+          {programs.length > 0 ? (
+            <Group label="Programmes" title="Programmes">
               {programs.flatMap((program) => [
                 <li key={program.program.id}>
-                  <Link href={program.path} className={link}>
+                  <Link href={program.path} className="text-ink transition-colors hover:text-accent">
                     {program.program.short_name ?? program.program.name} PYQs
                   </Link>
                 </li>,
                 ...program.levels
                   .filter((level) => level.subjects.some((subject) => subject.paperCount > 0))
                   .map((level) => (
-                    <li key={level.level.id} className="pl-3">
+                    <li key={level.level.id} className="border-l border-rule-strong pl-3">
                       <Link href={level.path} className={link}>
                         {level.level.name}
                         <span className="sr-only"> — {program.program.short_name ?? program.program.name}</span>
@@ -115,82 +131,59 @@ export async function SiteFooter() {
                     </li>
                   )),
               ])}
-            </ul>
-          </nav>
-        ) : null}
+            </Group>
+          ) : null}
 
-        {foundation ? (
-          <nav aria-label={`${foundation.level.name} subjects`}>
-            <p className="text-ui font-medium text-ink">{foundation.level.name} PYQs</p>
-            <ul className="mt-3 flex flex-col gap-2 text-ink-muted">
-              {foundation.subjects
-                .filter((subject) => subject.paperCount > 0)
-                .map((subject) => (
-                  <li key={subject.subject.id}>
-                    <Link href={subject.path} className={link}>
-                      {shortName(subject.subject)} PYQ
-                    </Link>
-                  </li>
-                ))}
+          <div className="flex flex-col gap-12">
+            {foundation ? (
+              <Group label={`${foundation.level.name} subjects`} title={`${foundation.level.name} PYQs`}>
+                {foundation.subjects
+                  .filter((subject) => subject.paperCount > 0)
+                  .map((subject) => (
+                    <li key={subject.subject.id}>
+                      <Link href={subject.path} className={link}>
+                        {shortName(subject.subject)} PYQ
+                      </Link>
+                    </li>
+                  ))}
+                <li>
+                  <Link href={paths.subjects()} className={link}>
+                    Every subject
+                  </Link>
+                </li>
+              </Group>
+            ) : null}
+
+            <Group label="About and policies" title={SITE.name}>
               <li>
-                <Link href={paths.subjects()} className={link}>
-                  Every subject
+                <Link href="/about" className={link}>
+                  About
                 </Link>
               </li>
-            </ul>
-          </nav>
-        ) : null}
-
-        <div>
-          <p className="text-ui font-medium text-ink">{SITE.name}</p>
-          <p className="mt-3 leading-relaxed text-ink-muted">
-            Free previous year papers of the IIT Madras BS degree, with answers and timed mock tests. An independent
-            study resource, not affiliated with IIT Madras.
-          </p>
-          <nav aria-label="About and policies" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-muted">
-            <Link href="/about" className={link}>
-              About
-            </Link>
-            <span aria-hidden="true" className="text-ink-faint">·</span>
-            <Link href="/privacy" className={link}>
-              Privacy
-            </Link>
-            <span aria-hidden="true" className="text-ink-faint">·</span>
-            <Link href="/terms" className={link}>
-              Terms
-            </Link>
-            <span aria-hidden="true" className="text-ink-faint">·</span>
-            <Link href="/refunds" className={link}>
-              Refunds
-            </Link>
-            {publicEnv.contactEmail ? (
-              <>
-                <span aria-hidden="true" className="text-ink-faint">·</span>
-                <a href={`mailto:${publicEnv.contactEmail}`} className={link}>
-                  Contact
-                </a>
-              </>
-            ) : null}
-          </nav>
-          <p className="mt-6 text-ui font-medium text-ink">Follow {SITE.publisher}</p>
-          <ul aria-label={`${SITE.publisher} elsewhere`} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-ink-muted">
-            {SOCIALS.map((social) => {
-              const Icon = SOCIAL_ICONS[social.network]
-              return (
-                <li key={social.network}>
-                  <a
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex min-h-6 items-center gap-2 ${link}`}
-                  >
-                    <Icon size={16} aria-hidden="true" className="shrink-0" />
-                    {social.label}
+              <li>
+                <Link href="/privacy" className={link}>
+                  Privacy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className={link}>
+                  Terms
+                </Link>
+              </li>
+              <li>
+                <Link href="/refunds" className={link}>
+                  Refunds
+                </Link>
+              </li>
+              {publicEnv.contactEmail ? (
+                <li>
+                  <a href={`mailto:${publicEnv.contactEmail}`} className={link}>
+                    Contact
                   </a>
                 </li>
-              )
-            })}
-          </ul>
+              ) : null}
+            </Group>
+          </div>
         </div>
       </div>
       {/* The scraper trap: invisible, out of the tab order, closed in robots.txt — a
