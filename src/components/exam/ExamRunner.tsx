@@ -234,16 +234,33 @@ export function ExamRunner(props: ExamRunnerProps) {
     [resultsById, learning, checked, responses, questions],
   )
 
+  // Signed out, only the paper's first questions are here; the rest are
+  // numbers on the palette. Opening one of them — from the palette, Next or
+  // the arrow keys — asks for a Google sign-in and lands on it afterwards.
+  const lastNumber = questions.at(-1)?.number ?? 0
+  const lockedNumbers =
+    locked && locked.total > questions.length
+      ? Array.from({ length: locked.total - questions.length }, (_, i) => lastNumber + 1 + i)
+      : []
+  const paletteQuestions = [...questions, ...lockedNumbers.map((number) => ({ id: `locked:${number}`, number }))]
+  const askToSignIn = (number: number) => openSignIn(`/practice/${setId}?mode=learning&q=${number}`)
+
   function goTo(next: number) {
     const target = questions[next]
-    if (!target) return
+    if (!target) {
+      if (next >= questions.length && lockedNumbers.length > 0) askToSignIn(lockedNumbers[0])
+      return
+    }
     setIndex(next)
     setVisited((current) => (current.has(target.id) ? current : new Set(current).add(target.id)))
     setDrawerOpen(false)
     scroller.current?.scrollTo({ top: 0 })
   }
 
-  const jumpTo = (questionId: string) => goTo(questions.findIndex((q) => q.id === questionId))
+  const jumpTo = (questionId: string) =>
+    questionId.startsWith('locked:')
+      ? askToSignIn(Number(questionId.slice('locked:'.length)))
+      : goTo(questions.findIndex((q) => q.id === questionId))
 
   function checkAnswer(questionId: string) {
     setChecked((current) => new Set(current).add(questionId))
@@ -425,7 +442,7 @@ export function ExamRunner(props: ExamRunnerProps) {
 
   const palettePane = (
     <PalettePane
-      questions={questions}
+      questions={paletteQuestions}
       stateFor={stateFor}
       verdictFor={verdictFor}
       activeId={question.id}
@@ -549,7 +566,6 @@ export function ExamRunner(props: ExamRunnerProps) {
           <div ref={scroller} className="h-full overflow-y-auto">
             <div ref={questionColumn} className={`mx-auto max-w-4xl px-4 py-5 sm:px-8 sm:py-6 ${revealed && learning ? 'pb-36 sm:pb-36' : ''}`}>
               {graded ? <GradedBanner graded={graded} isSignedIn={isSignedIn} /> : null}
-              {locked ? <LockedBanner setId={setId} shown={questions.length} total={locked.total} /> : null}
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <h1 className="text-card font-medium text-ink tabular-nums">
@@ -723,8 +739,14 @@ export function ExamRunner(props: ExamRunnerProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => (last ? (graded || learning ? null : submitDialog.current?.showModal()) : goTo(index + 1))}
-                  disabled={last && (graded !== null || learning)}
+                  onClick={() =>
+                    last && lockedNumbers.length === 0
+                      ? graded || learning
+                        ? null
+                        : submitDialog.current?.showModal()
+                      : goTo(index + 1)
+                  }
+                  disabled={last && (graded !== null || learning) && lockedNumbers.length === 0}
                   className={buttonClass('primary', 'md')}
                 >
                   {graded || learning ? 'Next' : last ? 'Save & Submit' : 'Save & Next'}
@@ -929,7 +951,7 @@ function PalettePane({
   discussion,
   footer,
 }: {
-  questions: QuestionWithOptions[]
+  questions: { id: string; number: number }[]
   stateFor: (id: string) => PaletteState
   verdictFor: (id: string) => 'correct' | 'incorrect' | null
   activeId: string
@@ -1041,7 +1063,7 @@ function VerdictAwarePalette({
   activeId,
   onJump,
 }: {
-  questions: QuestionWithOptions[]
+  questions: { id: string; number: number }[]
   stateFor: (id: string) => PaletteState
   verdictFor: (id: string) => 'correct' | 'incorrect' | null
   activeId: string
@@ -1081,27 +1103,6 @@ function VerdictAwarePalette({
 }
 
 /** After an unsaved (signed-out) attempt: the score, and where to go next. */
-/** The preview's note: how much of the paper this is, and the sign-in that opens the rest. */
-function LockedBanner({ setId, shown, total }: { setId: string; shown: number; total: number }) {
-  const { openSignIn } = useSignIn()
-  if (total <= shown) return null
-  return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-rule bg-surface-2 px-4 py-3">
-      <p className="text-ui text-ink">
-        Free preview: the first {shown} of {total} questions.{' '}
-        <span className="text-ink-muted">Sign in with Google to open the whole paper, its answers and explanations.</span>
-      </p>
-      <button
-        type="button"
-        onClick={() => openSignIn(`/practice/${setId}?mode=learning&q=${shown + 1}`)}
-        className={buttonClass('primary', 'sm', 'shrink-0')}
-      >
-        Sign in with Google
-      </button>
-    </div>
-  )
-}
-
 function GradedBanner({ graded, isSignedIn }: { graded: GradeResponse; isSignedIn: boolean }) {
   const percentage = graded.maxScore > 0 ? Math.round((graded.score / graded.maxScore) * 100) : 0
   return (
