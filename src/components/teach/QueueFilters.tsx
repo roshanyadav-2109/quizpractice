@@ -1,5 +1,4 @@
-import { FilterBar } from '@/components/site/Page'
-import { Chip } from '@/components/ui/primitives'
+import Link from 'next/link'
 import { ROUTES, QUEUE_FILTERS, QUEUE_FILTER_LABELS, isQueueFilter, type QueueFilter } from '@/lib/teach/contracts'
 
 /**
@@ -55,7 +54,7 @@ export function queueHref(
   return suffix ? `${ROUTES.teachSubject(slug)}?${suffix}` : ROUTES.teachSubject(slug)
 }
 
-/** The filter chips. Changing the filter keeps the exam, term, paper and order, and goes back to page one. */
+/** The filters, as a list down the side. Changing the filter keeps the exam, term, paper and order, and goes back to page one. */
 export function QueueFilters({
   slug,
   active,
@@ -70,14 +69,30 @@ export function QueueFilters({
   changes: number
 }) {
   return (
-    <FilterBar label="Show">
-      {ORDER.map((filter) => (
-        <Chip key={filter} href={queueHref(slug, { ...view, filter })} active={filter === active}>
-          {LABELS[filter]}
-          {filter === 'changes' && changes > 0 ? <span className="ml-1.5 tabular-nums">{changes}</span> : null}
-        </Chip>
-      ))}
-    </FilterBar>
+    <nav aria-label="Show" className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-0.5 lg:overflow-visible">
+      {ORDER.map((filter) => {
+        const on = filter === active
+        return (
+          <Link
+            key={filter}
+            href={queueHref(slug, { ...view, filter })}
+            aria-current={on ? 'page' : undefined}
+            className={`flex shrink-0 items-center justify-between gap-3 rounded-control px-3 py-2 text-ui transition-colors ${
+              on ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
+            }`}
+          >
+            {LABELS[filter]}
+            {filter === 'changes' && changes > 0 ? (
+              <span
+                className={`rounded-full px-1.5 text-micro tabular-nums ${on ? 'bg-white/20 text-white' : 'bg-incorrect-soft text-incorrect'}`}
+              >
+                {changes}
+              </span>
+            ) : null}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 

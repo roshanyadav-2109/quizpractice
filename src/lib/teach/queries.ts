@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { createClient, getCurrentProfile } from '@/lib/supabase/server'
 import { getPapersForSubject } from '@/lib/queries'
 import { formatSession } from '@/lib/format'
@@ -58,8 +59,8 @@ function refused(error: { code?: string } | null): boolean {
 // Combos
 // ---------------------------------------------------------------------------
 
-/** The caller's branch + subject combos with their progress, in catalogue order. */
-export async function getMySummary(): Promise<AssignmentSummary[]> {
+/** The caller's branch + subject combos with their progress, in catalogue order. Asked once per request. */
+export const getMySummary = cache(async function getMySummary(): Promise<AssignmentSummary[]> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('teacher_subject_summary')
   if (error) {
@@ -68,7 +69,7 @@ export async function getMySummary(): Promise<AssignmentSummary[]> {
     throw new Error(`teacher_subject_summary failed — ${error.message}`)
   }
   return ((data ?? []) as AssignmentSummaryRaw[]).map(toAssignmentSummary)
-}
+})
 
 /**
  * Whether the caller may work on this subject today: an admin always, a
@@ -203,6 +204,76 @@ export async function getExamProgress(subjectId: string): Promise<ExamProgress[]
   }))
 }
 
+/** One paper as sat (a set) and how far its explanations have got. */
+export interface SetProgress {
+  setId: string
+  paperId: string
+  examSlug: string
+  examName: string
+  sessionDate: string | null
+  setCode: string
+  /** Questions to explain in this set, counted in groups of copies. */
+  groups: number
+  explained: number
+  withVideo: number
+}
+
+/** A set is done when every question in it has a published explanation. */
+export function setDone(set: SetProgress): boolean {
+  return set.groups > 0 && set.explained >= set.groups
+}
+
+/** Papers done, started and left: how the desk counts work. */
+export interface PaperCount {
+  total: number
+  done: number
+  /** Some questions explained, not all. */
+  started: number
+  left: number
+}
+
+export function countPapers(sets: SetProgress[]): PaperCount {
+  const done = sets.filter(setDone).length
+  const started = sets.filter((set) => !setDone(set) && set.explained > 0).length
+  return { total: sets.length, done, started, left: sets.length - done }
+}
+
+/**
+ * A subject's progress set by set, in the admin's exam order, newest sitting
+ * first — so the desk can count papers done and left rather than questions.
+ * Cached for the request: the sidebar and the page both ask.
+ */
+export const getSetProgress = cache(async function getSetProgress(subjectId: string): Promise<SetProgress[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('teacher_set_progress', { p_subject: subjectId })
+  if (error) {
+    if (refused(error)) return []
+    throw new Error(`teacher_set_progress failed — ${error.message}`)
+  }
+  type Raw = {
+    set_id: string
+    paper_id: string
+    exam_slug: string
+    exam_name: string
+    session_date: string | null
+    set_code: string
+    groups: number | string
+    explained: number | string
+    with_video: number | string
+  }
+  return ((data ?? []) as Raw[]).map((row) => ({
+    setId: row.set_id,
+    paperId: row.paper_id,
+    examSlug: row.exam_slug,
+    examName: row.exam_name,
+    sessionDate: row.session_date,
+    setCode: row.set_code,
+    groups: Number(row.groups),
+    explained: Number(row.explained),
+    withVideo: Number(row.with_video),
+  }))
+})
+
 // ---------------------------------------------------------------------------
 // The teacher's own explanations and holds
 // ---------------------------------------------------------------------------
@@ -323,9 +394,9 @@ export async function getMyRecentExplanations(limit = 10): Promise<MyExplanation
  * The caller's explanations that a reviewer sent back, or an admin took
  * down: rejected, usually with a note saying what to change.
  */
-export async function getMyNeedingChanges(): Promise<MyExplanation[]> {
+export const getMyNeedingChanges = cache(async function getMyNeedingChanges(): Promise<MyExplanation[]> {
   return listMine('changes', 100)
-}
+})
 
 /** A group the caller is holding so no one else records it at the same time. */
 export interface MyClaim {

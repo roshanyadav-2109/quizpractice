@@ -11,16 +11,19 @@ export function Panel({
   note,
   aside,
   children,
+  compact = false,
   className = '',
 }: {
   title: string
   note?: ReactNode
   aside?: ReactNode
   children: ReactNode
+  /** Tighter padding, for a denser page such as the teaching desk. */
+  compact?: boolean
   className?: string
 }) {
   return (
-    <section className={`relative min-w-0 rounded-[10px] border border-rule bg-surface p-5 sm:p-6 ${className}`}>
+    <section className={`relative min-w-0 rounded-[10px] border border-rule bg-surface ${compact ? 'p-4' : 'p-5 sm:p-6'} ${className}`}>
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-[1.0625rem] leading-snug font-normal text-ink">{title}</h2>
@@ -28,7 +31,7 @@ export function Panel({
         </div>
         {aside ? <div className="shrink-0">{aside}</div> : null}
       </header>
-      <div className="mt-5">{children}</div>
+      <div className={compact ? 'mt-4' : 'mt-5'}>{children}</div>
     </section>
   )
 }
@@ -38,7 +41,18 @@ export function Panel({
  * lighter track of the same blue, with a needle so the reading holds without
  * colour.
  */
-export function Gauge({ value, label }: { value: number; label: string }) {
+export function Gauge({
+  value,
+  label,
+  color = 'var(--color-accent)',
+  track = 'var(--color-accent-soft)',
+}: {
+  value: number
+  label: string
+  /** The arc and needle; the site's blue unless a page has its own colour (the teaching desk's teal). */
+  color?: string
+  track?: string
+}) {
   const v = Math.min(100, Math.max(0, value))
   const cx = 130
   const cy = 128
@@ -49,18 +63,18 @@ export function Gauge({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
       <svg viewBox="0 0 260 150" className="w-full max-w-[280px]" role="img" aria-label={`${label}: ${Math.round(v)}%`}>
-        <path d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`} fill="none" stroke="var(--color-accent-soft)" strokeWidth={16} strokeLinecap="round" />
+        <path d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`} fill="none" stroke={track} strokeWidth={16} strokeLinecap="round" />
         {v > 0 ? (
           <path
             d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${end.x.toFixed(2)},${end.y.toFixed(2)}`}
             fill="none"
-            stroke="var(--color-accent)"
+            stroke={color}
             strokeWidth={16}
             strokeLinecap="round"
           />
         ) : null}
-        <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke="var(--color-accent)" strokeWidth={3} strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={7} fill="var(--color-surface)" stroke="var(--color-accent)" strokeWidth={3} />
+        <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke={color} strokeWidth={3} strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r={7} fill="var(--color-surface)" stroke={color} strokeWidth={3} />
         <text x={cx - r} y={cy + 20} textAnchor="middle" className="fill-ink-faint text-[11px]">0</text>
         <text x={cx + r} y={cy + 20} textAnchor="middle" className="fill-ink-faint text-[11px]">100</text>
       </svg>
@@ -183,7 +197,7 @@ const DAYS = ['Mon', '', 'Wed', '', 'Fri', '', '']
 const RAMP = ['bg-surface-3', 'bg-[#c3d3fb]', 'bg-[#8aa9f2]', 'bg-[#4c77e6]', 'bg-accent']
 
 /** Papers per day for the last year, one blue ramp — more is darker. */
-export function ActivityCalendar({ days }: { days: Map<string, number> }) {
+export function ActivityCalendar({ days, ramp = RAMP }: { days: Map<string, number>; ramp?: string[] }) {
   // Columns are weeks ending with this one; rows run Monday to Sunday.
   const today = new Date(`${istDayKey(new Date())}T00:00:00Z`)
   const mondayOffset = (today.getUTCDay() + 6) % 7
@@ -214,7 +228,7 @@ export function ActivityCalendar({ days }: { days: Map<string, number> }) {
     weeks.push(week)
   }
 
-  const shade = (count: number) => RAMP[Math.min(count, RAMP.length - 1)]
+  const shade = (count: number) => ramp[Math.min(count, ramp.length - 1)]
 
   return (
     <div className="overflow-x-auto pb-1">
@@ -260,7 +274,7 @@ export function ActivityCalendar({ days }: { days: Map<string, number> }) {
       </div>
       <div className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-faint">
         Less
-        {RAMP.map((shadeClass) => (
+        {ramp.map((shadeClass) => (
           <span key={shadeClass} className={`h-[11px] w-[11px] rounded-[3px] ${shadeClass}`} />
         ))}
         More

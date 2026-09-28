@@ -7,19 +7,19 @@ import {
   NotAssignedError,
   QUEUE_SORTS,
   canTeachSubject,
-  getExamProgress,
+  countPapers,
   getMyClaims,
   getMyNeedingChanges,
   getQueue,
+  getSetProgress,
   getSubjectPapers,
   isQueueSort,
-  type ExamProgress,
+  type PaperCount,
   type QueuePage,
   type QueueSort,
 } from '@/lib/teach/queries'
 import { ROUTES } from '@/lib/teach/contracts'
-import { Breadcrumb, SHELL, TitleCard } from '@/components/site/Page'
-import { FilterRow, FilterSelect } from '@/components/site/FilterSelect'
+import { FilterSelect } from '@/components/site/FilterSelect'
 import { seasonName, yearTermFilter } from '@/lib/terms'
 import {
   DEFAULT_FILTER,
@@ -33,6 +33,8 @@ import {
 import { PaperFilter } from '@/components/teach/PaperFilter'
 import { ExplanationList, QueueList } from '@/components/teach/QueueList'
 import { Pager } from '@/components/teach/Pager'
+import { ContinueButton } from '@/components/teach/ContinueButton'
+import { CoverageBar } from '@/components/teach/CoverageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Stack } from '@/components/ui/icons'
 import { buttonClass } from '@/components/ui/primitives'
@@ -113,11 +115,11 @@ export default async function TeachSubjectPage({
 
   // The rest at once. The queue is refused outside the teacher's combos, so
   // its refusal is caught here and the gate below decides what to show.
-  const [allowed, changes, claims, progress, queue] = await Promise.all([
+  const [allowed, changes, claims, sets, queue] = await Promise.all([
     canTeachSubject(subject.id),
     getMyNeedingChanges(),
     getMyClaims(),
-    getExamProgress(subject.id),
+    getSetProgress(subject.id),
     filter === 'changes'
       ? Promise.resolve(null)
       : getQueue(subject.id, filter, paper, pageNumber, {
@@ -129,19 +131,10 @@ export default async function TeachSubjectPage({
         }),
   ])
 
-  const crumbs = [
-    { label: 'Teaching', href: ROUTES.teachHome },
-    { label: program.short_name ?? program.name },
-    { label: level.name },
-    { label: subject.name },
-  ]
 
   if (!allowed || (filter !== 'changes' && !queue)) {
     return (
-      <div className={`${SHELL} py-6`}>
-        <Breadcrumb crumbs={crumbs} />
-        <NotAssigned subjectName={subject.name} programName={program.name} />
-      </div>
+      <NotAssigned subjectName={subject.name} programName={program.name} />
     )
   }
 
@@ -151,75 +144,81 @@ export default async function TeachSubjectPage({
     (item) => (!paper || item.place?.paperId === paper) && (!narrowed || (item.place && inView.has(item.place.paperId))),
   )
 
+  // The subject's standing in papers, overall and exam by exam.
+  const examProgress = [...new Map(sets.map((set) => [set.examSlug, set.examName])).entries()].map(([examSlug, examName]) => ({
+    examSlug,
+    examName,
+    papers: countPapers(sets.filter((set) => set.examSlug === examSlug)),
+  }))
+
   return (
-    <div className={`${SHELL} py-6`}>
-      <Breadcrumb crumbs={crumbs} />
-      <TitleCard
-        back={ROUTES.teachHome}
-        title={subject.name}
-        subtitle={`${program.name} · ${level.name}`}
-        aside={
-          <Link href={ROUTES.teachHelp} className={buttonClass('ghost', 'sm')}>
-            Recording help
-          </Link>
-        }
-      />
+    <>
+      {/* The sidebar names the subject that is open; the heading is for screen readers and the tab. */}
+      <h1 className="sr-only">
+        {subject.name}, {level.name}, {program.name}
+      </h1>
 
-      {progress.length > 1 ? (
-        <ExamProgressStrip progress={progress} slug={subject.slug} view={view} filter={filter} />
-      ) : null}
-
-      <div className="mt-5">
-        <QueueFilters slug={subject.slug} active={filter} view={view} changes={changesHere.length} />
+      <div className="grid gap-4 rounded-[12px] border border-rule bg-surface p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] lg:items-center">
+        <CoverageBar papers={countPapers(sets)} />
+        {examProgress.length > 1 ? <ExamProgressStrip exams={examProgress} slug={subject.slug} view={view} filter={filter} /> : null}
+        <ContinueButton subjectId={subject.id} subjectSlug={subject.slug} label="Continue explaining" size="md" />
       </div>
-      <FilterRow>
-        {exams.length > 1 ? (
-          <FilterSelect
-            name="exam"
-            label="Exam"
-            allLabel="All exams"
-            value={exam?.examSlug ?? null}
-            options={exams.map((option) => ({ value: option.examSlug, label: option.examName }))}
-            resets={['year', 'term', 'paper']}
-          />
-        ) : null}
-        {terms.years.length > 1 ? (
-          <FilterSelect
-            name="year"
-            label="Year"
-            allLabel="All years"
-            value={terms.year !== null ? String(terms.year) : null}
-            options={terms.years.map((year) => ({ value: String(year), label: String(year) }))}
-            resets={['term', 'paper']}
-          />
-        ) : null}
-        {terms.seasons.length > 1 ? (
-          <FilterSelect
-            name="term"
-            label="Term"
-            allLabel="All terms"
-            value={terms.season}
-            options={terms.seasons.map((season) => ({ value: season, label: seasonName(season) }))}
-            resets={['paper']}
-          />
-        ) : null}
-        <PaperFilter papers={matching} value={paper} />
-        <FilterSelect
-          name="sort"
-          label="Order"
-          allLabel={QUEUE_SORTS[0].label}
-          value={sort === 'newest' ? null : sort}
-          options={QUEUE_SORTS.slice(1).map((option) => ({ value: option.value, label: option.label }))}
-        />
-      </FilterRow>
 
-      {queue ? (
-        <>
-          <p className="mt-4 flex items-start gap-2 text-meta text-ink-muted">
-            <Stack size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-ink-faint" />
-            Duplicates are shown once; an explanation reaches every copy.
+      <div className="mt-6 grid gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <p className="mb-2 px-3 text-micro font-medium tracking-[0.08em] text-ink-faint uppercase">Show</p>
+          <QueueFilters slug={subject.slug} active={filter} view={view} changes={changesHere.length} />
+
+          <p className="mt-6 mb-2 px-3 text-micro font-medium tracking-[0.08em] text-ink-faint uppercase">Narrow down</p>
+          <div className="flex flex-col gap-2 [&_label]:w-full [&_select]:w-full">
+            {exams.length > 1 ? (
+              <FilterSelect
+                name="exam"
+                label="Exam"
+                allLabel="All exams"
+                value={exam?.examSlug ?? null}
+                options={exams.map((option) => ({ value: option.examSlug, label: option.examName }))}
+                resets={['year', 'term', 'paper']}
+              />
+            ) : null}
+            {terms.years.length > 1 ? (
+              <FilterSelect
+                name="year"
+                label="Year"
+                allLabel="All years"
+                value={terms.year !== null ? String(terms.year) : null}
+                options={terms.years.map((year) => ({ value: String(year), label: String(year) }))}
+                resets={['term', 'paper']}
+              />
+            ) : null}
+            {terms.seasons.length > 1 ? (
+              <FilterSelect
+                name="term"
+                label="Term"
+                allLabel="All terms"
+                value={terms.season}
+                options={terms.seasons.map((season) => ({ value: season, label: seasonName(season) }))}
+                resets={['paper']}
+              />
+            ) : null}
+            <PaperFilter papers={matching} value={paper} />
+            <FilterSelect
+              name="sort"
+              label="Order"
+              allLabel={QUEUE_SORTS[0].label}
+              value={sort === 'newest' ? null : sort}
+              options={QUEUE_SORTS.slice(1).map((option) => ({ value: option.value, label: option.label }))}
+            />
+          </div>
+
+          <p className="mt-5 flex items-start gap-2 px-3 text-micro leading-relaxed text-ink-faint">
+            <Stack size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
+            Repeated questions are shown once; an explanation reaches every copy.
           </p>
-          <div className="mt-4">
+        </aside>
+
+        <div className="min-w-0">
+          {queue ? (
             <QueueResults
               queue={queue}
               filter={filter}
@@ -229,11 +228,7 @@ export default async function TeachSubjectPage({
               narrowed={narrowed || paper !== null}
               myClaims={claims.map((claim) => claim.groupKey)}
             />
-          </div>
-        </>
-      ) : (
-        <div className="mt-5">
-          {changesShown.length > 0 ? (
+          ) : changesShown.length > 0 ? (
             <ExplanationList items={changesShown} />
           ) : (
             <EmptyState art="all-clear" title="Nothing sent back">
@@ -241,8 +236,8 @@ export default async function TeachSubjectPage({
             </EmptyState>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -352,32 +347,32 @@ function NotAssigned({ subjectName, programName }: { subjectName: string; progra
 
 /**
  * Progress per exam, as a strip of small cards: how many of each exam's
- * questions are explained and how many have video. A card narrows the queue
+ * papers are done. A card narrows the queue
  * to that exam; the chosen one is outlined, and choosing it again clears it.
  */
 function ExamProgressStrip({
-  progress,
+  exams,
   slug,
   view,
   filter,
 }: {
-  progress: ExamProgress[]
+  exams: { examSlug: string; examName: string; papers: PaperCount }[]
   slug: string
   view: Omit<QueueView, 'filter' | 'page'>
   filter: DeskFilter
 }) {
   return (
-    <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {progress.map((row) => {
+    <ul className="grid gap-2 sm:grid-cols-3">
+      {exams.map((row) => {
         const active = view.exam === row.examSlug
-        const share = row.groups ? Math.round((row.explained / row.groups) * 100) : 0
+        const share = row.papers.total ? Math.round((row.papers.done / row.papers.total) * 100) : 0
         return (
           <li key={row.examSlug}>
             <Link
               href={queueHref(slug, { filter, sort: view.sort, exam: active ? null : row.examSlug })}
               aria-current={active ? 'true' : undefined}
-              className={`block rounded-card border bg-surface px-4 py-3 transition-colors ${
-                active ? 'border-ink' : 'border-rule hover:border-rule-strong'
+              className={`block rounded-[10px] border px-3.5 py-2.5 transition-colors ${
+                active ? 'border-desk bg-desk-soft' : 'border-rule bg-surface-2/60 hover:border-rule-strong'
               }`}
             >
               <span className="flex items-baseline justify-between gap-2">
@@ -385,10 +380,10 @@ function ExamProgressStrip({
                 <span className="text-meta text-ink-faint tabular-nums">{share}%</span>
               </span>
               <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
-                <span className="block h-full rounded-full bg-accent" style={{ width: `${share}%` }} />
+                <span className="block h-full rounded-full bg-desk" style={{ width: `${share}%` }} />
               </span>
               <span className="mt-2 block text-meta font-light text-ink-muted tabular-nums">
-                {formatCount(row.explained)} of {formatCount(row.groups)} explained · {formatCount(row.withVideo)} with video
+                {formatCount(row.papers.done)} of {formatCount(row.papers.total)} papers done
               </span>
             </Link>
           </li>

@@ -42,6 +42,9 @@
   --accent: #1d4ed8;
   --accent-hover: #1e40af;
   --accent-soft: #eef3ff;
+  /* The teaching desk's own colour: the teal of the board and the solution card. */
+  --desk: #0f766e;
+  --desk-soft: #e7f2ef;
   --accent-ink: #ffffff;
 
   /* Exam state. answered/correct share a colour, as do unanswered/wrong: in
@@ -92,6 +95,8 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-desk: var(--desk);
+  --color-desk-soft: var(--desk-soft);
   --color-accent-ink: var(--accent-ink);
   --color-correct: var(--correct);
   --color-correct-soft: var(--correct-soft);
