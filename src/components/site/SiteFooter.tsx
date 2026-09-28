@@ -113,7 +113,7 @@ export async function SiteFooter() {
           </div>
 
           {programs.length > 0 ? (
-            <Group label="Programmes" title="Programmes">
+            <Group label="Branches and programmes" title="Branches">
               {programs.flatMap((program) => [
                 <li key={program.program.id}>
                   <Link href={program.path} className="text-ink transition-colors hover:text-accent">
