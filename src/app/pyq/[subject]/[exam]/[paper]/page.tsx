@@ -207,7 +207,7 @@ export default async function PaperPage({ params }: { params: Params }) {
     { label: programLabel, href: programNode?.path },
     { label: `${short} PYQ`, href: node.path },
     { label: examName, href: examNode.path },
-    { label: `${sittingDate(paper.sessionDate)}${paper.setsInSitting > 1 ? ` · ${paper.setCode}` : ''}` },
+    { label: `${sittingDate(paper.sessionDate)}${paper.setsInSitting > 1 ? `, Set ${paper.setCode}` : ''}` },
   ]
   const course = courseEntity({
     name: paper.subject.name,
@@ -217,9 +217,15 @@ export default async function PaperPage({ params }: { params: Params }) {
     url: absolute(node.path),
   })
   const art = artFor('subjects', paper.subject.slug)
+  const open = new Set(preview.map((question) => question.number))
+  const facts = [
+    { label: 'Questions', value: String(questions.length) },
+    { label: 'Marks', value: formatCount(Number(marks)) },
+    ...(paper.durationMinutes ? [{ label: 'Duration', value: `${paper.durationMinutes} min` }] : []),
+  ]
 
   return (
-    <div className={`${SHELL} py-6 sm:py-8`}>
+    <div className={`${SHELL} py-6`}>
       <JsonLd
         data={paperEntity({
           path: paper.path,
@@ -243,65 +249,72 @@ export default async function PaperPage({ params }: { params: Params }) {
         })}
       />
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0">
-          <HubHeader
-            crumbs={crumbs}
-            icon={art ? <Art src={art} size={56} alt={short} /> : undefined}
-            eyebrow={[termName(paper.term), paper.subject.name, paper.subject.code].filter(Boolean).join(' · ')}
-            title={titles.paperHeading(paper)}
-            lead={
-              <p>
-                The IIT Madras BS {paper.subject.name} ({short}) {examName} paper sat on{' '}
-                {sittingDate(paper.sessionDate)}, in the {termName(paper.term)}
-                {paper.setsInSitting > 1 ? `, set ${paper.setCode}` : ''}:{' '}
-                <strong className="font-medium text-ink">
-                  {plural(questions.length, 'question')} for {formatCount(Number(marks))} marks
-                </strong>
-                {paper.durationMinutes ? ` in ${paper.durationMinutes} minutes` : ''}. The first{' '}
-                {plural(preview.length, 'question')} {preview.length === 1 ? 'is' : 'are'} below. Sign in with Google — it is
-                free — to see the whole paper with its answers and explanations, in learning mode or as a timed mock test.
-              </p>
-            }
-            stats={[
-              { label: 'Questions', value: String(questions.length) },
-              { label: 'Marks', value: formatCount(Number(marks)) },
-              ...(paper.durationMinutes ? [{ label: 'Duration', value: `${paper.durationMinutes} min` }] : []),
-              ...typeCounts.map(([type, count]) => ({ label: type, value: String(count) })),
-            ]}
-            actions={
-              <>
-                <Link href={`/paper/${paper.setId}`} className={buttonClass('primary', 'lg')}>
-                  <Clock size={18} aria-hidden="true" />
-                  Take as mock test
-                </Link>
-                <Link href={paths.practice(paper.setId, 'learning')} className={buttonClass('outline', 'lg')}>
-                  Practise with answers
-                </Link>
-                <BestScore setId={paper.setId} className="self-center" />
-              </>
-            }
-            updated={paper.updatedAt}
-          />
+      <Breadcrumb crumbs={crumbs} />
+      <TitleCard back={examNode.path} icon={art ? <Art src={art} size={48} alt={short} /> : undefined} title={titles.paperHeading(paper)} />
 
-          <p className="mt-4 text-meta text-ink-faint">
-            {paper.officialTitle ? (
-              <>
-                Official paper: <span className="text-ink-muted">{paper.officialTitle}</span>
-                {' · '}
-              </>
-            ) : null}
-            {penalised === 0 ? 'No negative marking.' : `${plural(penalised, 'question')} with negative marking.`}
-          </p>
-
-          <div className="mt-8 flex flex-col gap-4">
-            {preview.map((question) => (
-              <PaperQuestion key={question.id} question={question} copies={copyLinks(question.id)} />
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        {/* The paper in figures, the two ways in and the question palette: above the paper on a phone, beside it on a wide screen. */}
+        <aside className="rounded-card border border-rule bg-surface lg:sticky lg:top-20 lg:order-last">
+          <dl className={`grid divide-x divide-rule border-b border-rule text-center ${facts.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {facts.map((fact) => (
+              <div key={fact.label} className="px-2 py-3">
+                <dt className="text-micro text-ink-faint">{fact.label}</dt>
+                <dd className="mt-0.5 text-[1.125rem] text-ink tabular-nums">{fact.value}</dd>
+              </div>
             ))}
-            <PaperLock setId={paper.setId} shown={preview.length} total={questions.length} />
+          </dl>
+
+          <div className="flex flex-col gap-2 p-4">
+            <Link href={`/paper/${paper.setId}`} className={buttonClass('primary', 'lg', 'w-full justify-center')}>
+              <Clock size={18} aria-hidden="true" />
+              Take as mock test
+            </Link>
+            <Link href={paths.practice(paper.setId, 'learning')} className={buttonClass('outline', 'lg', 'w-full justify-center')}>
+              Practise with answers
+            </Link>
+            <BestScore setId={paper.setId} className="mt-1 self-center" />
           </div>
 
-          <nav aria-label="More papers" className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="hidden border-t border-rule p-4 lg:block">
+            <h2 className="text-ui font-medium text-ink">Questions</h2>
+            <ol className="mt-3 grid grid-cols-7 gap-1.5">
+              {questions.map((question) => (
+                <li key={question.id}>
+                  <a
+                    href={open.has(question.number) ? `#q${question.number}` : '#paper-locked'}
+                    className={`flex h-8 items-center justify-center rounded-md text-meta tabular-nums transition-colors ${
+                      open.has(question.number)
+                        ? 'border border-ink bg-surface text-ink hover:bg-ink hover:text-white'
+                        : 'bg-surface-2 text-ink-faint hover:bg-surface-3 hover:text-ink'
+                    }`}
+                  >
+                    {question.number}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            {questions.length > preview.length ? (
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-micro text-ink-muted">
+                <li className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] border border-ink" />
+                  Open to read
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] bg-surface-3" />
+                  After a free sign-in
+                </li>
+              </ul>
+            ) : null}
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          {preview.map((question) => (
+            <PaperQuestion key={question.id} question={question} copies={copyLinks(question.id)} />
+          ))}
+          <PaperLock setId={paper.setId} shown={preview.length} total={questions.length} />
+
+          <nav aria-label="More papers" className="mt-2 grid gap-3 sm:grid-cols-2">
             {older ? (
               <Link href={older.path} className="flex items-center gap-3 rounded-card border border-rule bg-surface px-4 py-3 hover:border-rule-strong">
                 <ArrowLeft size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
@@ -327,79 +340,90 @@ export default async function PaperPage({ params }: { params: Params }) {
             ) : null}
           </nav>
         </div>
+      </div>
 
-        <aside className="flex flex-col gap-6 lg:sticky lg:top-20">
-          <div className="rounded-card border border-rule bg-surface p-4">
-            <h2 className="text-ui font-medium text-ink">Questions</h2>
-            <ol className="mt-3 grid grid-cols-6 gap-1.5">
-              {questions.map((question) => (
-                <li key={question.id}>
-                  <a
-                    href={`#q${question.number}`}
-                    className="flex h-8 items-center justify-center rounded-md bg-surface-2 text-meta text-ink tabular-nums hover:bg-surface-3"
-                  >
-                    {question.number}
-                  </a>
+      <SeoArticle title={`More on the ${paperName(paper)} paper`}>
+        <SeoIntro
+          lead={
+            <p>
+              The IIT Madras BS {paper.subject.name} ({short}) {examName} paper sat on{' '}
+              {sittingDate(paper.sessionDate)}, in the {termName(paper.term)}
+              {paper.setsInSitting > 1 ? `, set ${paper.setCode}` : ''}:{' '}
+              <strong>
+                {plural(questions.length, 'question')} for {formatCount(Number(marks))} marks
+              </strong>
+              {paper.durationMinutes ? ` in ${paper.durationMinutes} minutes` : ''}. The first{' '}
+              {plural(preview.length, 'question')} {preview.length === 1 ? 'is' : 'are'} below. Sign in with Google — it is
+              free — to see the whole paper with its answers and explanations, in learning mode or as a timed mock test.
+            </p>
+          }
+          statsTitle={`${paperName(paper)} at a glance`}
+          stats={[
+            { label: 'Term', value: termName(paper.term) },
+            { label: 'Subject', value: paper.subject.name },
+            ...(paper.subject.code ? [{ label: 'Course code', value: paper.subject.code }] : []),
+            ...facts,
+            ...typeCounts.map(([type, count]) => ({ label: type, value: String(count) })),
+            ...(paper.officialTitle ? [{ label: 'Official paper', value: paper.officialTitle }] : []),
+            {
+              label: 'Negative marking',
+              value: penalised === 0 ? 'No negative marking.' : `${plural(penalised, 'question')} with negative marking.`,
+            },
+          ]}
+          updated={paper.updatedAt}
+        />
+
+        {sameSitting.length > 0 ? (
+          <section aria-labelledby="same-sitting">
+            <SeoHeading id="same-sitting">Other sets that day</SeoHeading>
+            <ul className="list-disc space-y-1 pl-6">
+              {sameSitting.map((entry) => (
+                <li key={entry.setId}>
+                  <Link href={entry.path}>Set {entry.setCode}</Link>
                 </li>
               ))}
-            </ol>
-          </div>
-          {sameSitting.length > 0 ? (
-            <div>
-              <h2 className="text-ui font-medium text-ink">Other sets that day</h2>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {sameSitting.map((entry) => (
-                  <li key={entry.setId}>
-                    <Link href={entry.path} className="text-ui text-accent hover:underline">
-                      Set {entry.setCode}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {sameDayOtherSubjects.length > 0 ? (
-            <div>
-              <h2 className="text-ui font-medium text-ink">Same {examName}, other subjects</h2>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {sameDayOtherSubjects.map((entry) => (
-                  <li key={entry.setId}>
-                    <Link href={entry.path} className="text-ui text-accent hover:underline">
-                      {shortName(entry.subject)} {examName} {sittingDate(entry.sessionDate)}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          <div>
-            <h2 className="text-ui font-medium text-ink">More {short}</h2>
-            <ul className="mt-2 flex flex-col gap-1.5">
-              <li>
-                <Link href={examNode.path} className="text-ui text-accent hover:underline">
-                  All {plural(examNode.papers.length, `${short} ${examName} paper`)}
-                </Link>
-              </li>
-              {node.exams
-                .filter((entry) => entry.examType.id !== paper.examType.id)
-                .map((entry) => (
-                  <li key={entry.examType.id}>
-                    <Link href={entry.path} className="text-ui text-accent hover:underline">
-                      {short} {entry.examType.name} PYQ
-                    </Link>
-                  </li>
-                ))}
-              {levelNode ? (
-                <li>
-                  <Link href={levelNode.path} className="text-ui text-accent hover:underline">
-                    {paper.level.name} subjects
+            </ul>
+          </section>
+        ) : null}
+
+        {sameDayOtherSubjects.length > 0 ? (
+          <section aria-labelledby="same-day">
+            <SeoHeading id="same-day">Same {examName}, other subjects</SeoHeading>
+            <ul className="list-disc space-y-1 pl-6">
+              {sameDayOtherSubjects.map((entry) => (
+                <li key={entry.setId}>
+                  <Link href={entry.path}>
+                    {shortName(entry.subject)} {examName} {sittingDate(entry.sessionDate)}
                   </Link>
                 </li>
-              ) : null}
+              ))}
             </ul>
-          </div>
-        </aside>
-      </div>
+          </section>
+        ) : null}
+
+        <section aria-labelledby="more-subject">
+          <SeoHeading id="more-subject">More {short}</SeoHeading>
+          <ul className="list-disc space-y-1 pl-6">
+            <li>
+              <Link href={examNode.path}>All {plural(examNode.papers.length, `${short} ${examName} paper`)}</Link>
+            </li>
+            {node.exams
+              .filter((entry) => entry.examType.id !== paper.examType.id)
+              .map((entry) => (
+                <li key={entry.examType.id}>
+                  <Link href={entry.path}>
+                    {short} {entry.examType.name} PYQ
+                  </Link>
+                </li>
+              ))}
+            {levelNode ? (
+              <li>
+                <Link href={levelNode.path}>{paper.level.name} subjects</Link>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      </SeoArticle>
     </div>
   )
 }
