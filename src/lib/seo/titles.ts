@@ -58,8 +58,9 @@ function examList(exams: Pick<ExamType, 'name'>[]): string {
 }
 
 export const titles = {
-  // With " | Quiz Space" this is 60 characters: the whole title shows in results.
-  home: () => 'IITM BS PYQs with Video Solutions & Answer Keys',
+  // With " | Quiz Space by Unknown IITians" this is 59 characters: the whole title,
+  // site name included, shows in results.
+  home: () => 'IITM BS PYQs with Solutions',
   homeHeading: () => 'IITM BS PYQs with solutions: Quiz 1, Quiz 2, End Term, Qualifier',
 
   program(program: Pick<Program, 'name' | 'short_name'>): string {
