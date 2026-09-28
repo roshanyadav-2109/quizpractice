@@ -7,6 +7,7 @@ import { SiteChrome } from '@/components/site/SiteChrome'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { AuthProvider } from '@/components/site/AuthDialog'
 import { OfflineBanner } from '@/components/site/OfflineBanner'
+import { RouteProgress } from '@/components/site/RouteProgress'
 import { ViewerProvider } from '@/components/site/Viewer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { ORIGIN, SITE } from '@/lib/seo/site'
@@ -89,6 +90,8 @@ export default function RootLayout({
         {/* Who runs the site, on every page: the identity search engines and
             AI assistants join the rest of the structured data to. */}
         <JsonLd data={siteGraph()} />
+        {/* A bar across the top while the next page is on its way. */}
+        <RouteProgress />
         {/* Sign-in is a dialog, available from anywhere on the site. */}
         <AuthProvider>
           {/* Who is signed in, known in the browser: the pages themselves are

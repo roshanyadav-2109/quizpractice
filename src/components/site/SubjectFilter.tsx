@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useNavigate } from '@/components/site/RouteProgress'
 import { Art } from '@/components/ui/Art'
 import { CaretDown, MagnifyingGlass, X } from '@/components/ui/icons'
 
@@ -29,7 +30,7 @@ export interface SubjectGroup {
  * each has under the other filters. Choosing one rewrites `subject` in the URL.
  */
 export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]; value: string | null; scope: string }) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const pathname = usePathname()
   const params = useSearchParams()
 
@@ -39,7 +40,7 @@ export function SubjectFilter({ groups, value, scope }: { groups: SubjectGroup[]
     else query.delete('subject')
     query.delete('page')
     const suffix = query.toString()
-    router.push(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
+    navigate(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
   }
 
   return <SubjectPanel groups={groups} value={value} scope={scope} onChoose={choose} />
@@ -62,7 +63,14 @@ export function SubjectPanel({
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
 
-  const selected = groups.flatMap((group) => group.subjects).find((subject) => subject.slug === value) ?? null
+  // The subject chosen shows at once, before the page it asks for arrives.
+  const [picked, setPicked] = useState(value)
+  const [given, setGiven] = useState(value)
+  if (value !== given) {
+    setGiven(value)
+    setPicked(value)
+  }
+  const selected = groups.flatMap((group) => group.subjects).find((subject) => subject.slug === picked) ?? null
 
   function close() {
     setOpen(false)
@@ -70,6 +78,7 @@ export function SubjectPanel({
   }
 
   function choose(slug: string | null) {
+    setPicked(slug)
     onChoose(slug)
     setOpen(false)
   }

@@ -1,7 +1,9 @@
 'use client'
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { CaretDown } from '@/components/ui/icons'
+import { useNavigate } from '@/components/site/RouteProgress'
 
 export interface FilterOption {
   value: string
@@ -33,7 +35,7 @@ export function FilterSelect({
   /** Other parameters that stop making sense when this one changes. */
   resets?: string[]
 }) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const pathname = usePathname()
   const params = useSearchParams()
 
@@ -44,7 +46,7 @@ export function FilterSelect({
     query.delete('page')
     for (const key of resets) query.delete(key)
     const suffix = query.toString()
-    router.push(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
+    navigate(suffix ? `${pathname}?${suffix}` : pathname, { scroll: false })
   }
 
   const active = value !== null && options.some((option) => option.value === value)
@@ -77,14 +79,25 @@ export function SelectBox({
   value: string
   onChange: (value: string) => void
 }) {
+  // The choice shows the moment it is made, not when the page it asks for
+  // arrives; a new value from the page takes over again.
+  const [shown, setShown] = useState(value)
+  const [given, setGiven] = useState(value)
+  if (value !== given) {
+    setGiven(value)
+    setShown(value)
+  }
   // A choice made is shown as a filter in force: outlined in ink, not greyed.
-  const active = allLabel ? value !== '' : false
+  const active = allLabel ? shown !== '' : false
   return (
     <label className="relative inline-flex">
       <span className="sr-only">{label}</span>
       <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        value={shown}
+        onChange={(event) => {
+          setShown(event.target.value)
+          onChange(event.target.value)
+        }}
         className={`h-11 min-w-[9.375rem] cursor-pointer appearance-none rounded-control border py-0 pr-10 pl-4 text-ui transition-colors outline-none focus-visible:border-ink ${
           active
             ? 'border-ink bg-surface text-ink'

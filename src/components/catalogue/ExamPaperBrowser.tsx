@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useNavigate } from '@/components/site/RouteProgress'
 import { PaperCard } from '@/components/site/PaperCard'
 import { FilterRow, SelectBox, type FilterOption } from '@/components/site/FilterSelect'
 import { SubjectPanel, type SubjectGroup } from '@/components/site/SubjectFilter'
@@ -63,6 +65,7 @@ export function ExamPaperBrowser({
   pages: number
 }) {
   const router = useRouter()
+  const navigate = useNavigate()
   const viewer = useViewer()
 
   const papersHref = (name?: string, value?: string) => {
@@ -70,15 +73,27 @@ export function ExamPaperBrowser({
     if (name && value) query.set(name, value)
     return `/papers?${query}`
   }
-  const open = (name: string, value: string | null) => router.push(papersHref(name, value ?? undefined))
+  const open = (name: string, value: string | null) => navigate(papersHref(name, value ?? undefined))
   const pick = (select: PageSelect, name: string) => (value: string) => {
     const href = value ? select.options.find((option) => option.value === value)?.href : select.allHref
-    if (href) router.push(href)
+    if (href) navigate(href)
     else open(name, value)
+  }
+  // The exam and year choices are pages built ahead: fetched as soon as the
+  // pointer or the keyboard reaches the filters, they open at once.
+  const fetched = useRef(false)
+  const fetchAhead = () => {
+    if (fetched.current) return
+    fetched.current = true
+    for (const select of [exam, year]) {
+      for (const option of select.options) if (option.href) router.prefetch(option.href)
+      if (select.allHref) router.prefetch(select.allHref)
+    }
   }
 
   return (
     <>
+      <div onPointerEnter={fetchAhead} onFocusCapture={fetchAhead} onTouchStart={fetchAhead}>
       <FilterRow>
         <SelectBox label="Exam" allLabel="All exams" value={exam.value} options={exam.options} onChange={pick(exam, 'exam')} />
         <SelectBox label="Branch" allLabel="All branches" value="" options={branches} onChange={(value) => open('program', value)} />
@@ -93,6 +108,7 @@ export function ExamPaperBrowser({
           <SelectBox label="Term" allLabel="All terms" value="" options={terms} onChange={(value) => open('term', value)} />
         ) : null}
       </FilterRow>
+      </div>
 
       <ul className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
