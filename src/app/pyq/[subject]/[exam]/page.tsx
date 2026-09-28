@@ -128,11 +128,7 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
             q: `What does the ${short} ${examName} cover?`,
             a: (
               <>
-                {fact.scope} The exact syllabus for your term is on the course page at{' '}
-                <a href="https://study.iitm.ac.in/" className="text-accent hover:underline" rel="noopener">
-                  study.iitm.ac.in
-                </a>
-                .
+                {fact.scope}
               </>
             ),
           },
