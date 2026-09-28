@@ -15,6 +15,7 @@ const UPDATED = '28 September 2026'
 const YOUTUBE_TERMS = 'https://www.youtube.com/t/terms'
 const GOOGLE_PRIVACY = 'http://www.google.com/policies/privacy'
 const GOOGLE_PERMISSIONS = 'https://security.google.com/settings/security/permissions'
+const GA_OPT_OUT = 'https://tools.google.com/dlpage/gaoptout'
 
 /**
  * The privacy policy, in formal terms. It also carries what Google's YouTube
@@ -72,8 +73,10 @@ export default function PrivacyPage() {
             providers record to operate, secure and maintain the Service.
           </li>
           <li>
-            <strong className="font-medium">Aggregated statistics.</strong> Counts of page visits and of popular search
-            terms, measured in aggregate and without cookies. These statistics do not identify you.
+            <strong className="font-medium">Usage analytics.</strong> How the Service is used — the pages visited, how
+            visitors arrive, the type of device and browser, and approximate location — measured with Google Analytics
+            and Vercel Web Analytics, and counts of popular search terms. We use these statistics in aggregate, to
+            understand and improve the Service, not to identify you.
           </li>
         </List>
         <SubHeading>1.3 Information from third parties</SubHeading>
@@ -103,7 +106,7 @@ export default function PrivacyPage() {
         <List>
           <li>
             <strong className="font-medium">Service providers.</strong> We engage trusted third-party service providers
-            to host the Service, store data, provide sign-in and deliver content. They process personal information
+            to host the Service, store data, provide sign-in, measure usage and deliver content. They process personal information
             only on our instructions, only to provide their services to us, and subject to confidentiality and security
             obligations.
           </li>
@@ -175,8 +178,14 @@ export default function PrivacyPage() {
             open a video solution. Once you play a video, YouTube may collect information and set cookies under the{' '}
             <External href={GOOGLE_PRIVACY}>Google Privacy Policy</External>.
           </li>
+          <li>
+            <strong className="font-medium">Analytics cookies.</strong> Google Analytics sets cookies (such as{' '}
+            <code>_ga</code>) to count visits and to understand, in aggregate, how the Service is used, under the{' '}
+            <External href={GOOGLE_PRIVACY}>Google Privacy Policy</External>. You can block them in your browser
+            settings, or with Google&rsquo;s <External href={GA_OPT_OUT}>opt-out browser add-on</External>.
+          </li>
         </List>
-        <P>We do not use advertising cookies, and our visit statistics are measured without cookies.</P>
+        <P>We do not use advertising cookies.</P>
 
         <Heading id="delete">7. Data retention</Heading>
         <P>
