@@ -240,7 +240,7 @@ async function BrowseSubjects() {
         </Link>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {subjects.map(({ subject, papers }) => (
+        {subjects.map(({ subject }) => (
           <li key={subject.id}>
             <Link
               href={paths.subject(subject.slug)}
@@ -251,7 +251,6 @@ async function BrowseSubjects() {
                 <span className="block truncate text-ui text-ink">{subject.name}</span>
                 <ActiveCount count={active[subject.id]} compact />
               </span>
-              <span className="shrink-0 text-meta text-ink-faint tabular-nums">{papers} papers</span>
             </Link>
           </li>
         ))}

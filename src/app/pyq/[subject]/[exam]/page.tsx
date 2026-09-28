@@ -326,8 +326,7 @@ export default async function SubjectExamHub({ params }: { params: Params }) {
         <Faq className="mt-12" items={faq} variant="accordion" />
 
         <p className="mt-12 text-ui text-ink-muted">
-          {listOf([subject.name, subject.code ?? ''].filter(Boolean))} — {level.name}, IIT Madras {program.name}. Quiz Space
-          by Unknown IITians is independent and not affiliated with IIT Madras.{' '}
+          {listOf([subject.name, subject.code ?? ''].filter(Boolean))} — {level.name}, IIT Madras {program.name}.{' '}
           <Link href={paths.exam(exam.examType.slug)}>Every {examName} paper, all subjects</Link>.
         </p>
       </SeoArticle>

@@ -68,8 +68,7 @@ export default async function AboutPage() {
             <a href="https://www.youtube.com/@UnknownIITians" className="text-accent hover:underline" rel="noopener">
               YouTube
             </a>
-            . Quiz Space is an independent study resource: it is not affiliated with or endorsed by IIT Madras, and it is not
-            connected with any other practice site of a similar name.
+            . Quiz Space is not connected with any other practice site of a similar name.
           </p>
         </div>
 

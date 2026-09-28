@@ -71,7 +71,7 @@ test('descriptions link the paper and stay under 5,000 bytes', () => {
 
   const huge = videoDescription(PLACE, { paperUrl: 'https://example.org/p', snippet: 'অনেক লম্বা প্রশ্ন '.repeat(2000) })
   assert.ok(utf8Length(huge) <= DESCRIPTION_MAX_BYTES)
-  assert.match(huge, /not affiliated with IIT Madras\.$/)
+  assert.match(huge, /with explanations\.$/)
 })
 
 test('clipping by bytes never splits a character', () => {

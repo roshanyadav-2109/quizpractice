@@ -235,10 +235,7 @@ export default async function SubjectHub({ params }: { params: Params }) {
               className="group flex h-full items-center gap-4 rounded-card border border-rule bg-surface p-5 transition-colors hover:border-rule-strong"
             >
               <Art src={artFor('exams', exam.examType.slug)} size={48} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-card text-ink">{exam.examType.name}</span>
-                <span className="block text-meta text-ink-faint tabular-nums">{plural(exam.papers.length, 'paper')}</span>
-              </span>
+              <span className="min-w-0 flex-1 text-card text-ink">{exam.examType.name}</span>
               <CaretRight
                 size={18}
                 aria-hidden="true"
@@ -328,8 +325,7 @@ export default async function SubjectHub({ params }: { params: Params }) {
 
         <p className="mt-12 text-ui text-ink-muted">
           {subject.name} is a {level.name} course of the IIT Madras {program.name} programme
-          {subject.code ? ` (course code ${subject.code})` : ''}. Quiz Space by Unknown IITians is an independent study
-          resource and is not affiliated with IIT Madras. Also see{' '}
+          {subject.code ? ` (course code ${subject.code})` : ''}. Also see{' '}
           <Link href={paths.exam(node.exams[0]?.examType.slug ?? 'quiz-1')}>
             every {node.exams[0]?.examType.name ?? 'Quiz 1'} paper across subjects
           </Link>

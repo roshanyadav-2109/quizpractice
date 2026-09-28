@@ -40,7 +40,7 @@ function header(data: Awaited<ReturnType<typeof summary>>): string[] {
     '',
     `> ${SITE.name} (${ORIGIN}) is a free practice site for IIT Madras BS degree (IITM BS) previous year question papers (PYQs): ${listOf(
       exams.map(({ exam }) => exam.name),
-    )} papers for the ${listOf(programs.map((program) => program.program.name))}, with solutions: the answer key for every question and a timed mock-test mode that mirrors the real exam screen. Run by Unknown IITians; independent and not affiliated with IIT Madras.`,
+    )} papers for the ${listOf(programs.map((program) => program.program.name))}, with solutions: the answer key for every question and a timed mock-test mode that mirrors the real exam screen. Run by Unknown IITians.`,
     '',
     `Key facts (generated ${new Date().toISOString().slice(0, 10)}):`,
     `- ${formatCount(catalogue.papers.length)} papers, ${formatCount(questions)} questions, ${subjects.length} subjects; ${yearSpan(years)}.`,
