@@ -182,7 +182,7 @@ const FACTS: Record<string, ExamFacts> = {
       'In person; 1.5 hours per course, in 3-hour Sunday sessions.',
       'Covers all twelve weeks of the course.',
       'Eligibility (January 2026 term, most courses): best 5 of the first 7 weekly assignments averaging ≥ 40/100, and at least one quiz attended.',
-      'Its weight in the final score depends on the course — see the course grading document for your term.',
+      'Its weight in the final score depends on the course.',
     ],
     faq: [
       { q: 'What does the End Term cover?', a: 'The whole course — all twelve weeks, including the last ones.' },
@@ -193,7 +193,7 @@ const FACTS: Record<string, ExamFacts> = {
       },
       {
         q: 'What are the End Term passing marks?',
-        a: 'There is no single pass mark for the End Term alone: the course grade comes from the course’s formula combining the End Term, the quizzes and the assignments. Check the grading document for your term on study.iitm.ac.in.',
+        a: 'There is no single pass mark for the End Term alone: the course grade comes from the course’s formula combining the End Term, the quizzes and the assignments.',
       },
     ],
     sources: [ACADEMICS],
