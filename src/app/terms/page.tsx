@@ -39,8 +39,7 @@ export default function TermsPage() {
         <Heading>1. About the Service</Heading>
         <P>
           The Service is an independent educational resource. It is not affiliated with, endorsed by or operated on
-          behalf of the Indian Institute of Technology Madras or any other institution. For official information about
-          the programme, its syllabus and its rules, refer to the institution&rsquo;s official channels.
+          behalf of the Indian Institute of Technology Madras or any other institution.
         </P>
 
         <Heading>2. Eligibility</Heading>
