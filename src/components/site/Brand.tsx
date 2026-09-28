@@ -8,19 +8,26 @@ import Image from 'next/image'
 export function BrandLogo() {
   return (
     <span className="flex items-center">
+      {/* The name as text, for search engines and screen readers: drawn, it is a
+          picture of a Q followed by "uiz Space", which reads as two words. */}
+      <span className="sr-only">Quiz Space</span>
       <Image
         src="/brand/quizspace-mark.webp"
-        alt="Q"
+        alt=""
+        aria-hidden="true"
         width={34}
         height={34}
         unoptimized
         priority
         className="h-[2.125rem] w-[2.125rem] shrink-0"
       />
-      {/* A letter's gap between the mark and the u, so the two read apart. */}
-      <span className="ml-[0.1875rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink">
-        uiz Space
-      </span>
+      {/* A letter's gap between the mark and the u, so the two read apart. Drawn
+          by CSS, so the page's text says "Quiz Space" once, not "Quiz Space uiz Space". */}
+      <span
+        aria-hidden="true"
+        data-text="uiz Space"
+        className="ml-[0.1875rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink before:content-[attr(data-text)]"
+      />
     </span>
   )
 }
