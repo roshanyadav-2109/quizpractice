@@ -769,7 +769,7 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   const authAllowed = [
     ...anonAllowed, 'admin_invite', 'admin_list_people', 'can_teach_subject', 'claim_question', 'duplicate_review', 'group_explanations',
     'group_key', 'leaderboard', 'may_read_question', 'my_auto_publish', 'my_peer_gaps', 'open_set', 'question_group_members', 'release_claim',
-    'set_auto_publish', 'set_user_role', 'teacher_exam_progress', 'teacher_queue', 'teacher_subject_summary',
+    'set_auto_publish', 'set_user_role', 'teacher_exam_progress', 'teacher_queue', 'teacher_set_progress', 'teacher_subject_summary',
   ]
   for (const [role, allowed] of [['anon', anonAllowed], ['authenticated', authAllowed]] as const) {
     const exposed = await rows<{ name: string }>(`
