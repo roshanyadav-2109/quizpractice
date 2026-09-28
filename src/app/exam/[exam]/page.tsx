@@ -307,12 +307,7 @@ export default async function ExamHub({ params }: { params: Params }) {
         <Faq className="mt-12" items={faq} variant="accordion" />
 
         <p className="mt-12 text-ui text-ink-muted">
-          Quiz Space by Unknown IITians is an independent practice site, not affiliated with IIT Madras. Official exam
-          rules and schedules are on{' '}
-          <a href="https://study.iitm.ac.in/" rel="noopener">
-            study.iitm.ac.in
-          </a>
-          .
+          Quiz Space by Unknown IITians is an independent practice site, not affiliated with IIT Madras.
         </p>
       </SeoArticle>
     </div>
