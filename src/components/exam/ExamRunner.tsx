@@ -636,9 +636,6 @@ export function ExamRunner(props: ExamRunnerProps) {
                       >
                         {answered ? 'Check answer' : 'Show answer'}
                       </button>
-                      {isSignedIn ? null : (
-                        <span className="text-meta text-ink-muted">Sign in with Google to see the answer. It is free.</span>
-                      )}
                     </div>
                   )}
                 </div>
