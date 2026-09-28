@@ -8,8 +8,12 @@ import { MagnifyingGlass, Play } from '@/components/ui/icons'
 /**
  * A short film of the site, played in the page: seven scenes of the real
  * screens, on a laptop and a phone, moving the way the site does. It runs
- * only while on screen, rests while the pointer is over it, and holds still for
- * anyone who has asked their system for less motion.
+ * only while on screen, and holds still for anyone who has asked their system
+ * for less motion.
+ *
+ * Nothing in it is blurred by a filter: a blur on a moving layer has to be
+ * redrawn every frame, and the two glows alone dropped a frame most seconds.
+ * The glows are soft gradients instead, and the glass is a plain tint.
  *
  * Every picture is a capture of the site itself (public/showcase); the
  * motion is CSS keyframes (globals.css, "sc-…"), set only on the scene that
@@ -49,9 +53,7 @@ export function ProductShowcase() {
     () => window.matchMedia(reducedQuery).matches,
     () => false,
   )
-  // Rests while pointed at, so a scene can be looked at for as long as wanted.
-  const [hovered, setHovered] = useState(false)
-  const playing = !reduced && !hovered
+  const playing = !reduced
   const [visible, setVisible] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [index, setIndex] = useState(0)
@@ -112,8 +114,6 @@ export function ProductShowcase() {
     <div
       ref={stage}
       data-paused={running ? undefined : ''}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       className="sc-stage @container relative isolate aspect-[4/5] overflow-hidden rounded-[18px] bg-[#060a1a] text-white md:aspect-video"
     >
       <Backdrop />
@@ -142,12 +142,18 @@ function Backdrop() {
   return (
     <div aria-hidden="true" className="absolute inset-0 -z-10">
       <div
-        className="absolute -top-[20%] -left-[10%] h-[70%] w-[60%] rounded-full bg-[#1d4ed8] opacity-45 blur-[80px]"
-        style={{ animation: 'sc-glow 16s ease-in-out infinite' }}
+        className="absolute -top-[35%] -left-[22%] h-[100%] w-[84%] will-change-transform"
+        style={{
+          background: 'radial-gradient(closest-side, rgb(29 78 216 / 0.5), rgb(29 78 216 / 0.42) 45%, rgb(29 78 216 / 0.16) 75%, transparent)',
+          animation: 'sc-glow 16s ease-in-out infinite',
+        }}
       />
       <div
-        className="absolute -right-[10%] -bottom-[25%] h-[70%] w-[55%] rounded-full bg-[#0f766e] opacity-40 blur-[90px]"
-        style={{ animation: 'sc-glow 19s ease-in-out -6s infinite reverse' }}
+        className="absolute -right-[22%] -bottom-[42%] h-[100%] w-[80%] will-change-transform"
+        style={{
+          background: 'radial-gradient(closest-side, rgb(15 118 110 / 0.44), rgb(15 118 110 / 0.36) 45%, rgb(15 118 110 / 0.13) 75%, transparent)',
+          animation: 'sc-glow 19s ease-in-out -6s infinite reverse',
+        }}
       />
       <div
         className="absolute inset-0 opacity-60"
@@ -235,7 +241,7 @@ function Phone({ src, className, style, children }: { src: string; className: st
 function Chip({ children, className, style }: { children: ReactNode; className: string; style?: CSSProperties }) {
   return (
     <span
-      className={`absolute hidden items-center gap-[0.5cqw] rounded-full border border-white/20 bg-white/10 px-[1.2cqw] py-[0.55cqw] text-[1.05cqw] whitespace-nowrap text-white backdrop-blur-md md:inline-flex ${className}`}
+      className={`absolute hidden items-center gap-[0.5cqw] rounded-full border border-white/20 bg-[#1b2447]/85 px-[1.2cqw] py-[0.55cqw] text-[1.05cqw] whitespace-nowrap text-white md:inline-flex ${className}`}
       style={style}
     >
       {children}
@@ -313,7 +319,7 @@ function SceneExam({ a, running }: SceneProps) {
         <Countdown className="text-[2cqw] font-semibold" running={running} />
       </div>
       {/* The palette, filling as questions are answered. */}
-      <div className="absolute top-[31cqw] left-[4.5cqw] hidden w-[22cqw] rounded-[1cqw] bg-white/10 p-[1.3cqw] ring-1 ring-white/15 backdrop-blur-md md:block" style={a('sc-rise', 900, 900)}>
+      <div className="absolute top-[31cqw] left-[4.5cqw] hidden w-[22cqw] rounded-[1cqw] bg-[#1b2447]/85 p-[1.3cqw] ring-1 ring-white/15 md:block" style={a('sc-rise', 900, 900)}>
         <p className="mb-[0.9cqw] text-[1cqw] text-white/70">Choose a question</p>
         <div className="grid grid-cols-6 gap-[0.6cqw]">
           {Array.from({ length: 18 }, (_, i) => (

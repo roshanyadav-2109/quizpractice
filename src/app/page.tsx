@@ -259,9 +259,9 @@ export default async function HomePage() {
 
       {/* ---------------------------------------------------------- Why here */}
       {/* --------------------------------------------------- The product tour */}
-      <Section title="See Quiz Space in action">
+      <section className={`${SHELL} pb-14`}>
         <ProductShowcase />
-      </Section>
+      </section>
 
       <Section
         title={
