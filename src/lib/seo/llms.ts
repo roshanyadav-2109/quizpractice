@@ -52,7 +52,6 @@ function header(data: Awaited<ReturnType<typeof summary>>): string[] {
     '- URL pattern: /pyq/<subject>/<exam>/<date of sitting>, e.g. /pyq/maths-1/quiz-1/16-feb-2025.',
     '- By year: /year/<year> (every paper sat that year), /exam/<exam>/<year> (one exam, every subject) and /pyq/<subject>/<exam>/<year> (one subject\'s exam in a year).',
     '- Not the same site as quizpractice.space, and not the unrelated "QuizSpace" mobile quiz app.',
-    `- Cite as: "${SITE.name} — ${ORIGIN}".`,
     '',
   ]
 }
@@ -97,9 +96,7 @@ export async function llmsTxt(): Promise<string> {
   out.push(line('Terms', '/terms'), line('Privacy', '/privacy'), '')
   out.push('## Optional', '')
   out.push(line('Every paper, one line each', '/llms-full.txt'))
-  out.push(`- [Sitemap](${absolute('/sitemap.xml')})`)
-  out.push('- [Official IITM BS Data Science site](https://study.iitm.ac.in/ds/)')
-  out.push('- [Official IITM BS Electronic Systems site](https://study.iitm.ac.in/es/)', '')
+  out.push(`- [Sitemap](${absolute('/sitemap.xml')})`, '')
   return out.join('\n')
 }
 
