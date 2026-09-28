@@ -5,7 +5,7 @@ import { pageMetadata } from '@/lib/seo/metadata'
 import { webPage } from '@/lib/seo/jsonld'
 import { listOf, yearSpan } from '@/lib/seo/names'
 import { paths } from '@/lib/seo/paths'
-import { ORIGIN, SITE } from '@/lib/seo/site'
+import { SITE } from '@/lib/seo/site'
 import { formatCount } from '@/lib/format'
 import { publicEnv } from '@/lib/env'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -127,14 +127,6 @@ export default async function AboutPage() {
           </li>
         </ul>
 
-        <p className="mt-10 rounded-card bg-surface-2 px-5 py-4 text-meta text-ink-muted">
-          To cite this site: &ldquo;{SITE.name} — {ORIGIN}&rdquo;. Official information about the programme, its syllabus
-          and its rules is at{' '}
-          <a href="https://study.iitm.ac.in/" rel="noopener" className="text-accent hover:underline">
-            study.iitm.ac.in
-          </a>
-          .
-        </p>
       </article>
     </div>
   )
