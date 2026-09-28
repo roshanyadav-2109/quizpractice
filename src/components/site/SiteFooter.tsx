@@ -159,6 +159,10 @@ export async function SiteFooter() {
             <Link href="/terms" className={link}>
               Terms
             </Link>
+            <span aria-hidden="true" className="text-ink-faint">·</span>
+            <Link href="/refunds" className={link}>
+              Refunds
+            </Link>
             {publicEnv.contactEmail ? (
               <>
                 <span aria-hidden="true" className="text-ink-faint">·</span>
