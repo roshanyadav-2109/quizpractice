@@ -460,7 +460,7 @@ function SceneOutro({ a }: SceneProps) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center px-[8cqw] pb-[10cqw] text-center md:pb-[4cqw]">
       <div className="flex items-center" style={a('sc-pop', 900, 100)}>
-        <Image src="/brand/quizspace-mark.webp" alt="" width={120} height={120} unoptimized className="mr-[1cqw] h-[16cqw] w-[16cqw] brightness-0 invert md:mr-[0.4cqw] md:h-[6.5cqw] md:w-[6.5cqw]" />
+        <Image src="/brand/quizspace-mark.webp" alt="" width={120} height={120} unoptimized className="mr-[0.5cqw] h-[16cqw] w-[16cqw] brightness-0 invert md:mr-[0.2cqw] md:h-[6.5cqw] md:w-[6.5cqw]" />
         <span className="text-[12cqw] leading-none font-semibold tracking-[-0.03em] md:text-[5.2cqw]">uiz Space</span>
       </div>
       <p className="mt-[4cqw] max-w-[80cqw] text-[4.2cqw] text-white/75 md:mt-[1.8cqw] md:max-w-[46cqw] md:text-[1.6cqw]" style={a('sc-rise', 900, 700)}>

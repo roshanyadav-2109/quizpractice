@@ -21,12 +21,31 @@ export function BrandLogo() {
         priority
         className="h-[2.125rem] w-[2.125rem] shrink-0"
       />
-      {/* A letter's gap between the mark and the u, so the two read apart. Drawn
+      {/* A hairline gap between the mark and the u, so the two read apart. Drawn
           by CSS, so the page's text says "Quiz Space" once, not "Quiz Space uiz Space". */}
       <span
         aria-hidden="true"
         data-text="uiz Space"
-        className="ml-[0.1875rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink before:content-[attr(data-text)]"
+        className="ml-[0.09375rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink before:content-[attr(data-text)]"
+      />
+    </span>
+  )
+}
+
+/**
+ * "Quiz Space" set as the logo inside a heading or a line of text: the mark
+ * as its Q, sized to the text around it, with the same hairline gap.
+ */
+export function BrandInline() {
+  return (
+    <span className="inline-flex items-center whitespace-nowrap">
+      {/* As in the logo: the name as text once, the mark and "uiz Space" drawn. */}
+      <span className="sr-only">Quiz Space</span>
+      <Image src="/brand/quizspace-mark.webp" alt="" aria-hidden="true" width={64} height={64} unoptimized className="h-[1.6em] w-[1.6em] shrink-0" />
+      <span
+        aria-hidden="true"
+        data-text="uiz Space"
+        className="ml-[0.07em] -translate-y-[0.05em] font-semibold tracking-[-0.015em] before:content-[attr(data-text)]"
       />
     </span>
   )

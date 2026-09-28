@@ -15,9 +15,7 @@ import { SITE } from '@/lib/seo/site'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { Spotlight } from '@/components/site/Spotlight'
 import { SHELL, Trail } from '@/components/site/Page'
-import { ProductBy } from '@/components/site/Brand'
-import { SignInButton } from '@/components/site/AuthDialog'
-import { SignedOut } from '@/components/site/Viewer'
+import { BrandInline, ProductBy } from '@/components/site/Brand'
 import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
 import { MistakesCta } from '@/components/home/MistakesCta'
 import { WhyPractise } from '@/components/home/WhyPractise'
@@ -265,26 +263,19 @@ export default async function HomePage() {
         <ProductShowcase />
       </Section>
 
-      <Section title="Why practise on Quiz Space">
+      <Section
+        title={
+          <span className="inline-flex flex-wrap items-center gap-x-[0.3em]">
+            Why practise on <BrandInline />
+          </span>
+        }
+      >
         <WhyPractise subjects={subjects.length} since={Math.min(...allYears)} />
       </Section>
 
       <div className={`${SHELL} pb-14`}>
         <Faq items={faq} variant="accordion" />
       </div>
-
-      {/* ------------------------------------------------------------ Sign in */}
-      <SignedOut>
-        <section className={`${SHELL} pb-16`}>
-          <div className="flex flex-col gap-5 rounded-card bg-surface-2 px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <div>
-              <h2 className="text-section font-medium text-ink">Keep every attempt</h2>
-              <p className="mt-1 text-ui text-ink-muted">Sign in to save your scores and see where the marks went.</p>
-            </div>
-            <SignInButton className={buttonClass('primary', 'lg', 'shrink-0')}>Sign in</SignInButton>
-          </div>
-        </section>
-      </SignedOut>
     </>
   )
 }
@@ -332,7 +323,7 @@ function Section({
   link,
   children,
 }: {
-  title: string
+  title: ReactNode
   link?: { href: string; label: string }
   children: ReactNode
 }) {
