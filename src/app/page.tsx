@@ -44,8 +44,9 @@ export async function generateMetadata(): Promise<Metadata> {
       description: `Free IITM BS PYQs with solutions and answer keys: ${formatCount(papers.length)} papers for ${withPapers} subjects, for quiz practice and mock tests.`,
       path: '/',
     }),
-    // The home page carries the full brand whatever the length.
-    title: { absolute: `${titles.home()} | ${SITE.shortName}` },
+    // The home page carries the site's full name: with the WebSite structured
+    // data and og:site_name, it is what Google shows as the site name.
+    title: { absolute: `${titles.home()} | ${SITE.name}` },
   }
 }
 
