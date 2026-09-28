@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteChrome } from '@/components/site/SiteChrome'
@@ -114,6 +115,8 @@ export default function RootLayout({
         <OfflineBanner />
         {/* Vercel Web Analytics: page views, without cookies. Sends nothing in development. */}
         <Analytics />
+        {/* Vercel Speed Insights: real user performance monitoring. */}
+        <SpeedInsights />
         {/* Google Analytics 4, on production only. */}
         <GoogleAnalytics />
       </body>
