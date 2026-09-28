@@ -138,7 +138,11 @@
         "subjects/eftl",
         "subjects/sdvl",
         "subjects/fpga",
-        "site/logo"
+        "subjects/ads",
+        "subjects/ds-ai-lab",
+        "subjects/design-thinking",
+        "subjects/intro-big-data",
+        "subjects/es-c-programming"
       ]
     },
     {

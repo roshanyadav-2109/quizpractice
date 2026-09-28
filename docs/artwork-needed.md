@@ -121,7 +121,7 @@ Paste one sheet prompt at a time into the same chat. Send me the sheets as they 
 | 8 | `subjects/game-theory` | Game Theory and Strategy <br><sub>Data Science · BS Degree Level</sub> |
 | 9 | `subjects/speech-technology` | Speech Technology <br><sub>Data Science · BS Degree Level</sub> |
 
-### Sheet 8
+### Sheet 8 (done)
 
 | # | File | For |
 |---|---|---|
@@ -153,7 +153,7 @@ A sheet of 9 icons from the same set, arranged in a 3x3 grid with equal spacing 
 | 8 | `subjects/epd` | Electronic Product Design <br><sub>Electronic Systems · Diploma Level</sub> |
 | 9 | `subjects/computer-organization` | Computer Organization <br><sub>Electronic Systems · Diploma Level</sub> |
 
-### Sheet 10
+### Sheet 10 (done)
 
 | # | File | For |
 |---|---|---|
@@ -161,11 +161,13 @@ A sheet of 9 icons from the same set, arranged in a 3x3 grid with equal spacing 
 | 2 | `subjects/eftl` | Electromagnetic Fields and Transmission Lines <br><sub>Electronic Systems · BS Degree Level</sub> |
 | 3 | `subjects/sdvl` | System Design with Verilog and VLSI <br><sub>Electronic Systems · BS Degree Level</sub> |
 | 4 | `subjects/fpga` | FPGA Design <br><sub>Electronic Systems · BS Degree Level</sub> |
-| 5 | `site/logo` | Site logo |
+| 5 | `subjects/ads` | Algorithms for Data Science <br><sub>Data Science · BSc Degree Level</sub> |
+| 6 | `subjects/ds-ai-lab` | Data Science and AI Lab <br><sub>Data Science · BSc Degree Level</sub> |
+| 7 | `subjects/design-thinking` | Design Thinking for Data-Driven App Development <br><sub>Data Science · BSc Degree Level</sub> |
+| 8 | `subjects/intro-big-data` | Introduction to Big Data <br><sub>Data Science · BSc Degree Level</sub> |
+| 9 | `subjects/es-c-programming` | Introduction to C Programming <br><sub>Electronic Systems · Foundation Level</sub> |
 
-```text
-A sheet of 5 icons from the same set, arranged in a 3x2 grid with equal spacing on a plain white background, with no boxes, tiles or dividing lines between them, in reading order (left to right, top to bottom) and with no numbers drawn. Line-art icons from one consistent educational icon set: a clean outline drawing in charcoal #292524, one even line weight with rounded ends, open shapes and minimal detail, like a confident pen drawing. Behind part of each drawing sits one loose flat colour splash, set a little off-centre so it does not sit exactly under the lines, like a misregistered print. Each icon has its own splash colour and splash shape, given with it below. The one key detail named for each icon is filled in coral #EE6C4D. Each icon uses only three colours: charcoal, coral and its own splash colour. No blue, no black fills. No tile, box, circle, frame or badge behind the icons. No gradients, shadows, glow, 3D, isometric view, sparkles, letters or words, and no extra decoration. Each drawing fills its cell with a small even margin. The icons, in order: 1) an oscilloscope, whose screen shows a waveform in coral; splash: a rough hand-painted circle in sage #9CCB8F. 2) an antenna tower, sending out signal arcs in coral; splash: a rounded blob in lilac #C9B3E6. 3) a chip die covered in a dense grid of tiny blocks, with one block in coral; splash: a single diagonal dry-brush stroke in rose #F6B2C3. 4) a 3x3 grid of logic blocks joined by lines inside a chip outline, with one routed path in coral; splash: a torn-paper patch in lime #D5E26A. 5) an answer-sheet bubble: a ring with a solid filled dot in coral; splash: an ink splash with a few scattered droplets in saffron #F4B942.
-```
+A sheet of 9 icons from the same set, arranged in a 3x3 grid with equal spacing on a plain white background, with no boxes, tiles or dividing lines between them, in reading order (left to right, top to bottom) and with no numbers drawn. Line-art icons from one consistent educational icon set: a clean outline drawing in charcoal #292524, one even line weight with rounded ends, open shapes and minimal detail, like a confident pen drawing. Behind part of each drawing sits one loose flat colour splash, set a little off-centre so it does not sit exactly under the lines, like a misregistered print. Each icon has its own splash colour and splash shape, given with it below. The one key detail named for each icon is filled in coral #EE6C4D. Each icon uses only three colours: charcoal, coral and its own splash colour. No blue, no black fills. No tile, box, circle, frame or badge behind the icons. No gradients, shadows, glow, 3D, isometric view, sparkles, letters or words, and no extra decoration. Each drawing fills its cell with a small even margin. The icons, in order: 1) an oscilloscope, whose screen shows a waveform in coral; splash: a rough hand-painted circle in sage #9CCB8F. 2) an antenna tower, sending out signal arcs in coral; splash: a rounded blob in lilac #C9B3E6. 3) a chip die covered in a dense grid of tiny blocks, with one block in coral; splash: a single diagonal dry-brush stroke in rose #F6B2C3. 4) a 3x3 grid of logic blocks joined by lines inside a chip outline, with one routed path in coral; splash: a torn-paper patch in lime #D5E26A. 5) a row of vertical bars of uneven height, with a curved swap arrow over two of them in coral; splash: an ink splash with a few scattered droplets in saffron #F4B942. 6) a laboratory flask, with three connected nodes floating in its liquid, the nodes in coral; splash: a crescent-shaped wash in rose #F6B2C3. 7) a lightbulb, whose filament is a tiny app-screen outline in coral; splash: a rough hand-painted circle in lilac #C9B3E6. 8) a stack of three database cylinders, with a funnel above pouring small dots in coral into the top one; splash: a rounded blob in sage #9CCB8F. 9) a pair of curly braces { }, around a small gear in coral; splash: a single diagonal dry-brush stroke in saffron #F4B942.
 
 ### Sheet 11: levels
 
