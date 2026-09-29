@@ -1,0 +1,397 @@
+/**
+ * Unknown IITians — users sheet.
+ *
+ * One tab per site (erp, main, quizspace, oppe) and one "all unique" tab that
+ * joins them by email. New sign-ins and logins arrive by webhook from each
+ * database in about a second (doPost); a full rebuild runs every night (syncAll)
+ * and is the safety net for anything a webhook missed.
+ *
+ * This file is bound to its OWN spreadsheet. It never opens or reads any other
+ * spreadsheet — in particular not the purchases sheet.
+ *
+ * Secrets live in Script Properties (setupSecrets(), run once, then deleted).
+ */
+const SITES = ['erp', 'main', 'quizspace', 'oppe'];
+const PULL_SITES = ['main', 'quizspace', 'oppe']; // ERP's API is restricted: it pushes instead
+const TABS = { erp: 'erp data', main: 'main data', quizspace: 'quizspace data', oppe: 'oppe data' };
+const ALL_TAB = 'all unique';
+const GROUPS_TAB = '_groups';
+const QUEUE_TAB = '_queue';
+const TZ = 'Asia/Kolkata';
+const DATE_FMT = 'dd-mmm-yyyy hh:mm';
+const SITE_HEAD = ['Email', 'Name', 'Phone', 'Signed up', 'Last login', 'Login method', 'Role'];
+const ALL_HEAD = ['Email', 'Name', 'Phone', 'ERP', 'Main', 'Quiz Space', 'OPPE', 'In Google group', 'Google group address', 'Group status', 'First seen', 'Last login'];
+const FLAG_COL = { erp: 3, main: 4, quizspace: 5, oppe: 6 }; // 0-based, in ALL rows
+const NAME_ORDER = ['main', 'erp', 'oppe', 'quizspace'];
+const PHONE_ORDER = ['main', 'oppe', 'erp', 'quizspace'];
+const PAGE = 3000;
+
+/* ------------------------------------------------------------------ pure helpers */
+
+function normEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function toDate(value) {
+  if (value === null || value === undefined || value === '') return '';
+  const date = value instanceof Date ? value : new Date(value);
+  return isNaN(date.getTime()) ? '' : date;
+}
+
+function time(value) {
+  return value instanceof Date ? value.getTime() : null;
+}
+
+/** A user as sent by a database, as a site-tab row. */
+function siteRow(user) {
+  return [
+    normEmail(user.email), user.name || '', user.phone || '',
+    toDate(user.created_at), toDate(user.last_login), user.provider || '', user.role || '',
+  ];
+}
+
+/** New values win where they say something; the earlier signup and later login are kept. */
+function mergeSiteRow(old, next) {
+  const out = old.slice();
+  for (const i of [1, 2, 5, 6]) if (next[i] !== '' && next[i] !== null) out[i] = next[i];
+  const oldSigned = time(old[3]), newSigned = time(next[3]);
+  if (newSigned !== null && (oldSigned === null || newSigned < oldSigned)) out[3] = next[3];
+  const oldLast = time(old[4]), newLast = time(next[4]);
+  if (newLast !== null && (oldLast === null || newLast > oldLast)) out[4] = next[4];
+  return out;
+}
+
+function groupCells(record) {
+  if (!record) return ['No', '', ''];
+  const status = String(record.status || '');
+  const inGroup = status === 'added' || status === 'already_member' ? 'Yes' : status === 'pending' ? 'Queued' : 'No';
+  return [inGroup, record.group_email || '', status];
+}
+
+/** One "all unique" row from a person's site rows ({site: row}) and group record. */
+function aggregate(email, bySite, record) {
+  const pick = (order, index) => {
+    for (const site of order) {
+      const row = bySite[site];
+      if (row && row[index] !== '' && row[index] !== null) return row[index];
+    }
+    return '';
+  };
+  let first = null, last = null;
+  for (const site of SITES) {
+    const row = bySite[site];
+    if (!row) continue;
+    const a = time(row[3]);
+    const b = time(row[4]) !== null ? time(row[4]) : a; // never logged in: the signup counts
+    if (a !== null && (first === null || a < first)) first = a;
+    if (b !== null && (last === null || b > last)) last = b;
+  }
+  const flags = SITES.map((site) => (bySite[site] ? 'Yes' : 'No'));
+  const out = [email, pick(NAME_ORDER, 1), pick(PHONE_ORDER, 2)];
+  out[FLAG_COL.erp] = flags[0]; out[FLAG_COL.main] = flags[1]; out[FLAG_COL.quizspace] = flags[2]; out[FLAG_COL.oppe] = flags[3];
+  const g = groupCells(record);
+  out.push(g[0], g[1], g[2], first === null ? '' : new Date(first), last === null ? '' : new Date(last));
+  return out;
+}
+
+/** Every "all unique" row, from the four site tabs' rows and the group records. */
+function buildAllRows(tabs, groups) {
+  const people = new Map();
+  for (const site of SITES) {
+    for (const row of tabs[site] || []) {
+      const email = normEmail(row[0]);
+      if (!email) continue;
+      if (!people.has(email)) people.set(email, {});
+      people.get(email)[site] = row;
+    }
+  }
+  const rows = [];
+  for (const [email, bySite] of people) rows.push(aggregate(email, bySite, groups.get(email)));
+  rows.sort((a, b) => (time(a[10]) || 0) - (time(b[10]) || 0));
+  return rows;
+}
+
+/** A row of an "all unique" tab back from the sheet, after an event changed one site. */
+function updateAllRow(existing, site, row, record) {
+  const bySite = {};
+  for (const s of SITES) bySite[s] = null;
+  const current = existing ? existing.slice() : null;
+  // Rebuild from what the row already knows plus the new site row.
+  const base = current || [row[0], '', '', 'No', 'No', 'No', 'No', 'No', '', '', '', ''];
+  const flags = {};
+  for (const s of SITES) flags[s] = base[FLAG_COL[s]] === 'Yes';
+  flags[site] = true;
+  const out = base.slice();
+  for (const s of SITES) out[FLAG_COL[s]] = flags[s] ? 'Yes' : 'No';
+  if (row[1] && (!out[1] || site === 'main')) out[1] = row[1];
+  if (row[2] && (!out[2] || site === 'main')) out[2] = row[2];
+  const oldFirst = time(toDate(out[10])), newFirst = time(row[3]);
+  if (newFirst !== null && (oldFirst === null || newFirst < oldFirst)) out[10] = row[3];
+  const oldLast = time(toDate(out[11])), newLast = time(row[4]);
+  if (newLast !== null && (oldLast === null || newLast > oldLast)) out[11] = row[4];
+  if (record) { const g = groupCells(record); out[7] = g[0]; out[8] = g[1]; out[9] = g[2]; }
+  return out;
+}
+
+function safeEqual(a, b) {
+  a = String(a || ''); b = String(b || '');
+  if (a.length !== b.length || a.length === 0) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+/* ---------------------------------------------------------------- end pure helpers */
+
+function prop(name) {
+  return PropertiesService.getScriptProperties().getProperty(name);
+}
+
+function book() {
+  return SpreadsheetApp.getActive();
+}
+
+/** A tab with its header row and column formats, made if it is missing. */
+function ensureTab(name, head, opts) {
+  const ss = book();
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  if (sheet.getRange(1, 1).getValue() !== head[0]) {
+    sheet.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  if (sheet.getMaxColumns() < head.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), head.length - sheet.getMaxColumns());
+  sheet.getRange('A:C').setNumberFormat('@');
+  for (const column of opts.dateColumns || []) sheet.getRange(column + ':' + column).setNumberFormat(DATE_FMT);
+  if (opts.hidden) sheet.hideSheet();
+  return sheet;
+}
+
+function siteTab(site) { return ensureTab(TABS[site], SITE_HEAD, { dateColumns: ['D', 'E'] }); }
+function allTab() { return ensureTab(ALL_TAB, ALL_HEAD, { dateColumns: ['K', 'L'] }); }
+function groupsTab() { return ensureTab(GROUPS_TAB, ['Email', 'Group', 'Status'], { hidden: true }); }
+function queueTab() { return ensureTab(QUEUE_TAB, ['Event'], { hidden: true }); }
+
+function findRow(sheet, email) {
+  if (sheet.getLastRow() < 2) return 0;
+  const hit = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).createTextFinder(email).matchEntireCell(true).matchCase(false).findNext();
+  return hit ? hit.getRow() : 0;
+}
+
+function writeRows(sheet, columns, rows) {
+  // Replaces everything under the header in one write.
+  const old = sheet.getLastRow();
+  if (old > 1) sheet.getRange(2, 1, old - 1, columns).clearContent();
+  if (rows.length === 0) return;
+  if (sheet.getMaxRows() < rows.length + 1) sheet.insertRowsAfter(sheet.getMaxRows(), rows.length + 1 - sheet.getMaxRows());
+  sheet.getRange(2, 1, rows.length, columns).setValues(rows);
+}
+
+function readRows(sheet, columns) {
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, columns).getValues();
+}
+
+function groupMap() {
+  const map = new Map();
+  for (const row of readRows(groupsTab(), 3)) map.set(normEmail(row[0]), { group_email: row[1], status: row[2] });
+  return map;
+}
+
+/* ------------------------------------------------------------------ live events */
+
+function applyUser(site, user) {
+  const row = siteRow(user);
+  if (!row[0] || SITES.indexOf(site) < 0) return;
+  const sheet = siteTab(site);
+  const at = findRow(sheet, row[0]);
+  if (at) {
+    const old = sheet.getRange(at, 1, 1, SITE_HEAD.length).getValues()[0];
+    sheet.getRange(at, 1, 1, SITE_HEAD.length).setValues([mergeSiteRow(old, row)]);
+  } else {
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, SITE_HEAD.length).setValues([row]);
+  }
+  const all = allTab();
+  const allAt = findRow(all, row[0]);
+  const groupAt = findRow(groupsTab(), row[0]);
+  const record = groupAt ? (() => { const g = groupsTab().getRange(groupAt, 1, 1, 3).getValues()[0]; return { group_email: g[1], status: g[2] }; })() : null;
+  const existing = allAt ? all.getRange(allAt, 1, 1, ALL_HEAD.length).getValues()[0] : null;
+  const next = updateAllRow(existing, site, row, existing ? null : record);
+  if (allAt) all.getRange(allAt, 1, 1, ALL_HEAD.length).setValues([next]);
+  else all.getRange(all.getLastRow() + 1, 1, 1, ALL_HEAD.length).setValues([next]);
+}
+
+function applyGroup(item) {
+  const email = normEmail(item.email);
+  if (!email) return;
+  const sheet = groupsTab();
+  const at = findRow(sheet, email);
+  const values = [[email, item.group_email || '', item.status || '']];
+  if (at) sheet.getRange(at, 1, 1, 3).setValues(values);
+  else sheet.getRange(sheet.getLastRow() + 1, 1, 1, 3).setValues(values);
+  const all = allTab();
+  const allAt = findRow(all, email);
+  if (allAt) {
+    const g = groupCells({ group_email: item.group_email, status: item.status });
+    all.getRange(allAt, 8, 1, 3).setValues([g]);
+  }
+}
+
+/** A whole batch for one site at once (the ERP snapshot): the tab read and written once. */
+function applyBulk(site, users) {
+  const sheet = siteTab(site);
+  const rows = readRows(sheet, SITE_HEAD.length);
+  const index = new Map();
+  rows.forEach((row, i) => index.set(normEmail(row[0]), i));
+  for (const user of users) {
+    const next = siteRow(user);
+    if (!next[0]) continue;
+    if (index.has(next[0])) rows[index.get(next[0])] = mergeSiteRow(rows[index.get(next[0])], next);
+    else { index.set(next[0], rows.length); rows.push(next); }
+  }
+  writeRows(sheet, SITE_HEAD.length, rows);
+}
+
+function handle(body) {
+  if (body.groups) body.groups.forEach(applyGroup);
+  if (body.users && body.bulk) applyBulk(body.site, body.users);
+  else if (body.users) body.users.forEach((user) => applyUser(body.site, user));
+}
+
+function drainQueue(limit) {
+  const sheet = queueTab();
+  const n = sheet.getLastRow() - 1;
+  if (n < 1) return;
+  const take = Math.min(n, limit || 20);
+  const rows = sheet.getRange(2, 1, take, 1).getValues();
+  for (const [raw] of rows) {
+    try { handle(JSON.parse(raw)); } catch (error) { console.error('queued event failed: ' + error); }
+  }
+  sheet.deleteRows(2, take);
+}
+
+function reply(object) {
+  return ContentService.createTextOutput(JSON.stringify(object)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** The webhook the databases call. Body: {secret, site, users:[…]} or {secret, groups:[…]}. */
+function doPost(e) {
+  let body;
+  try { body = JSON.parse(e.postData.contents); } catch (error) { return reply({ ok: false, error: 'bad json' }); }
+  if (!safeEqual(body.secret, prop('SECRET'))) return reply({ ok: false, error: 'not allowed' });
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    // Busy (a rebuild, or a burst of sign-ins): keep it, the next call applies it.
+    queueTab().appendRow([JSON.stringify({ site: body.site, users: body.users, groups: body.groups, bulk: body.bulk })]);
+    return reply({ ok: true, queued: true });
+  }
+  try {
+    handle(body);
+    drainQueue(20);
+    return reply({ ok: true });
+  } catch (error) {
+    queueTab().appendRow([JSON.stringify({ site: body.site, users: body.users, groups: body.groups, bulk: body.bulk })]);
+    return reply({ ok: false, error: String(error) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* --------------------------------------------------------------------- full sync */
+
+function fetchPages(url, key, fn, base) {
+  const out = [];
+  let after = null;
+  for (let guard = 0; guard < 200; guard++) {
+    const payload = Object.assign({}, base, { p_after: after, p_limit: PAGE });
+    const response = UrlFetchApp.fetch(url + '/rest/v1/rpc/' + fn, {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { apikey: key, Authorization: 'Bearer ' + key }, payload: JSON.stringify(payload),
+    });
+    if (response.getResponseCode() !== 200) throw new Error(fn + ' ' + response.getResponseCode() + ': ' + response.getContentText().slice(0, 200));
+    const page = JSON.parse(response.getContentText());
+    // Supabase caps a reply at its own row limit (1000), whatever was asked for, so a short
+    // page does not mean the last one: only an empty page does.
+    if (page.length === 0) break;
+    out.push.apply(out, page);
+    const last = page[page.length - 1];
+    after = fn === 'sheet_export_groups' ? last.email : last.id;
+  }
+  return out;
+}
+
+/** Rebuilds every tab from the databases. Nightly, and from the menu. */
+function syncAll() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(60000)) throw new Error('Another sync is running. Try again in a minute.');
+  const report = [];
+  try {
+    for (const site of PULL_SITES) {
+      try {
+        const users = fetchPages(prop(site + '_URL'), prop(site + '_KEY'), 'sheet_export', { p_token: prop(site + '_TOKEN') });
+        writeRows(siteTab(site), SITE_HEAD.length, users.map(siteRow));
+        report.push(site + ': ' + users.length);
+      } catch (error) {
+        report.push(site + ': FAILED — ' + error);
+      }
+    }
+    try {
+      const groups = fetchPages(prop('main_URL'), prop('main_KEY'), 'sheet_export_groups', { p_token: prop('main_TOKEN') });
+      writeRows(groupsTab(), 3, groups.map((g) => [g.email, g.group_email, g.status]));
+      report.push('groups: ' + groups.length);
+    } catch (error) {
+      report.push('groups: FAILED — ' + error);
+    }
+    const tabs = {};
+    for (const site of SITES) tabs[site] = readRows(siteTab(site), SITE_HEAD.length);
+    const all = buildAllRows(tabs, groupMap());
+    writeRows(allTab(), ALL_HEAD.length, all);
+    report.push('all unique: ' + all.length);
+    while (queueTab().getLastRow() > 1) drainQueue(50);
+    PropertiesService.getScriptProperties().setProperty('LAST_SYNC', new Date().toISOString() + ' | ' + report.join(' | '));
+  } finally {
+    lock.releaseLock();
+  }
+  return report;
+}
+
+/* ------------------------------------------------------------------------- menu */
+
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Users sync')
+    .addItem('Sync everything now', 'menuSync')
+    .addItem('Install nightly sync (run once)', 'installTriggers')
+    .addItem('Status', 'showStatus')
+    .addToUi();
+}
+
+function menuSync() {
+  const report = syncAll();
+  SpreadsheetApp.getUi().alert('Sync finished\n\n' + report.join('\n'));
+}
+
+function installTriggers() {
+  for (const trigger of ScriptApp.getProjectTriggers()) {
+    if (trigger.getHandlerFunction() === 'syncAll') ScriptApp.deleteTrigger(trigger);
+  }
+  ScriptApp.newTrigger('syncAll').timeBased().everyDays(1).atHour(3).inTimezone(TZ).create();
+  book().setSpreadsheetTimeZone(TZ);
+  SpreadsheetApp.getUi().alert('Done. A full rebuild will run every night at about 3 am IST.');
+}
+
+function showStatus() {
+  const lines = [];
+  for (const site of SITES) lines.push(TABS[site] + ': ' + Math.max(0, siteTab(site).getLastRow() - 1));
+  lines.push(ALL_TAB + ': ' + Math.max(0, allTab().getLastRow() - 1));
+  lines.push('Waiting in queue: ' + Math.max(0, queueTab().getLastRow() - 1));
+  lines.push('Last full sync: ' + (prop('LAST_SYNC') || 'never'));
+  SpreadsheetApp.getUi().alert(lines.join('\n'));
+}
+
+/**
+ * Run ONCE from the editor (Run ▶ setupSecrets), then DELETE this whole function.
+ * It stores the passwords in Script Properties, where the code below reads them.
+ */
+function setupSecrets() {
+  PropertiesService.getScriptProperties().setProperties(__SECRETS__);
+  Logger.log('Secrets saved. Now delete this function.');
+}
