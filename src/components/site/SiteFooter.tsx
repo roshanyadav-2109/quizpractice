@@ -175,7 +175,7 @@ export async function SiteFooter() {
               {publicEnv.contactEmail ? (
                 <li>
                   <a href={`mailto:${publicEnv.contactEmail}`} className={link}>
-                    Contact
+                    {publicEnv.contactEmail}
                   </a>
                 </li>
               ) : null}
