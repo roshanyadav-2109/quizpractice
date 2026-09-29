@@ -5,6 +5,7 @@ import type { AnswerResponse, QuestionWithOptions } from '@/types/db'
 import type { QuestionResult } from '@/lib/scoring'
 import { responseValue, selectedOptionIds } from '@/lib/scoring'
 import { CheckCircle, XCircle } from '@/components/ui/icons'
+import { SuggestAnswer } from '@/components/exam/SuggestAnswer'
 
 /**
  * The input for one question, matched to its type. A numerical answer needs a
@@ -16,12 +17,14 @@ export function AnswerInput({
   response,
   result,
   disabled,
+  isSignedIn,
   onChange,
 }: {
   question: QuestionWithOptions
   response: AnswerResponse | null
   result: QuestionResult | null
   disabled: boolean
+  isSignedIn: boolean
   onChange: (response: AnswerResponse) => void
 }) {
   if (question.type === 'mcq' || question.type === 'msq') {
@@ -31,6 +34,7 @@ export function AnswerInput({
         response={response}
         result={result}
         disabled={disabled}
+        isSignedIn={isSignedIn}
         onChange={onChange}
       />
     )
@@ -66,6 +70,11 @@ export function AnswerInput({
               <span className="text-ink-muted"> (±{question.answer_tolerance})</span>
             ) : null}
           </p>
+        ) : result && result.correctAnswer === null ? (
+          <>
+            <p className="mt-2 flex items-start gap-2 text-meta text-marked">The answer is not on the site yet. It is in the official answer key.</p>
+            <SuggestAnswer kind="numerical" questionId={question.id} isSignedIn={isSignedIn} />
+          </>
         ) : null}
       </div>
     )
@@ -102,18 +111,21 @@ function ChoiceInput({
   response,
   result,
   disabled,
+  isSignedIn,
   onChange,
 }: {
   question: QuestionWithOptions
   response: AnswerResponse | null
   result: QuestionResult | null
   disabled: boolean
+  isSignedIn: boolean
   onChange: (response: AnswerResponse) => void
 }) {
   const selected = new Set(selectedOptionIds(response))
   const multiple = question.type === 'msq'
   const correctIds = new Set(result?.correctOptionIds ?? [])
   const showsResult = result !== null
+  const noKeyYet = showsResult && correctIds.size === 0
 
   function toggle(optionId: string) {
     if (disabled) return
@@ -184,6 +196,18 @@ function ChoiceInput({
           )
         })}
       </ul>
+      {noKeyYet ? (
+        <>
+          <p className="mt-2 flex items-start gap-2 text-meta text-marked">The correct option is not on the site yet. It is in the official answer key.</p>
+          <SuggestAnswer
+            kind="choice"
+            questionId={question.id}
+            isSignedIn={isSignedIn}
+            multiple={multiple}
+            options={question.options.map((option) => ({ id: option.id, label: option.label }))}
+          />
+        </>
+      ) : null}
     </fieldset>
   )
 }

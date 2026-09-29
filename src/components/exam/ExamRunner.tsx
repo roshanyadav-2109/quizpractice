@@ -552,9 +552,9 @@ export function ExamRunner(props: ExamRunnerProps) {
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="Open the question palette"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-rule text-ink lg:hidden"
+          className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-2 lg:hidden"
         >
-          <SquaresFour size={18} />
+          <SquaresFour size={24} />
         </button>
       </header>
 
@@ -614,6 +614,7 @@ export function ExamRunner(props: ExamRunnerProps) {
                 response={responses[question.id] ?? null}
                 result={shownResult}
                 disabled={revealed}
+                isSignedIn={isSignedIn}
                 onChange={(response) => setResponse(question.id, response)}
               />
 
@@ -678,7 +679,8 @@ export function ExamRunner(props: ExamRunnerProps) {
               ) : null}
             </div>
           </div>
-          {revealed && learning ? <SolutionVideoDock
+          {/* From a tablet up only: on a phone the video plays inside the solution below (SolutionPanel). */}
+          {revealed && learning ? <div className="hidden md:contents"><SolutionVideoDock
               questionId={question.id}
               bounds={questionPane}
               column={questionColumn}
@@ -687,7 +689,7 @@ export function ExamRunner(props: ExamRunnerProps) {
                 // A short code where the subject's slug is one (DBMS), else its name.
                 subject: review ? null : /^[a-z0-9]{2,6}$/.test(meta.subjectSlug) ? meta.subjectSlug.toUpperCase() : meta.subjectName,
               }}
-            /> : null}
+            /></div> : null}
           </div>
 
           {/* The CBT action bar, pinned under the question. We save as you go,

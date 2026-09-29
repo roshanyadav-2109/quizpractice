@@ -3,16 +3,16 @@ import { cloudinaryConfig } from '@/lib/env'
 import type { CloudinaryRef } from '@/lib/blocks/schema'
 
 /**
- * Two Cloudinary accounts, each on the free plan's 25 credits. Every upload —
- * and every overwrite — costs a transformation, counted over a rolling 30
- * days, so a bulk import can push one account over its limit for a month,
- * and an account left over its limit can be disabled, taking every image it
- * serves with it.
+ * Three Cloudinary accounts, each on the free plan's 25 credits. Every
+ * upload — and every overwrite — costs a transformation, counted over a
+ * rolling 30 days, so a bulk import can push one account over its limit for
+ * a month, and an account left over its limit can be disabled, taking every
+ * image it serves with it.
  *
- * So uploads go to the site's own account while it has room, then to the
- * second account, and stop — with a plain message — once both are near their
- * limit. An asset placed on the second account records its cloud, which is
- * how the renderer knows where to fetch it.
+ * So uploads go to the site's own account while it has room, then the
+ * second, then the third, and stop — with a plain message — once all three
+ * are near their limit. An asset placed on a non-primary account records its
+ * cloud, which is how the renderer knows where to fetch it.
  */
 
 interface Account {
@@ -38,13 +38,27 @@ function guardServer() {
 function accounts(): Account[] {
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig()
   const list: Account[] = [{ cloudName, apiKey, apiSecret, primary: true }]
-  const second = {
-    cloudName: process.env.CLOUDINARY_SHEETS_CLOUD_NAME,
-    apiKey: process.env.CLOUDINARY_SHEETS_API_KEY,
-    apiSecret: process.env.CLOUDINARY_SHEETS_API_SECRET,
-  }
-  if (second.cloudName && second.apiKey && second.apiSecret && second.cloudName !== cloudName) {
-    list.push({ cloudName: second.cloudName, apiKey: second.apiKey, apiSecret: second.apiSecret, primary: false })
+  const extras = [
+    {
+      cloudName: process.env.CLOUDINARY_SHEETS_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_SHEETS_API_KEY,
+      apiSecret: process.env.CLOUDINARY_SHEETS_API_SECRET,
+    },
+    {
+      cloudName: process.env.CLOUDINARY_THIRD_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_THIRD_API_KEY,
+      apiSecret: process.env.CLOUDINARY_THIRD_API_SECRET,
+    },
+  ]
+  for (const extra of extras) {
+    if (
+      extra.cloudName &&
+      extra.apiKey &&
+      extra.apiSecret &&
+      !list.some((a) => a.cloudName === extra.cloudName)
+    ) {
+      list.push({ cloudName: extra.cloudName, apiKey: extra.apiKey, apiSecret: extra.apiSecret, primary: false })
+    }
   }
   return list
 }
@@ -81,7 +95,7 @@ async function pickAccount(count = 1): Promise<Account> {
     }
   }
   throw new UploadBudgetError(
-    'Image uploads are paused: both Cloudinary accounts are close to their monthly limit. They free up as older uploads pass 30 days.',
+    'Image uploads are paused: every Cloudinary account is close to its monthly limit. They free up as older uploads pass 30 days.',
   )
 }
 

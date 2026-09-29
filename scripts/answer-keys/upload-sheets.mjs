@@ -2,13 +2,14 @@
 // every figure pointing at its part of its sheet. Resumable: finished uploads
 // are kept in the cache.
 //
-// Two Cloudinary accounts are used, the sheets account first
-// (CLOUDINARY_SHEETS_* in .env.local), then the site's own. Each account's
+// Three Cloudinary accounts are used, the sheets account first
+// (CLOUDINARY_SHEETS_* in .env.local), then the third account
+// (CLOUDINARY_THIRD_* in .env.local), then the site's own. Each account's
 // 30-day credits are read before uploading, and a sheet goes to the first
 // account still under its cap: one credit per 1,000 uploads plus one per GB
-// stored. The caps (90% for the sheets account, 80% for the site's own) keep
-// room for people viewing the images. When neither has room, the sheet is not
-// uploaded and its paper is held back.
+// stored. The caps (90% for the sheets and third accounts, 80% for the
+// site's own) keep room for people viewing the images. When none has room,
+// the sheet is not uploaded and its paper is held back.
 //
 //   node upload-sheets.mjs <repo> <papers dir> <sheets dir> <out dir> <cache.json>
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
@@ -25,6 +26,7 @@ const env = Object.fromEntries(readFileSync(join(repo, '.env.local'), 'utf8').sp
 
 const accounts = [
   { cloud_name: env.CLOUDINARY_SHEETS_CLOUD_NAME, api_key: env.CLOUDINARY_SHEETS_API_KEY, api_secret: env.CLOUDINARY_SHEETS_API_SECRET, cap: 0.9 },
+  { cloud_name: env.CLOUDINARY_THIRD_CLOUD_NAME, api_key: env.CLOUDINARY_THIRD_API_KEY, api_secret: env.CLOUDINARY_THIRD_API_SECRET, cap: 0.9 },
   { cloud_name: env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, api_key: env.CLOUDINARY_API_KEY, api_secret: env.CLOUDINARY_API_SECRET, cap: 0.8 },
 ].filter((a) => a.cloud_name && a.api_key && a.api_secret)
 for (const account of accounts) {
