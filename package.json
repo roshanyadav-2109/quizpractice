@@ -21,7 +21,8 @@
     "bank:migrate": "tsx scripts/migrate-bank.ts",
     "icons:cut": "tsx scripts/cut-icons.ts",
     "cache:refresh": "node scripts/refresh-cache.mjs",
-    "seo:indexnow": "node scripts/indexnow.mjs"
+    "seo:indexnow": "node scripts/indexnow.mjs",
+    "group:sync": "tsx scripts/group-signup.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
