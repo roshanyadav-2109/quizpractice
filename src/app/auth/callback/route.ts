@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { sendPendingGroupSignups } from '@/lib/group-signup'
+import { contentClient } from '@/lib/supabase/content'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -25,6 +27,13 @@ export async function GET(request: NextRequest) {
   if (error) {
     return NextResponse.redirect(`${origin}/?error=invalid_code`)
   }
+
+  // Hand the new account's email to the announcement groups once the response
+  // is on its way, so a slow answer from the main site never slows a sign-in.
+  // The daily job retries whatever this misses.
+  const { data } = await supabase.auth.getUser()
+  const userId = data.user?.id
+  if (userId) after(() => sendPendingGroupSignups(contentClient(), { userId }).catch(() => undefined))
 
   return NextResponse.redirect(`${origin}${destination}`)
 }
