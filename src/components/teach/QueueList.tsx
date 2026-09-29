@@ -1,7 +1,5 @@
 import Link from 'next/link'
-import { releaseClaimAction } from '@/app/teach/(desk)/actions'
-import { ActionButton } from '@/components/admin/ActionButton'
-import { ArrowRight, Hourglass, ImageIcon, PencilSimpleLine, Shuffle, Stack, VideoCamera } from '@/components/ui/icons'
+import { ArrowRight, ImageIcon, PencilSimpleLine, Shuffle, Stack, User, VideoCamera } from '@/components/ui/icons'
 import { Badge } from '@/components/ui/primitives'
 import { formatSession, formatShortDate } from '@/lib/format'
 import { ROUTES, type ExplanationState, type QueueRow } from '@/lib/teach/contracts'
@@ -25,15 +23,17 @@ const STATE_BADGE: Record<ExplanationState, { label: string; tone: Tone }> = {
   rejected: { label: 'Needs changes', tone: 'incorrect' },
 }
 
-// A hold ends at a time of day, read in India like every time on the site.
-const until = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: 'Asia/Kolkata',
-})
+/**
+ * The question's opening words, without the stand-in text a question typed as
+ * pictures carries for its figures and maths; those say nothing to a teacher.
+ */
+function preview(snippet: string | null): string {
+  return (snippet ?? '')
+    .replace(/Question text from the original paper, with its maths as pictures\.?/gi, '')
+    .replace(/Figure from the original question paper\.?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 function formatMarks(marks: number): string {
   return `${marks} ${marks === 1 ? 'mark' : 'marks'}`
@@ -67,6 +67,7 @@ export function QueueList({
   subjectName,
 }: {
   rows: QueueRow[]
+  /** Questions the teacher holds: theirs to work on, so not marked as taken. */
   myClaims: string[]
   /** The subject being queued, to tell its namesake in the other branch apart. */
   subjectName: string
@@ -89,13 +90,8 @@ export function QueueList({
           aria-label={`${section.exam}, ${section.date}`}
           className="overflow-hidden rounded-[12px] border border-rule bg-surface"
         >
-          <h2 className="flex items-center justify-between gap-3 border-b border-rule bg-surface-2/70 px-4 py-2.5 text-meta">
-            <span className="text-ink">
-              {section.exam} <span className="text-ink-muted">{section.date}</span>
-            </span>
-            <span className="text-ink-faint tabular-nums">
-              {section.rows.length} {section.rows.length === 1 ? 'question' : 'questions'}
-            </span>
+          <h2 className="border-b border-rule bg-surface-2/70 px-4 py-2.5 text-meta text-ink">
+            {section.exam} <span className="text-ink-muted">{section.date}</span>
           </h2>
           <ul className="divide-y divide-rule">
             {section.rows.map((row) => (
@@ -113,11 +109,13 @@ function QueueItem({ row, mine, elsewhere }: { row: QueueRow; mine: boolean; els
   const action = rowAction(row)
   const others = row.copies - 1
   const byOther = row.solutionId && row.authorName && !row.isMine ? row.authorName : null
+  // Someone else has it open: worth knowing before starting. One's own hold says nothing.
+  const takenBy = row.claimExpiresAt && !mine ? (row.claimedBy ?? 'Another teacher') : null
 
   return (
     // The row's button opens the studio, and its ::after covers the whole row
-    // so anywhere on it works; the Release button and the badges that explain
-    // themselves on hover sit above that cover, each its own target.
+    // so anywhere on it works; the badges that explain themselves on hover sit
+    // above that cover.
     <li className="group relative flex items-start gap-3.5 px-4 py-3.5 transition-colors hover:bg-desk-soft/50">
       <span className="mt-0.5 flex h-9 min-w-9 shrink-0 items-center justify-center rounded-[9px] border border-rule bg-surface-2 px-1.5 text-meta font-medium text-ink tabular-nums">
         {row.number}
@@ -131,14 +129,14 @@ function QueueItem({ row, mine, elsewhere }: { row: QueueRow; mine: boolean; els
               <span className="sr-only">Has a figure. </span>
             </span>
           ) : null}
-          {row.snippet || (row.hasImage ? 'A figure: open the question to see it.' : 'No text to preview.')}
+          {preview(row.snippet) || (row.hasImage ? 'Picture question' : 'Open to see the question')}
         </p>
         <p className="mt-1 text-micro text-ink-faint">
-          {TYPE_LABEL[row.qtype]}, {formatMarks(row.marks)}, Set {row.setCode}
+          {TYPE_LABEL[row.qtype]}, {formatMarks(row.marks)}
           {byOther ? `, by ${byOther}` : ''}
         </p>
 
-        {others > 0 || row.orderVaries || row.claimExpiresAt ? (
+        {others > 0 || row.orderVaries || takenBy ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {others > 0 ? (
               // A group is shared only when no set holds the question twice
@@ -150,28 +148,19 @@ function QueueItem({ row, mine, elsewhere }: { row: QueueRow; mine: boolean; els
                 </Badge>
               </span>
             ) : null}
-            {others > 0 && elsewhere ? <span className="text-micro text-ink-faint">also in {elsewhere}</span> : null}
             {row.orderVaries ? (
-              <span
-                title="Some copies list the options in another order. Name options by what they say, never by letter."
-                className="relative z-10"
-              >
+              <span title="Say what an option says, not its letter: the order differs between papers." className="relative z-10">
                 <Badge tone="marked">
                   <Shuffle size={13} aria-hidden="true" />
-                  Options shuffled in copies
+                  Options shuffled
                 </Badge>
               </span>
             ) : null}
-            {row.claimExpiresAt ? (
-              <Badge tone={mine ? 'accent' : 'marked'}>
-                <Hourglass size={13} aria-hidden="true" />
-                {mine ? 'You are' : `${row.claimedBy ?? 'Another teacher'} is`} on this until {until.format(new Date(row.claimExpiresAt))}
+            {takenBy ? (
+              <Badge tone="marked">
+                <User size={13} aria-hidden="true" />
+                {takenBy} is on it
               </Badge>
-            ) : null}
-            {row.claimExpiresAt && mine ? (
-              <span className="relative z-10">
-                <ActionButton label="Release" pendingLabel="Releasing…" action={releaseClaimAction.bind(null, row.questionId)} />
-              </span>
             ) : null}
           </div>
         ) : null}
@@ -180,7 +169,8 @@ function QueueItem({ row, mine, elsewhere }: { row: QueueRow; mine: boolean; els
       <div className="flex shrink-0 items-center gap-2">
         {row.hasText ? <Marker icon="text" /> : null}
         {row.hasVideo ? <Marker icon="video" /> : null}
-        <Badge tone={status.tone}>{status.label}</Badge>
+        {/* Not started says itself in the button (Explain); every other state is worth a word. */}
+        {status.label === 'To do' ? null : <Badge tone={status.tone}>{status.label}</Badge>}
         <Link
           href={ROUTES.studio(row.questionId)}
           // Fifty studios a page are not worth fetching ahead, and each fetch
@@ -213,8 +203,8 @@ function Marker({ icon }: { icon: 'text' | 'video' }) {
 }
 
 function copiesTitle(row: QueueRow, elsewhere: string): string {
-  const reach = `One explanation here shows on all ${row.copies} copies of this question.`
-  return elsewhere ? `${reach} Copies are also in: ${elsewhere}.` : reach
+  const reach = `One explanation covers all ${row.copies}.`
+  return elsewhere ? `${reach} Also in ${elsewhere}.` : reach
 }
 
 /**
@@ -246,12 +236,8 @@ function ExplanationItem({ item }: { item: MyExplanation }) {
   const place = item.place
   // No place: the question was deleted, or its paper was taken back to draft
   // (a teacher reads a draft paper's questions, not the paper itself).
-  const title = place
-    ? `Question ${place.number}, ${place.subjectName}`
-    : item.questionId
-      ? 'A question that is not published now'
-      : 'A question that has since been removed'
-  const where = place ? `${place.examName} ${formatSession(place.sessionDate)}, Set ${place.setCode}` : null
+  const title = place ? `Question ${place.number}, ${place.subjectName}` : 'Question no longer available'
+  const where = place ? `${place.examName} ${formatSession(place.sessionDate)}` : null
   const open = item.questionId && place
 
   return (
@@ -277,7 +263,7 @@ function ExplanationItem({ item }: { item: MyExplanation }) {
       </p>
       {item.reviewNote ? (
         <p className="mt-2 rounded-[8px] border-l-2 border-incorrect bg-incorrect-soft/60 px-3 py-2 text-meta text-ink">
-          <span className="text-ink-muted">Reviewer&rsquo;s note: </span>
+          <span className="text-ink-muted">Note: </span>
           {item.reviewNote}
         </p>
       ) : null}

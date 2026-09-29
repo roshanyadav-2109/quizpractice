@@ -120,7 +120,7 @@ export const QUEUE_FILTER_LABELS: Record<QueueFilter, string> = {
   no_video: 'Needs video',
   review: 'In review',
   done: 'Published',
-  mine: 'Mine',
+  mine: 'My work',
   all: 'All',
 }
 

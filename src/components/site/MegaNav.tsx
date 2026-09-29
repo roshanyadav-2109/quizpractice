@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CaretDown, CaretRight, List, X } from '@/components/ui/icons'
+import { ArrowRight, Books, CaretDown, CaretRight, List, MagnifyingGlass, SquaresFour, Stack, X } from '@/components/ui/icons'
 import { Art } from '@/components/ui/Art'
+import { artFor } from '@/lib/art'
 
 export interface MenuLink {
   href: string
@@ -36,6 +37,8 @@ export interface MenuColumn {
 export interface MenuItem {
   key: string
   label: string
+  /** Shown beside it in the phone's menu. */
+  icon?: string | null
   columns: MenuColumn[]
 }
 
@@ -241,6 +244,12 @@ export function MegaNav({ items }: { items: MenuItem[] }) {
  * Below `lg`: one button, one panel. Items open into their levels or exams,
  * and those into their links — the same tree, folded for a thumb.
  */
+/** A menu link's picture, once one is made (docs/artwork-needed.md, sheet 12); its line icon until then. */
+function NavIcon({ slug, icon: Icon }: { slug: string; icon: typeof Books }) {
+  const art = artFor('nav', slug)
+  return art ? <Art src={art} size={28} /> : <Icon size={20} aria-hidden="true" className="shrink-0 text-ink-muted" />
+}
+
 export function MobileMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -264,9 +273,9 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
         aria-expanded={open}
         aria-controls="mobile-menu"
         aria-label={open ? 'Close menu' : 'Open menu'}
-        className="flex h-11 w-11 items-center justify-center rounded-control border border-rule bg-surface text-ink"
+        className="-mr-2 flex h-11 w-11 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-2"
       >
-        {open ? <X size={18} /> : <List size={18} />}
+        {open ? <X size={24} /> : <List size={24} />}
       </button>
 
       {open ? (
@@ -287,7 +296,10 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
                   aria-expanded={expanded === entry.key}
                   className={`${row} text-ink`}
                 >
-                  {entry.label}
+                  <span className="flex items-center gap-3">
+                    {entry.icon !== undefined ? <Art src={entry.icon} size={32} /> : null}
+                    {entry.label}
+                  </span>
                   <CaretDown
                     size={16}
                     aria-hidden="true"
@@ -297,13 +309,16 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
                   />
                 </button>
                 {expanded === entry.key ? (
-                  <div className="mb-2 ml-3 border-l border-rule pl-3">
+                  <div className="mb-3 px-1">
                     {entry.columns.map((column) => (
-                      <div key={column.key} className="py-1">
-                        <p className="label px-3 py-2">{column.name}</p>
+                      <div key={column.key} className="pt-2 pb-1">
+                        <p className="label flex items-center gap-2 px-2 py-2">
+                          {column.icon !== undefined ? <Art src={column.icon} size={22} /> : null}
+                          {column.name}
+                        </p>
                         {column.groups.map((group, index) =>
                           group.compact ? (
-                            <ul key={group.heading ?? index} className="flex flex-wrap gap-2 px-3 py-1.5">
+                            <ul key={group.heading ?? index} className="flex flex-wrap gap-2 px-1 py-1.5">
                               {group.links.map((link) => (
                                 <li key={link.href}>
                                   <Link
@@ -316,17 +331,28 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
                               ))}
                             </ul>
                           ) : (
-                            <ul key={group.heading ?? index}>
+                            // Each choice a block to tap, two to a row, as on the desktop menu.
+                            <ul key={group.heading ?? index} className="grid grid-cols-2 gap-2 px-1 py-1">
                               {group.links.map((link) => (
                                 <li key={link.href}>
-                                  <Link href={link.href} className={`${row} text-ink-muted`}>
-                                    {link.title}
+                                  <Link
+                                    href={link.href}
+                                    className="flex h-full min-h-14 items-center gap-2.5 rounded-card border border-rule bg-surface px-2.5 py-2 transition-colors active:bg-surface-2"
+                                  >
+                                    {link.icon !== undefined ? <Art src={link.icon} size={30} /> : null}
+                                    <span className="min-w-0 text-meta leading-snug text-ink">{link.title}</span>
                                   </Link>
                                 </li>
                               ))}
                             </ul>
                           ),
                         )}
+                        {column.more ? (
+                          <Link href={column.more.href} className="flex min-h-10 items-center gap-1 px-2 text-meta text-accent">
+                            {column.more.label}
+                            <ArrowRight size={14} aria-hidden="true" />
+                          </Link>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -334,22 +360,26 @@ export function MobileMenu({ items }: { items: MenuItem[] }) {
               </li>
             ))}
             <li className="mt-2 border-t border-rule pt-2">
-              <Link href="/subjects" className={`${row} text-ink`}>
+              <Link href="/subjects" className={`${row} justify-start text-ink`}>
+                <NavIcon slug="subjects" icon={Books} />
                 All subjects
               </Link>
             </li>
             <li>
-              <Link href="/papers" className={`${row} text-ink`}>
+              <Link href="/papers" className={`${row} justify-start text-ink`}>
+                <NavIcon slug="papers" icon={Stack} />
                 All papers
               </Link>
             </li>
             <li>
-              <Link href="/search" className={`${row} text-ink`}>
+              <Link href="/search" className={`${row} justify-start text-ink`}>
+                <NavIcon slug="search" icon={MagnifyingGlass} />
                 Search questions
               </Link>
             </li>
             <li>
-              <Link href="/dashboard" className={`${row} text-ink`}>
+              <Link href="/dashboard" className={`${row} justify-start text-ink`}>
+                <NavIcon slug="dashboard" icon={SquaresFour} />
                 Dashboard
               </Link>
             </li>

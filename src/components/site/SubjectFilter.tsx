@@ -124,11 +124,11 @@ export function SubjectPanel({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`inline-flex h-11 min-w-[9.375rem] items-center justify-between gap-3 rounded-control border pr-3.5 pl-4 text-ui text-ink transition-colors outline-none focus-visible:border-ink ${
+        className={`flex h-11 w-full min-w-0 items-center justify-between gap-3 rounded-control border pr-3.5 pl-4 sm:inline-flex sm:w-auto sm:min-w-[9.375rem] text-ui text-ink transition-colors outline-none focus-visible:border-ink ${
           selected ? 'border-ink bg-surface' : 'border-transparent bg-surface-2 hover:bg-surface-3'
         }`}
       >
-        <span className="max-w-[16rem] truncate">{selected?.name ?? 'All subjects'}</span>
+        <span className="min-w-0 truncate sm:max-w-[16rem]">{selected?.name ?? 'All subjects'}</span>
         <CaretDown size={16} aria-hidden="true" className="shrink-0 text-ink-muted" />
       </button>
 

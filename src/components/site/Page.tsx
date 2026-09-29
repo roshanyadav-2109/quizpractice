@@ -227,7 +227,8 @@ export function TitleCard({
   return (
     <div className="pb-1">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="flex min-w-0 items-center gap-3">
+        {/* On a phone the icon is left out, so the arrow and the title share one line at nearly full width. */}
+        <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
           {back ? (
             <BackLink
               href={back}
@@ -237,8 +238,8 @@ export function TitleCard({
               <ArrowLeft size={22} aria-hidden="true" />
             </BackLink>
           ) : null}
-          {icon}
-          <div className="min-w-0">
+          {icon ? <span className="hidden shrink-0 sm:block">{icon}</span> : null}
+          <div className="min-w-0 flex-1">
             {eyebrow ? <p className="label mb-1">{eyebrow}</p> : null}
             <h1 className="text-[1.5rem] leading-tight font-medium text-balance text-ink sm:text-[1.75rem]">
               {title}

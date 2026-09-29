@@ -36,7 +36,6 @@ import { Pager } from '@/components/teach/Pager'
 import { ContinueButton } from '@/components/teach/ContinueButton'
 import { CoverageBar } from '@/components/teach/CoverageBar'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Stack } from '@/components/ui/icons'
 import { buttonClass } from '@/components/ui/primitives'
 import { formatCount } from '@/lib/format'
 
@@ -161,7 +160,7 @@ export default async function TeachSubjectPage({
       <div className="grid gap-4 rounded-[12px] border border-rule bg-surface p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] lg:items-center">
         <CoverageBar papers={countPapers(sets)} />
         {examProgress.length > 1 ? <ExamProgressStrip exams={examProgress} slug={subject.slug} view={view} filter={filter} /> : null}
-        <ContinueButton subjectId={subject.id} subjectSlug={subject.slug} label="Continue explaining" size="md" />
+        <ContinueButton subjectId={subject.id} subjectSlug={subject.slug} label="Continue" size="md" />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
@@ -169,7 +168,7 @@ export default async function TeachSubjectPage({
           <p className="mb-2 px-3 text-micro font-medium tracking-[0.08em] text-ink-faint uppercase">Show</p>
           <QueueFilters slug={subject.slug} active={filter} view={view} changes={changesHere.length} />
 
-          <p className="mt-6 mb-2 px-3 text-micro font-medium tracking-[0.08em] text-ink-faint uppercase">Narrow down</p>
+          <p className="mt-6 mb-2 px-3 text-micro font-medium tracking-[0.08em] text-ink-faint uppercase">Filter</p>
           <div className="flex flex-col gap-2 [&_label]:w-full [&_select]:w-full">
             {exams.length > 1 ? (
               <FilterSelect
@@ -211,10 +210,6 @@ export default async function TeachSubjectPage({
             />
           </div>
 
-          <p className="mt-5 flex items-start gap-2 px-3 text-micro leading-relaxed text-ink-faint">
-            <Stack size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
-            Repeated questions are shown once; an explanation reaches every copy.
-          </p>
         </aside>
 
         <div className="min-w-0">
@@ -231,9 +226,7 @@ export default async function TeachSubjectPage({
           ) : changesShown.length > 0 ? (
             <ExplanationList items={changesShown} />
           ) : (
-            <EmptyState art="all-clear" title="Nothing sent back">
-              When a reviewer asks for changes to one of your explanations here, it is listed with their note.
-            </EmptyState>
+            <EmptyState art="all-clear" title="Nothing to fix" />
           )}
         </div>
       </div>
@@ -265,35 +258,31 @@ function QueueResults({
       return (
         <EmptyState
           art="no-results"
-          title={`There is no page ${formatCount(queue.page)}`}
+          title="Page not found"
           actions={
             <Link href={queueHref(slug, { ...view, filter })} className={buttonClass('primary', 'md')}>
-              Back to the first page
+              First page
             </Link>
           }
-        >
-          The queue is shorter than that now.
-        </EmptyState>
+        />
       )
     }
     if (filter === 'todo') {
       return (
         <EmptyState
           art="all-clear"
-          title={view.paper ? 'Every question in this paper has been started' : 'Every question here has been started'}
+          title="All caught up"
           actions={
             <Link href={queueHref(slug, { ...view, filter: 'no_video' })} className={buttonClass('outline', 'md')}>
-              See what still needs a video
+              Add videos
             </Link>
           }
-        >
-          Some may still be drafts or waiting for review. Nothing is left that no one has begun.
-        </EmptyState>
+        />
       )
     }
     return (
-      <EmptyState art="no-results" title={`Nothing under “${filterLabel(filter)}”`}>
-        {narrowed ? 'Try all exams and papers, or another filter.' : 'Try another filter.'}
+      <EmptyState art="no-results" title={`Nothing in “${filterLabel(filter)}”`}>
+        {narrowed ? 'Clear the filters.' : null}
       </EmptyState>
     )
   }

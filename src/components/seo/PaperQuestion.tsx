@@ -15,7 +15,7 @@ export interface CopyLink {
  */
 export function PaperQuestion({ question, copies }: { question: QuestionWithOptions; copies: CopyLink[] }) {
   return (
-    <section id={`q${question.number}`} className="scroll-mt-20 rounded-card border border-rule bg-surface px-5 py-5 sm:px-6">
+    <section id={`q${question.number}`} className="scroll-mt-20 rounded-card border border-rule bg-surface px-3.5 py-4 sm:px-6 sm:py-5">
       <QuestionWithAnswer question={question} showAnswer={false} />
 
       {copies.length > 0 ? (

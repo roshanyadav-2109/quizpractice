@@ -21,12 +21,12 @@ export function BrandLogo() {
         priority
         className="h-[2.125rem] w-[2.125rem] shrink-0"
       />
-      {/* A hairline gap between the mark and the u, so the two read apart. Drawn
+      {/* The u set right against the mark, so the two read as one word. Drawn
           by CSS, so the page's text says "Quiz Space" once, not "Quiz Space uiz Space". */}
       <span
         aria-hidden="true"
         data-text="uiz Space"
-        className="ml-[0.09375rem] -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink before:content-[attr(data-text)]"
+        className="ml-0 -translate-y-[1px] text-[1.3125rem] leading-none font-semibold tracking-[-0.015em] text-ink before:content-[attr(data-text)]"
       />
     </span>
   )

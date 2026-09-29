@@ -145,9 +145,9 @@ export async function getQueue(
 export type QueueSort = 'newest' | 'oldest' | 'copies'
 
 export const QUEUE_SORTS: { value: QueueSort; label: string }[] = [
-  { value: 'newest', label: 'Newest papers first' },
-  { value: 'oldest', label: 'Oldest papers first' },
-  { value: 'copies', label: 'Most repeated first' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'copies', label: 'Most repeated' },
 ]
 
 export function isQueueSort(value: unknown): value is QueueSort {

@@ -1,3 +1,4 @@
+import { FitWidth } from '@/components/catalogue/FitWidth'
 import Link from 'next/link'
 import type { PaperEntry } from '@/lib/seo/catalogue'
 import { shortName, sittingDate, termName } from '@/lib/seo/names'
@@ -28,9 +29,9 @@ export function PaperTable({
   if (papers.length === 0) return null
   if (variant === 'article') return <ArticleTable papers={papers} showSubject={showSubject} showExam={showExam} caption={caption} />
   return (
-    <div className="overflow-x-auto rounded-card border border-rule bg-surface">
+    <FitWidth className="rounded-card border border-rule bg-surface">
       {/* Fixed widths: tables stacked down a page line up column for column. */}
-      <table className="w-full min-w-[40rem] table-fixed border-collapse text-left text-ui">
+      <table className="w-full border-collapse text-left text-meta sm:min-w-[40rem] sm:table-fixed sm:text-ui">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <colgroup>
           {/* The words columns share what the numbers and the button leave. */}
@@ -38,21 +39,21 @@ export function PaperTable({
           {showSubject ? <col /> : null}
           {showExam ? <col /> : null}
           <col />
-          <col className="w-[6.5rem]" />
-          <col className="w-[5rem]" />
-          <col className="w-[6rem]" />
-          <col className="w-[9rem]" />
+          <col className="sm:w-[6.5rem]" />
+          <col className="sm:w-[5rem]" />
+          <col className="sm:w-[6rem]" />
+          <col className="sm:w-[9rem]" />
         </colgroup>
         <thead>
           <tr className="border-b border-rule text-meta text-ink-faint">
-            <th scope="col" className="px-4 py-2.5 font-normal">Paper</th>
-            {showSubject ? <th scope="col" className="px-3 py-2.5 font-normal">Subject</th> : null}
-            {showExam ? <th scope="col" className="px-3 py-2.5 font-normal">Exam</th> : null}
-            <th scope="col" className="px-3 py-2.5 font-normal">Term</th>
-            <th scope="col" className="px-3 py-2.5 text-right font-normal">Questions</th>
-            <th scope="col" className="px-3 py-2.5 text-right font-normal">Marks</th>
-            <th scope="col" className="px-3 py-2.5 text-right font-normal">Time</th>
-            <th scope="col" className="px-4 py-2.5 text-right font-normal">
+            <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 font-normal">Paper</th>
+            {showSubject ? <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 font-normal">Subject</th> : null}
+            {showExam ? <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 font-normal">Exam</th> : null}
+            <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 font-normal">Term</th>
+            <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 text-right font-normal">Questions</th>
+            <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 text-right font-normal">Marks</th>
+            <th scope="col" className="px-2 py-2 sm:px-3 sm:py-2.5 text-right font-normal">Time</th>
+            <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 text-right font-normal">
               <span className="sr-only">Practise</span>
             </th>
           </tr>
@@ -60,7 +61,7 @@ export function PaperTable({
         <tbody>
           {papers.map((paper) => (
             <tr key={paper.setId} className="border-b border-rule last:border-b-0 hover:bg-surface-2/60">
-              <td className="px-4 py-3">
+              <td className="px-2 py-2.5 sm:px-4 sm:py-3">
                 <Link href={paper.path} className="text-ink underline-offset-4 hover:underline">
                   {/* Seen: the date. Read by crawlers and screen readers: which paper. */}
                   <span className="sr-only">
@@ -72,15 +73,15 @@ export function PaperTable({
                 <BestScore setId={paper.setId} className="mt-0.5 block" />
               </td>
               {/* Plain text: the date in this row already links to the paper. */}
-              {showSubject ? <td className="px-3 py-3 text-ink-muted">{shortName(paper.subject)}</td> : null}
-              {showExam ? <td className="px-3 py-3 text-ink-muted">{paper.examType.name}</td> : null}
-              <td className="px-3 py-3 whitespace-nowrap text-ink-muted">{termName(paper.term)}</td>
-              <td className="px-3 py-3 text-right text-ink-muted tabular-nums">{paper.questionCount}</td>
-              <td className="px-3 py-3 text-right text-ink-muted tabular-nums">{paper.totalMarks ?? '—'}</td>
-              <td className="px-3 py-3 text-right whitespace-nowrap text-ink-muted tabular-nums">
+              {showSubject ? <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-ink-muted">{shortName(paper.subject)}</td> : null}
+              {showExam ? <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-ink-muted">{paper.examType.name}</td> : null}
+              <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-ink-muted sm:whitespace-nowrap">{termName(paper.term)}</td>
+              <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-right text-ink-muted tabular-nums">{paper.questionCount}</td>
+              <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-right text-ink-muted tabular-nums">{paper.totalMarks ?? '—'}</td>
+              <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-right text-ink-muted sm:whitespace-nowrap tabular-nums">
                 {paper.durationMinutes ? `${paper.durationMinutes} min` : '—'}
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="px-2 py-2.5 text-right sm:px-4 sm:py-3">
                 <Link href={`/paper/${paper.setId}`} className={buttonClass('outline', 'sm')}>
                   Mock test
                   {/* Every row has one: the hidden words say which paper this one starts. */}
@@ -96,7 +97,7 @@ export function PaperTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </FitWidth>
   )
 }
 
@@ -112,10 +113,10 @@ function ArticleTable({
   showExam: boolean
   caption?: string
 }) {
-  const cell = 'border-[1.5px] border-ink px-3 py-2.5'
+  const cell = 'border-[1.5px] border-ink px-1.5 py-2 sm:px-3 sm:py-2.5'
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] border-collapse border-[1.5px] border-ink text-center text-body">
+    <FitWidth>
+      <table className="w-full border-collapse border-[1.5px] border-ink text-center text-[0.8125rem] sm:min-w-[40rem] sm:text-body">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
           <tr className="bg-[#cfe3f5]">
@@ -145,14 +146,14 @@ function ArticleTable({
               </td>
               {showSubject ? <td className={cell}>{shortName(paper.subject)}</td> : null}
               {showExam ? <td className={cell}>{paper.examType.name}</td> : null}
-              <td className={`${cell} whitespace-nowrap`}>{termName(paper.term)}</td>
+              <td className={`${cell} sm:whitespace-nowrap`}>{termName(paper.term)}</td>
               <td className={`${cell} tabular-nums`}>{paper.questionCount}</td>
               <td className={`${cell} tabular-nums`}>{paper.totalMarks ?? '—'}</td>
-              <td className={`${cell} whitespace-nowrap tabular-nums`}>
+              <td className={`${cell} tabular-nums sm:whitespace-nowrap`}>
                 {paper.durationMinutes ? `${paper.durationMinutes} min` : '—'}
               </td>
               <td className={cell}>
-                <Link href={`/paper/${paper.setId}`} className="whitespace-nowrap text-accent hover:underline">
+                <Link href={`/paper/${paper.setId}`} className="text-accent hover:underline sm:whitespace-nowrap">
                   Mock test
                   {/* Every row has one: the hidden words say which paper this one starts. */}
                   <span className="sr-only">
@@ -167,6 +168,6 @@ function ArticleTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </FitWidth>
   )
 }

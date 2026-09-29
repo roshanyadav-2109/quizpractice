@@ -57,9 +57,6 @@ export async function SiteFooter() {
             Quiz Space
           </Link>
           <p className="mt-1.5 text-meta text-ink-muted">A product by {SITE.publisher}</p>
-          <p className="mt-5 text-ui leading-relaxed text-ink-muted">
-            Free previous year papers of the IIT Madras BS degree, with answers and timed mock tests.
-          </p>
 
           <p className="mt-8 text-card font-medium text-ink">Follow {SITE.publisher}</p>
           <ul aria-label={`${SITE.publisher} elsewhere`} className="mt-4 flex flex-wrap items-center gap-4">

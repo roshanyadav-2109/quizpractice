@@ -43,11 +43,13 @@ export async function SiteHeader() {
     .map((program) => ({
       key: program.slug,
       label: program.short_name ?? program.name,
+      icon: artFor('programs', program.slug),
       columns: [
         // The qualifier — the stage before Foundation — listed first.
         {
           key: 'qualifier',
           name: 'Qualifier',
+          icon: artFor('levels', 'qualifier'),
           virtual: true,
           groups: [
             {
@@ -68,6 +70,7 @@ export async function SiteHeader() {
         ...program.levels.map((level) => ({
           key: level.slug,
           name: level.name,
+          icon: artFor('levels', level.slug),
           groups: [
             {
               links: level.subjects
@@ -162,5 +165,5 @@ function examMenu(examTypes: ExamType[], index: PaperIndexRow[], tree: ProgramWi
     })
     .filter((column) => column.groups.length > 0)
 
-  return columns.length > 0 ? { key: 'exams', label: 'Exams', columns } : null
+  return columns.length > 0 ? { key: 'exams', label: 'Exams', icon: artFor('exams', 'end-term'), columns } : null
 }

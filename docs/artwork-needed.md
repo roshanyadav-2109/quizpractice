@@ -186,6 +186,19 @@ The seven level icons are one student's journey, from getting in to graduating. 
 | 7 | `levels/bs` | BS Degree Level <br><sub>Every branch</sub> | The student in a gown throwing the mortarboard into the air; a medal round the neck in coral |
 | 8 | `exams/diploma-qualifier` | Diploma Entry Qualifier <br><sub>The exam for direct admission to the diploma</sub> | Not part of the journey: it sits with the other exam icons, so it matches them, splash included. An answer sheet on a clipboard, with a small rolled certificate as the corner badge in coral |
 
+### Sheet 12: menu links (done)
+
+For the links at the foot of the phone menu, beside their names. Four icons: three on the first row, the fourth alone on the second.
+
+| # | File | For | Drawing |
+|---|---|---|---|
+| 1 | `nav/subjects` | All subjects | Three books standing side by side, of different heights; the spine of the middle one in coral. Splash: a rounded blob in sage #9CCB8F |
+| 2 | `nav/papers` | All papers | A fanned stack of three exam sheets with ruled lines; a paper clip on the top sheet in coral. Splash: a torn-paper patch in saffron #F4B942 |
+| 3 | `nav/search` | Search questions | A magnifying glass held over a small card; the question mark on the card in coral. Splash: a rough hand-painted circle in lilac #C9B3E6 |
+| 4 | `nav/dashboard` | Dashboard | A small screen showing a half-circle gauge and three short bars; the gauge needle in coral. Splash: a single diagonal dry-brush stroke in rose #F6B2C3 |
+
+A sheet of 4 icons from the same set, arranged three across: three on the top row and the fourth alone on the second row, with equal spacing on a plain white background, with no boxes, tiles or dividing lines between them, in reading order (left to right, top to bottom) and with no numbers drawn. Line-art icons from one consistent educational icon set: a clean outline drawing in charcoal #292524, one even line weight with rounded ends, open shapes and minimal detail, like a confident pen drawing. Behind part of each drawing sits one loose flat colour splash, set a little off-centre so it does not sit exactly under the lines, like a misregistered print. Each icon has its own splash colour and splash shape, given with it below. The one key detail named for each icon is filled in coral #EE6C4D. Each icon uses only three colours: charcoal, coral and its own splash colour. No blue, no black fills. No tile, box, circle, frame or badge behind the icons. No gradients, shadows, glow, 3D, isometric view, sparkles, letters or words, and no extra decoration. Each drawing fills its cell with a small even margin. The icons, in order: 1) three books standing side by side, of different heights, with the spine of the middle one in coral; splash: a rounded blob in sage #9CCB8F. 2) a fanned stack of three exam sheets with ruled lines, with a paper clip on the top sheet in coral; splash: a torn-paper patch in saffron #F4B942. 3) a magnifying glass held over a small card, with the question mark on the card in coral; splash: a rough hand-painted circle in lilac #C9B3E6. 4) a small screen showing a half-circle gauge and three short bars, with the gauge needle in coral; splash: a single diagonal dry-brush stroke in rose #F6B2C3.
+
 ## Reused, no need to make
 
 - `subjects/es-python` uses `subjects/python`

@@ -33,6 +33,9 @@ const hostRedirects =
     : []
 
 const nextConfig: NextConfig = {
+  // Development only: other devices on the network (a phone, to check the site
+  // on it) may load the dev server's scripts. DEV_ORIGINS in .env.local, comma separated.
+  allowedDevOrigins: process.env.DEV_ORIGINS ? process.env.DEV_ORIGINS.split(',').map((origin) => origin.trim()) : [],
   // Titles, descriptions and canonicals go in the <head> of the first byte
   // for every client. By default Next streams them after the body for
   // crawlers it believes run JavaScript, and AI crawlers mostly do not.

@@ -106,7 +106,7 @@ export default function RootLayout({
 
             <main className="flex-1">{children}</main>
 
-            <SiteChrome>
+            <SiteChrome part="footer">
               <SiteFooter />
             </SiteChrome>
           </ViewerProvider>

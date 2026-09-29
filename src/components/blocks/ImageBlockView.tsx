@@ -3,6 +3,7 @@ import type { ImageBlock } from '@/lib/blocks/schema'
 import { cloudinaryUrl, cloudinarySrcSet } from '@/lib/cloudinary'
 import { FigureCaption, type BlockContext } from './BlockRenderer'
 import { ZoomableFigure } from './ZoomableFigure'
+import { MagnifyingGlassPlus } from '@/components/ui/icons'
 
 /** How far a figure may shrink to fit the column before it scrolls sideways instead. */
 const MIN_SCALE = 0.75
@@ -16,9 +17,10 @@ const MIN_SCALE = 0.75
  * themes instead. Alt text is required by the schema, which keeps these
  * questions searchable and readable by assistive tech.
  *
- * Figures cut from a paper often hold lines of text, and scaling a wide one
- * down to a phone would shrink that text past reading. So a figure shrinks
- * only so far, then scrolls sideways; tapping it opens it full size.
+ * Figures cut from a paper often hold lines of text. From a tablet up, a wide
+ * one shrinks only so far, then scrolls sideways, so its text stays readable.
+ * On a phone it fits the width whole, never cut off at the edge, with a zoom
+ * mark: tapping it (or a pinch) opens it full size.
  */
 export function ImageBlockView({ block, context = 'question' }: { block: ImageBlock; context?: BlockContext }) {
   const src = cloudinaryUrl(block.image, { width: 1024 })
@@ -40,7 +42,7 @@ export function ImageBlockView({ block, context = 'question' }: { block: ImageBl
   // Inside an option, a tap picks the option, so the figure just fits.
   const zoomable = context !== 'option'
   const inline: CSSProperties | undefined =
-    zoomable && width ? { width, maxWidth: `max(100%, ${Math.round(width * MIN_SCALE)}px)` } : undefined
+    zoomable && width ? ({ width, '--fig-min': `${Math.round(width * MIN_SCALE)}px` } as CSSProperties) : undefined
 
   const draw = (style: CSSProperties | undefined, className: string, full = false) =>
     region ? (
@@ -77,8 +79,14 @@ export function ImageBlockView({ block, context = 'question' }: { block: ImageBl
     )
 
   const card = (
-    <div className="overflow-x-auto rounded-control border border-rule bg-white p-3">
-      {draw(inline, inline ? 'h-auto' : 'h-auto max-w-full')}
+    <div className="relative overflow-x-auto rounded-control border border-rule bg-white p-2 sm:p-3">
+      {draw(inline, inline ? 'h-auto max-w-full sm:max-w-[max(100%,var(--fig-min))]' : 'h-auto max-w-full')}
+      {zoomable ? (
+        <span aria-hidden="true" className="mt-1.5 flex items-center justify-end gap-1 text-micro text-ink-faint sm:hidden">
+          <MagnifyingGlassPlus size={13} />
+          Tap to zoom
+        </span>
+      ) : null}
     </div>
   )
 

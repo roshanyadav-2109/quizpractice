@@ -157,6 +157,15 @@
         "levels/bs",
         "exams/diploma-qualifier"
       ]
+    },
+    {
+      "sheet": 12,
+      "files": [
+        "nav/subjects",
+        "nav/papers",
+        "nav/search",
+        "nav/dashboard"
+      ]
     }
   ]
 }

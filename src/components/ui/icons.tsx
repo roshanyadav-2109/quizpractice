@@ -26,6 +26,8 @@ export {
   X,
   Plus,
   DotsThree,
+  DotsSixVertical,
+  MagnifyingGlassPlus,
   List,
   SquaresFour,
   ArrowUpRight,

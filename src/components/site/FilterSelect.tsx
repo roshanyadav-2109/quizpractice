@@ -90,7 +90,7 @@ export function SelectBox({
   // A choice made is shown as a filter in force: outlined in ink, not greyed.
   const active = allLabel ? shown !== '' : false
   return (
-    <label className="relative inline-flex">
+    <label className="relative flex w-full min-w-0 sm:inline-flex sm:w-auto sm:max-w-full">
       <span className="sr-only">{label}</span>
       <select
         value={shown}
@@ -98,7 +98,7 @@ export function SelectBox({
           setShown(event.target.value)
           onChange(event.target.value)
         }}
-        className={`h-11 min-w-[9.375rem] cursor-pointer appearance-none rounded-control border py-0 pr-10 pl-4 text-ui transition-colors outline-none focus-visible:border-ink ${
+        className={`h-11 w-full min-w-0 max-w-full cursor-pointer appearance-none truncate sm:w-auto sm:min-w-[9.375rem] rounded-control border py-0 pr-10 pl-4 text-ui transition-colors outline-none focus-visible:border-ink ${
           active
             ? 'border-ink bg-surface text-ink'
             : 'border-transparent bg-surface-2 text-ink hover:bg-surface-3'
@@ -120,7 +120,7 @@ export function SelectBox({
   )
 }
 
-/** The row the dropdowns sit in. */
+/** The row the dropdowns sit in: two to a line on a phone, all equal; a row from a tablet up. */
 export function FilterRow({ children }: { children: React.ReactNode }) {
-  return <div className="mt-5 flex flex-wrap items-center gap-2">{children}</div>
+  return <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">{children}</div>
 }

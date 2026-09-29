@@ -131,7 +131,7 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
           </h1>
         </div>
         {byRemaining[0] ? (
-          <ContinueButton subjectId={byRemaining[0].subjectId} subjectSlug={byRemaining[0].subjectSlug} label="Continue where I left off" size="md" />
+          <ContinueButton subjectId={byRemaining[0].subjectId} subjectSlug={byRemaining[0].subjectSlug} label="Continue" size="md" />
         ) : null}
       </header>
 
@@ -142,10 +142,10 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
         >
           <Warning size={18} aria-hidden="true" className="shrink-0" />
           <span className="flex-1">
-            {formatCount(changes.length)} {changes.length === 1 ? 'explanation was' : 'explanations were'} sent back with a note.
+            {formatCount(changes.length)} {changes.length === 1 ? 'needs' : 'need'} changes
           </span>
           <span className="flex items-center gap-1 text-meta">
-            See {changes.length === 1 ? 'it' : 'them'}
+            Fix
             <CaretRight size={14} aria-hidden="true" />
           </span>
         </Link>
@@ -155,26 +155,26 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
         <div className="mt-8">
           <EmptyState
             art="waiting-for-others"
-            title={admin ? 'No subjects of your own' : 'An admin has not assigned you subjects yet'}
+            title="No subjects yet"
             actions={
               <Link href={ROUTES.teachHelp} className={buttonClass('outline', 'md')}>
                 How it works
               </Link>
             }
           >
-            {admin ? 'As an admin you can open any subject’s queue below.' : 'Once they do, the questions waiting to be explained appear here.'}
+            {admin ? 'Open any subject below.' : 'An admin will add your subjects.'}
           </EmptyState>
         </div>
       ) : (
         <>
           {/* ---------------------------------------------- Done and left */}
           <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
-            <Panel compact title="Your progress" note="A paper is done when every question in it is explained.">
+            <Panel compact title="Your papers">
               <dl className="grid grid-cols-2 gap-y-4 sm:grid-cols-4">
-                <Figure label="Papers done" value={totals.done} strong />
-                <Figure label="Papers left" value={totals.left} strong />
-                <Figure label="In progress" value={totals.started} />
-                <Figure label="Papers in all" value={totals.total} />
+                <Figure label="Done" value={totals.done} strong />
+                <Figure label="Left" value={totals.left} strong />
+                <Figure label="Started" value={totals.started} />
+                <Figure label="Total" value={totals.total} />
               </dl>
 
               <DoneLeftBar done={totals.done} total={totals.total} className="mt-5" thick />
@@ -194,15 +194,15 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
               ) : null}
             </Panel>
 
-            <Panel compact title="Done so far" note={`${formatCount(totals.done)} of ${formatCount(totals.total)} papers done`}>
+            <Panel compact title="Done so far">
               <Gauge value={percent} label="Papers done" color="var(--color-desk)" track="var(--color-desk-soft)" />
               <p className="mt-3 text-center text-meta text-ink-muted">
-                {totals.left > 0 ? `${formatCount(totals.left)} ${totals.left === 1 ? 'paper' : 'papers'} to go` : 'Every paper is done.'}
+                {totals.left > 0 ? `${formatCount(totals.left)} to go` : 'All done'}
               </p>
             </Panel>
           </div>
 
-          <Panel compact title="Teaching activity" note="Days you saved or submitted an explanation" className="mt-3">
+          <Panel compact title="Your activity" className="mt-3">
             <ActivityCalendar days={days} ramp={TEAL_RAMP} />
           </Panel>
 
@@ -215,7 +215,7 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
                 </h2>
                 {current ? (
                   <Link href={queueHref(current.subjectSlug)} className="flex items-center gap-1 text-meta text-desk hover:underline">
-                    All of {current.subjectName}
+                    See all
                     <ArrowRight size={14} aria-hidden="true" />
                   </Link>
                 ) : null}
@@ -245,11 +245,10 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
               {upNext.length > 0 ? (
                 <QueueList rows={upNext} myClaims={claims.map((claim) => claim.groupKey)} subjectName={current?.subjectName ?? ''} />
               ) : (
-                <Quiet icon={<CheckCircle size={22} aria-hidden="true" />} title="Every question here has been started">
-                  Some may still be drafts or waiting for review.{' '}
+                <Quiet icon={<CheckCircle size={22} aria-hidden="true" />} title="All caught up">
                   {current ? (
                     <Link href={queueHref(current.subjectSlug, { filter: 'no_video' })} className="text-desk hover:underline">
-                      See what still needs a video
+                      Add videos
                     </Link>
                   ) : null}
                 </Quiet>
@@ -265,9 +264,7 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
                 {inProgress.length > 0 ? (
                   <ExplanationList items={inProgress} />
                 ) : (
-                  <Quiet icon={<PencilSimpleLine size={22} aria-hidden="true" />} title="No drafts, nothing sent back">
-                    Explanations you start but do not submit wait here, as does anything a reviewer asks you to change.
-                  </Quiet>
+                  <Quiet icon={<PencilSimpleLine size={22} aria-hidden="true" />} title="Nothing in progress" />
                 )}
               </section>
 
@@ -278,9 +275,7 @@ export default async function TeachDashboardPage({ searchParams }: { searchParam
                 {submitted.length > 0 ? (
                   <ExplanationList items={submitted} />
                 ) : (
-                  <p className="rounded-[12px] border border-dashed border-rule-strong px-4 py-4 text-meta text-ink-muted">
-                    Nothing submitted yet. What you send for review shows here, and what is published.
-                  </p>
+                  <p className="rounded-[12px] border border-dashed border-rule-strong px-4 py-4 text-meta text-ink-muted">Nothing yet</p>
                 )}
               </section>
             </aside>
@@ -365,14 +360,12 @@ function DoneLeftBar({ done, total, thick = false, className = '' }: { done: num
 }
 
 /** A small, calm empty state for a panel. */
-function Quiet({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+function Quiet({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
-    <div className="flex items-start gap-3 rounded-[12px] border border-dashed border-rule-strong bg-surface px-5 py-5">
+    <div className="flex items-center gap-3 rounded-[12px] border border-dashed border-rule-strong bg-surface px-5 py-4">
       <span className="text-ink-faint">{icon}</span>
-      <span>
-        <span className="block text-ui text-ink">{title}</span>
-        <span className="mt-0.5 block text-meta text-ink-muted">{children}</span>
-      </span>
+      <span className="text-ui text-ink">{title}</span>
+      {children ? <span className="ml-auto text-meta">{children}</span> : null}
     </div>
   )
 }

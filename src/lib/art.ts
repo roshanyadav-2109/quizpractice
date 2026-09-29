@@ -1,6 +1,6 @@
 import manifest from './art-manifest.json'
 
-export type ArtKind = 'programs' | 'levels' | 'exams' | 'subjects'
+export type ArtKind = 'programs' | 'levels' | 'exams' | 'subjects' | 'nav'
 
 /**
  * The icon made for a branch, level, exam or subject, or null if it has none yet.

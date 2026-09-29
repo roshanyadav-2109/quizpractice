@@ -60,11 +60,16 @@ export function SolutionPanel({
           ) : null}
 
           {solution.video_url && !videoInline && parseYouTubeUrl(solution.video_url) && !solution.body?.length ? (
-            <p className="text-ui text-ink-muted">This one is explained on video: watch it from the frame at the bottom left.</p>
+            <p className="text-ui text-ink-muted max-md:hidden">This one is explained on video: watch it from the frame at the bottom left.</p>
           ) : null}
 
-          {solution.video_url && (videoInline || !parseYouTubeUrl(solution.video_url)) ? (
-            <div className="mt-4 overflow-hidden rounded-card border border-rule bg-surface">
+          {/* Where the docked frame plays it (a tablet up), the video is left out here; a phone plays it here. */}
+          {solution.video_url ? (
+            <div
+              className={`mt-4 overflow-hidden rounded-card border border-rule bg-surface ${
+                !videoInline && parseYouTubeUrl(solution.video_url) ? 'md:hidden' : ''
+              }`}
+            >
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <p className="text-ui text-ink">Video solution</p>
               </div>

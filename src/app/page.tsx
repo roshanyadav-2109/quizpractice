@@ -20,6 +20,7 @@ import { PreparingFor, type Branch } from '@/components/home/PreparingFor'
 import { MistakesCta } from '@/components/home/MistakesCta'
 import { WhyPractise } from '@/components/home/WhyPractise'
 import { ProductShowcase } from '@/components/home/ProductShowcase'
+import { RotatingWords } from '@/components/home/RotatingWords'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { Faq, type FaqItem } from '@/components/seo/Faq'
 import { BestScore } from '@/components/seo/BestScore'
@@ -190,10 +191,12 @@ export default async function HomePage() {
       <section className={`${SHELL} pt-12 pb-10 text-center lg:pt-16`}>
         <ProductBy className="mb-4" />
         <h1 className="mx-auto max-w-3xl text-[2rem] leading-[1.15] font-medium text-balance text-ink sm:text-[2.5rem]">
-          Previous year papers for the IIT Madras BS degree
+          Your practice space for the IIT Madras BS degree
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-body text-ink-muted">
-          Qualifier, Quiz 1, Quiz 2 and End Term papers from every term, with answers and explanations.
+          Solve{' '}
+          <RotatingWords words={['previous year questions', 'chapter-wise questions', 'week-wise questions', 'topic-wise questions']} />{' '}
+          with answers and explanations.
         </p>
 
         <form action="/search" method="get" role="search" className="mx-auto mt-7 flex max-w-2xl gap-2 text-left">
@@ -216,12 +219,21 @@ export default async function HomePage() {
           </button>
         </form>
 
+        {/* From Data Science alone to every branch: the branch types in and out, "BS in" stays. */}
+        <p className="mx-auto mt-5 max-w-2xl text-meta text-ink-muted">
+          From one branch to all four:{' '}
+          <span className="whitespace-nowrap">
+            BS in <RotatingWords words={['Data Science', 'Electronic Systems', 'Management', 'Aeronautics']} />
+          </span>
+        </p>
+
         <MistakesCta />
       </section>
 
       {/* ------------------------------------------------------------- Exams */}
       <Section title="PYQs by exam">
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Two to a row on a phone; a last card left on its own takes the whole row. */}
+        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4 max-lg:[&>li:last-child:nth-child(odd)]:col-span-2">
           {exams.map(({ exam }) => (
             <li key={exam.id}>
               <Link

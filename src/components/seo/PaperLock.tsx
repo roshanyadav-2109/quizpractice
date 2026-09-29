@@ -46,7 +46,7 @@ export function PaperLock({ setId, shown, total }: { setId: string; shown: numbe
                 </Link>
               </>
             ) : (
-              <SignInButton next={learning} className={buttonClass('primary', 'md')}>
+              <SignInButton next={learning} className={buttonClass('primary', 'md', 'h-auto min-h-10 max-w-full py-2 text-center whitespace-normal')}>
                 Sign in with Google to see all {total}
               </SignInButton>
             )}

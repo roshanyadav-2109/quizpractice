@@ -4,7 +4,6 @@ import { publicClient, memoise } from '@/lib/supabase/public'
 import { TAG, shared } from '@/lib/cache'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { getExamTypes, getMistakeBank, getPaperIndex, type PaperIndexRow } from '@/lib/queries'
-import { termOf } from '@/lib/terms'
 import type { ExamType } from '@/types/db'
 import type { Spotlight, SpotlightPlacement, SpotlightTone } from '@/lib/spotlight-shared'
 
@@ -35,8 +34,6 @@ export interface SpotlightContext {
 const MAX = 4
 /** How far ahead an exam starts counting down. */
 const EXAM_WINDOW_DAYS = 60
-/** How long the newest sitting counts as just added. */
-const RELEASE_WINDOW_DAYS = 45
 
 /** Real screens of the site, shown in a laptop and a phone on the banner. */
 const SCREENS = {
@@ -81,7 +78,6 @@ const istDay = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 const examDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
-const satOn = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 /** Today in India, as YYYY-MM-DD: exam days are Indian days. */
 function todayIst(): string {
@@ -154,11 +150,13 @@ export async function getSpotlights(context: SpotlightContext): Promise<Spotligh
         ? await mistakesSpotlight(context, today)
         : tourSpotlight(context)
 
+    // The exam counting down, then what staff have put up (what is coming
+    // next), then the student's own. No "just added" banner: what is next
+    // matters more than what has just been.
     return [
       examSpotlight(context, today, programId, calendar, examTypes, index, programs),
-      personal,
-      releaseSpotlight(context, today, examTypes, index),
       ...banners.map((row) => announcement(row, context, today, programId)),
+      personal,
     ]
       .filter((item): item is Spotlight => item !== null)
       .slice(0, MAX)
@@ -207,42 +205,6 @@ function examSpotlight(
       ? { label: `Practise ${scope.name}`, href: paths.subjectExam(scope.slug, exam.slug) }
       : { label: `Past ${exam.name} papers`, href: allHref },
     screens: SCREENS.exam,
-  }
-}
-
-/** The newest sitting, while it is new. On a subject page, only that subject's paper. */
-function releaseSpotlight(
-  context: SpotlightContext,
-  today: string,
-  examTypes: ExamType[],
-  index: PaperIndexRow[],
-): Spotlight | null {
-  const dated = index.filter((row): row is PaperIndexRow & { session_date: string } => row.session_date !== null)
-  if (dated.length === 0) return null
-  const latest = dated.reduce((a, b) => (b.session_date > a.session_date ? b : a))
-  const term = termOf(latest.session_date)
-  const exam = examTypes.find((type) => type.id === latest.exam_type_id)
-  if (!term || !exam || daysBetween(latest.session_date, today) > RELEASE_WINDOW_DAYS) return null
-
-  const id = `new-${exam.slug}-${term.key}`
-  const subject = context.subject
-  if (subject) {
-    const inBatch = dated.some(
-      (row) => row.subject_id === subject.id && row.exam_type_id === exam.id && termOf(row.session_date)?.key === term.key,
-    )
-    if (!inBatch) return null
-  }
-
-  return {
-    id,
-    tone: 'release',
-    eyebrow: 'Just added',
-    title: subject ? `New ${exam.name} paper is here` : `New ${exam.name} papers are in`,
-    body: `${term.label}, sat ${satOn.format(new Date(`${latest.session_date}T00:00:00Z`))}.`,
-    cta: subject
-      ? { label: 'Sit the new paper', href: paths.paper(subject.slug, exam.slug, `${term.season}-${term.year}`) }
-      : { label: 'See the new papers', href: paths.exam(exam.slug) },
-    screens: SCREENS.release,
   }
 }
 

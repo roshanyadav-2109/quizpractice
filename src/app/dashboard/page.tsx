@@ -151,7 +151,8 @@ export default async function StudentDashboard() {
     return (
       <div className="min-h-[calc(100dvh-4rem)] bg-canvas">
       <div className={`${WIDE} py-8`}>
-        <Spotlight placement="dashboard" className="mb-7" />
+        {/* Banners from a tablet up; a phone opens straight on the student's own page. */}
+        <Spotlight placement="dashboard" className="mb-7 max-md:hidden" />
         {header}
         <section className="mt-8 grid items-center gap-8 rounded-[10px] border border-rule bg-surface p-8 md:grid-cols-[320px_1fr]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -382,7 +383,7 @@ export default async function StudentDashboard() {
           placement="dashboard"
           focus={topSubject ? { id: topSubject.subject.id, slug: topSubject.subject.slug, name: topSubject.subject.name } : null}
           programSlug={topSubject?.program.slug ?? null}
-          className="mb-7"
+          className="mb-7 max-md:hidden"
         />
         {header}
 

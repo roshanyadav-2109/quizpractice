@@ -14,8 +14,10 @@ import type { ReactNode } from 'react'
  * they are passed in as children — so this only decides whether to render
  * them.
  */
-export function SiteChrome({ children }: { children: ReactNode }) {
+export function SiteChrome({ children, part = 'header' }: { children: ReactNode; part?: 'header' | 'footer' }) {
   const pathname = usePathname()
+  // The dashboard keeps the header but not the footer: it is where a student works.
+  if (part === 'footer' && pathname === '/dashboard') return null
   if (
     pathname?.startsWith('/practice/') ||
     pathname?.startsWith('/mistakes/practice') ||

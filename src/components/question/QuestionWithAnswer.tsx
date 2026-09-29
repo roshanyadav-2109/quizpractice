@@ -119,8 +119,8 @@ export function QuestionWithAnswer({
           <p className="mt-3 flex items-start gap-2 rounded-control bg-marked-soft px-3 py-2.5 text-meta text-marked">
             <Warning size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
             {choice
-              ? 'No option is marked correct in the answer key.'
-              : 'No answer is recorded for this question.'}
+              ? 'The correct option is not on the site yet. It is in the official answer key.'
+              : 'The answer is not on the site yet. It is in the official answer key.'}
           </p>
         ) : null
       ) : null}
