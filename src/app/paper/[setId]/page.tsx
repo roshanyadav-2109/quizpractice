@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from '@/lib/env'
 import { SetupNotice } from '@/components/site/SetupNotice'
 import { SHELL, Trail } from '@/components/site/Page'
 import { StartControls } from '@/components/exam/StartControls'
+import { MobileStartBar } from '@/components/exam/MobileStartBar'
 import { SignInLink } from '@/components/site/AuthDialog'
 import { legendClasses, type PaletteState } from '@/components/exam/palette-state'
 import { ArrowLeft, Check, Clock } from '@/components/ui/icons'
@@ -203,32 +204,54 @@ export default async function PaperIntroPage({ params }: { params: Params }) {
 
           {/* The right column, where the exam portals show the candidate: who
             is sitting, how they did before, and the way in — in view the
-            whole time the instructions are being read. */}
-          <aside className="rounded-card bg-surface p-5 lg:sticky lg:top-20">
-            <p className="text-micro text-ink-faint">Candidate</p>
-            <p className="mt-0.5 truncate text-ui text-ink">{profile?.displayName ?? 'Guest'}</p>
-            {profile ? null : (
-              <p className="mt-1 text-meta text-ink-muted">
-                <SignInLink /> to take this paper as a timed mock test. Your attempt and its analysis are saved.
-              </p>
-            )}
-
-            {best ? (
-              <p className="mt-4 flex items-center justify-between gap-3 border-t border-rule pt-4 text-meta text-ink-muted">
-                Your best
-                <span className="rounded-md bg-surface-2 px-2 py-0.5 text-ui text-ink tabular-nums">
-                  {best.score}/{best.maxScore}
-                </span>
-              </p>
-            ) : null}
-
+            whole time the instructions are being read. On a phone this
+            becomes the fixed bottom bar below instead (MobileStartBar): the
+            single column here has no room to keep it always in sight. */}
+          <aside className="hidden rounded-card bg-surface p-5 lg:sticky lg:top-20 lg:block">
+            <CandidateCard profile={profile} best={best} />
             <div className="mt-4 border-t border-rule pt-4">
               <StartControls setId={setId} isSignedIn={Boolean(profile)} stacked />
             </div>
           </aside>
         </div>
       </div>
+
+      <MobileStartBar
+        setId={setId}
+        isSignedIn={Boolean(profile)}
+        candidate={<CandidateCard profile={profile} best={best} />}
+      />
     </div>
+  )
+}
+
+/** Who is sitting, how they did before — shown in the desktop sidebar and the mobile candidate sheet alike. */
+function CandidateCard({
+  profile,
+  best,
+}: {
+  profile: { displayName: string | null } | null
+  best: { score: number; maxScore: number } | null
+}) {
+  return (
+    <>
+      <p className="text-micro text-ink-faint">Candidate</p>
+      <p className="mt-0.5 truncate text-ui text-ink">{profile?.displayName ?? 'Guest'}</p>
+      {profile ? null : (
+        <p className="mt-1 text-meta text-ink-muted">
+          <SignInLink /> to take this paper as a timed mock test. Your attempt and its analysis are saved.
+        </p>
+      )}
+
+      {best ? (
+        <p className="mt-4 flex items-center justify-between gap-3 border-t border-rule pt-4 text-meta text-ink-muted">
+          Your best
+          <span className="rounded-md bg-surface-2 px-2 py-0.5 text-ui text-ink tabular-nums">
+            {best.score}/{best.maxScore}
+          </span>
+        </p>
+      ) : null}
+    </>
   )
 }
 

@@ -14,6 +14,11 @@ import { useSignIn } from '@/components/site/AuthDialog'
  * `stacked` lays it out for a narrow column: the buttons full width, one above
  * the other, the way in first.
  *
+ * `compact` is for the fixed mobile bar (see MobileStartBar): the checkbox
+ * label shrinks to caption size and "View learning mode" becomes a plain
+ * text link instead of a second button, so the bar stays short enough that
+ * the questions behind it are not all hidden.
+ *
  * The timed exam is for signed-in students — the attempt is saved and marked —
  * so for a visitor the way in is a Google sign-in that comes back to the paper.
  */
@@ -22,11 +27,13 @@ export function StartControls({
   note,
   isSignedIn,
   stacked = false,
+  compact = false,
 }: {
   setId: string
   note?: ReactNode
   isSignedIn: boolean
   stacked?: boolean
+  compact?: boolean
 }) {
   const [ready, setReady] = useState(false)
   const { openSignIn } = useSignIn()
@@ -51,7 +58,11 @@ export function StartControls({
       <ArrowRight size={16} aria-hidden="true" />
     </button>
   )
-  const learning = (
+  const learning = compact ? (
+    <Link href={`/practice/${setId}?mode=learning`} className="text-center text-meta text-ink-muted underline underline-offset-2">
+      View learning mode
+    </Link>
+  ) : (
     <Link
       href={`/practice/${setId}?mode=learning`}
       className={buttonClass('outline', 'lg', stacked ? 'w-full' : 'w-full sm:w-auto')}
@@ -61,8 +72,8 @@ export function StartControls({
   )
 
   return (
-    <div className="flex flex-col gap-4">
-      <label className="flex cursor-pointer items-start gap-3 text-ui text-ink">
+    <div className={`flex flex-col ${compact ? 'gap-2.5' : 'gap-4'}`}>
+      <label className={`flex cursor-pointer items-start gap-2.5 text-ink ${compact ? 'text-micro' : 'text-ui gap-3'}`}>
         <input
           type="checkbox"
           checked={ready}
@@ -73,7 +84,12 @@ export function StartControls({
       </label>
       {note ? <p className="-mt-1 pl-[1.875rem] text-meta text-ink-muted">{note}</p> : null}
 
-      {stacked ? (
+      {compact ? (
+        <div className="flex flex-col gap-2.5">
+          {learning}
+          {start}
+        </div>
+      ) : stacked ? (
         <div className="flex flex-col gap-2">
           {start}
           {learning}
