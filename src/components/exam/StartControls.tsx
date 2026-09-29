@@ -59,7 +59,7 @@ export function StartControls({
     </button>
   )
   const learning = compact ? (
-    <Link href={`/practice/${setId}?mode=learning`} className="self-start pl-[1.75rem] text-meta text-ink-muted underline underline-offset-2">
+    <Link href={`/practice/${setId}?mode=learning`} className="self-start pl-[1.75rem] text-ui text-ink-muted underline underline-offset-2">
       View learning mode
     </Link>
   ) : (
