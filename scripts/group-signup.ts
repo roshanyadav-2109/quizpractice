@@ -22,12 +22,19 @@ if (!url || !key) {
 }
 const db = createClient(url, key, { auth: { persistSession: false } })
 
-if (process.argv.includes('--status')) {
-  const { data, error } = await db.from('group_signups').select('status, group_number')
-  if (error) throw error
-  const by = new Map<string, number>()
-  for (const row of data ?? []) by.set(row.status, (by.get(row.status) ?? 0) + 1)
-  console.log([...by.entries()].map(([status, count]) => `${status}: ${count}`).join('  ') || 'empty')
-} else {
-  console.log(await sendPendingGroupSignups(db, { limit: 100 }))
+async function main() {
+  if (process.argv.includes('--status')) {
+    const { data, error } = await db.from('group_signups').select('status, group_number')
+    if (error) throw error
+    const by = new Map<string, number>()
+    for (const row of data ?? []) by.set(row.status, (by.get(row.status) ?? 0) + 1)
+    console.log([...by.entries()].map(([status, count]) => `${status}: ${count}`).join('  ') || 'empty')
+  } else {
+    console.log(await sendPendingGroupSignups(db, { limit: 100 }))
+  }
 }
+
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})
