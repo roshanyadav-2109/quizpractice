@@ -507,6 +507,22 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
     (await one<{ role: string }>(`select role from public.profiles where id = '00000000-0000-4000-8000-00000000e002'`)).role === 'teacher')
   await db.exec(`delete from auth.users where id in ('00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-00000000e002')`)
 
+  // ---- the announcement groups' outbox (0041) -------------------------------------
+  await db.exec(`insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at)
+    values ('00000000-0000-4000-8000-00000000e004', 'Group.Member@Test.local', '{}', now())`)
+  await db.exec(`insert into auth.users (id, email, raw_user_meta_data)
+    values ('00000000-0000-4000-8000-00000000e005', 'unconfirmed.group@test.local', '{}')`)
+  const queued = async (email: string) =>
+    (await one<{ n: number }>(`select count(*)::int as n from public.group_signups where email_normalized = '${email}'`)).n
+  check('groups: a confirmed sign-in is queued, its email lower-cased', (await queued('group.member@test.local')) === 1)
+  check('groups: an unconfirmed sign-up is not queued', (await queued('unconfirmed.group@test.local')) === 0)
+  await db.exec(`update auth.users set email_confirmed_at = now() where id = '00000000-0000-4000-8000-00000000e005'`)
+  check('groups: confirming the address queues it', (await queued('unconfirmed.group@test.local')) === 1)
+  await db.exec(`update auth.users set email_confirmed_at = now() where id = '00000000-0000-4000-8000-00000000e005'`)
+  check('groups: confirming again queues nothing twice', (await queued('unconfirmed.group@test.local')) === 1)
+  await db.exec(`delete from auth.users where id in ('00000000-0000-4000-8000-00000000e004', '00000000-0000-4000-8000-00000000e005')`)
+  await db.exec(`delete from public.group_signups where email_normalized in ('group.member@test.local', 'unconfirmed.group@test.local')`)
+
   // ---- admin by email: the owner only (0028) --------------------------------------
   await db.exec(`insert into public.access_invites (email, role) values ('owner.pick@test.local', 'admin')`)
   await actAs(ID.admin)
@@ -707,10 +723,13 @@ async function educatorChecks(db: PGlite): Promise<boolean> {
   await refused('authenticated: the YouTube connection is not readable', `select * from public.youtube_connection`, '42501')
   await refused('authenticated: an upload session address is not readable', `select session_uri from public.video_uploads`, '42501')
   check('authenticated: their own uploads are readable', Array.isArray(await rows(`select id, status from public.video_uploads`)))
+  await refused('authenticated: the group outbox is not readable', `select email_normalized from public.group_signups`, '42501')
+  await refused('authenticated: nor writable', `insert into public.group_signups (email_normalized, user_id) values ('x@test.local', '${ID.teacher}')`, '42501')
   await refused('authenticated: backfill is service-role only', `select public.backfill_fingerprints(null)`, '42501')
   await refused('authenticated: fingerprints cannot be recomputed by RPC', `select public.refresh_question_fingerprint('${ID.qB}')`, '42501')
 
   await actAs(null)
+  await refused('anon: the group outbox is not readable', `select email_normalized from public.group_signups`, '42501')
   await refused('anon: profiles.email is not readable', `select email from public.profiles`, '42501')
   await refused('anon: refresh_question_fingerprint is not callable', `select public.refresh_question_fingerprint('${ID.qB}')`, '42501')
   await refused('anon: set_user_role is not callable', `select public.set_user_role('${ID.student}', 'teacher')`, '42501')
