@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { cronSecret } from '@/lib/env'
-import { SITE } from '@/lib/seo/site'
+import { ORIGIN } from '@/lib/seo/site'
 
 /**
  * The daily IndexNow ping (run by Vercel Cron, vercel.json): every address in
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Not allowed.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
   }
 
-  const site = SITE.url.replace(/\/$/, '')
+  const site = ORIGIN
   const since = Date.now() - WINDOW_MS
   const urls = [
     ...new Set([
