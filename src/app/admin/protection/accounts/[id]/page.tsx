@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/lib/supabase/server'
 import { ActionButton } from '@/components/admin/ActionButton'
-import { loadAccount, loadRelated } from '@/lib/protection'
-import { banAccount, revertBan } from '@/app/admin/protection/actions'
+import { isTrusted, loadAccount, loadRelated } from '@/lib/protection'
+import { banAccount, revertBan, trustAccount, untrustAccount } from '@/app/admin/protection/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +28,7 @@ export default async function ProtectionAccountPage({ params }: { params: Promis
   const { id } = await params
   if (!UUID.test(id)) notFound()
 
-  const [account, related] = await Promise.all([loadAccount(id) as Promise<unknown> as Promise<Account>, loadRelated(id)])
+  const [account, related, trusted] = await Promise.all([loadAccount(id) as Promise<unknown> as Promise<Account>, loadRelated(id), isTrusted(id)])
   if (!account.profile) notFound()
   const person = account.profile
   const banned = Boolean(person.banned_until)
@@ -77,6 +77,14 @@ export default async function ProtectionAccountPage({ params }: { params: Promis
           {banned ? <span className="rounded-full bg-incorrect-soft px-2 py-0.5 text-xs text-incorrect">banned</span> : <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-correct">active</span>}
           {banned && activeBan ? (
             <ActionButton label="Undo ban" confirm="Undo this ban?" action={async () => { 'use server'; return revertBan(activeBan.id) }} />
+          ) : null}
+          {trusted ? <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-correct">trusted</span> : null}
+          {person.role === 'student' && !banned ? (
+            trusted ? (
+              <ActionButton label="Stop trusting" action={async () => { 'use server'; return untrustAccount(person.id) }} />
+            ) : (
+              <ActionButton label="Trust this account" prompt={{ message: 'Why? (kept in the log)' }} confirm="The automatic rules will never ban this account. You can undo it." action={async (note) => { 'use server'; return trustAccount(person.id, note) }} />
+            )
           ) : null}
           {!banned && person.role === 'student' ? (
             <ActionButton label="Ban account" tone="danger" prompt={{ message: 'Why? (kept with the evidence)' }} confirm="Ban this account? You can undo it later." action={async (note) => { 'use server'; return banAccount(person.id, note) }} />
