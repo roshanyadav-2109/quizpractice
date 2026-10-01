@@ -26,6 +26,7 @@ import { formatSession } from '@/lib/format'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SignInButton } from '@/components/site/AuthDialog'
 import { getCurrentProfile } from '@/lib/supabase/server'
+import { noteSearch } from '@/lib/access'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   // students, like the papers themselves.
   const profile = term ? await getCurrentProfile() : null
   if (term && !profile) return <SignInToSearch term={term} />
+  // Searching counts towards a limit too: results quote the questions.
+  if (term && profile && !(await noteSearch())) {
+    return (
+      <div className={`${SHELL} py-12`}>
+        <EmptyState art="waiting-for-others" size="lg" title="That is a lot of searches in a short time">
+          To keep the question bank from being copied, searches are limited for each account. Try again in a little while.
+        </EmptyState>
+      </div>
+    )
+  }
   // The hits and their options together, held briefly per term.
   const [{ hits, options }, popular] = await Promise.all([searchWithOptions(term), getPopularSearches(10)])
 
