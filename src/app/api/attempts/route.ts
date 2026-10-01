@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return Response.json({ error: 'Sign in with Google to submit and see your marks.' }, { status: 401 })
   }
-  const opened = await openSet(setId)
+  const opened = await openSet(setId, user.id)
   if (!opened.allowed) {
     await recordSignal({ kind: 'limit', userId: user.id, setId, path: '/api/attempts' })
     const why = refusal(opened)
