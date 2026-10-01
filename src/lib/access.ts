@@ -43,13 +43,24 @@ export async function requestIp(): Promise<string | null> {
  * only log it. Fails open: a database error must not lock everyone out of
  * sign-in; the paper limit below fails closed.
  */
+const CLEAR_FOR_MS = 20_000
+const clearAddresses = new Map<string, number>()
+
 export async function isIpBlocked(ip?: string | null): Promise<boolean> {
   const address = ip ?? (await requestIp())
   if (!address) return false
+  // An address found clear is remembered for 20 seconds on this server, so a busy hour does not ask the
+  // database about every open. A blocked address is never remembered: the block applies at once.
+  const clearUntil = clearAddresses.get(address)
+  if (clearUntil && clearUntil > Date.now()) return false
   const { data, error } = await contentClient().rpc('ip_is_blocked', { p_ip: address })
   if (error) {
     console.error(`ip_is_blocked failed — ${error.message}`)
     return false
+  }
+  if (data !== true) {
+    if (clearAddresses.size > 5000) clearAddresses.clear()
+    clearAddresses.set(address, Date.now() + CLEAR_FOR_MS)
   }
   return data === true
 }
@@ -61,19 +72,25 @@ export async function isIpBlocked(ip?: string | null): Promise<boolean> {
  * not at the next sweep. Fails closed: if the limit cannot be checked, the paper
  * is not opened.
  */
-export async function openSet(setId: string): Promise<OpenResult> {
+export async function openSet(setId: string, userId?: string): Promise<OpenResult> {
   if (await isIpBlocked()) {
     return { allowed: false, openedLastHour: 0, openedToday: 0, reason: 'blocked', retryAfter: 3600 }
   }
   const supabase = await createClient()
   const request = await headers()
   const cookie = /(?:^|;\s*)qs_did=([0-9a-f-]{16,64})/i.exec(request.get('cookie') ?? '')?.[1]
-  const { data, error } = await supabase.rpc('open_set', {
+  const args = {
     p_set: setId,
     p_ip: await requestIp(),
     p_device: cookie ? `d:${cookie}` : null,
     p_ua: request.get('user-agent'),
-  })
+  }
+  let { data, error } = await supabase.rpc('open_set', args)
+  if (error) {
+    // One quick retry: a busy moment must not turn a student away.
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    ;({ data, error } = await supabase.rpc('open_set', args))
+  }
   if (error) {
     console.error(`open_set failed — ${error.message}`)
     return { allowed: false, openedLastHour: 0, openedToday: 0, reason: 'error', retryAfter: 5 }
@@ -88,15 +105,11 @@ export async function openSet(setId: string): Promise<OpenResult> {
     reason: row?.reason ?? null,
     retryAfter: row?.retry_after ?? 0,
   }
-  if (result.allowed) {
-    const { data: auth } = await supabase.auth.getUser()
-    const userId = auth.user?.id
-    if (userId) {
-      after(async () => {
-        const { error: scanError } = await contentClient().rpc('run_risk_scan', { p_user: userId })
-        if (scanError) console.error(`run_risk_scan failed — ${scanError.message}`)
-      })
-    }
+  if (result.allowed && userId) {
+    after(async () => {
+      const { error: scanError } = await contentClient().rpc('run_risk_scan', { p_user: userId })
+      if (scanError) console.error(`run_risk_scan failed — ${scanError.message}`)
+    })
   }
   return result
 }
