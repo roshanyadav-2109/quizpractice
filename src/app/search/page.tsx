@@ -64,7 +64,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const profile = term ? await getCurrentProfile() : null
   if (term && !profile) return <SignInToSearch term={term} />
   // Searching counts towards a limit too: results quote the questions.
-  if (term && profile && !(await noteSearch())) {
+  if (term && profile && !(await noteSearch(term))) {
     return (
       <div className={`${SHELL} py-12`}>
         <EmptyState art="waiting-for-others" size="lg" title="That is a lot of searches in a short time">
