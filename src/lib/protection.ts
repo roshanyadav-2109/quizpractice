@@ -272,3 +272,23 @@ export async function loadRuleStats(): Promise<Map<string, RuleStat>> {
   }
   return out
 }
+
+export interface TrustedRow {
+  user_id: string
+  email: string | null
+  reason: string | null
+  at: string
+}
+
+/** Accounts an admin has marked trusted: never banned automatically. */
+export async function loadTrusted(): Promise<TrustedRow[]> {
+  const { data } = await db().from('risk_trusted').select('user_id, reason, at').order('at', { ascending: false }).limit(200)
+  const rows = (data ?? []) as Omit<TrustedRow, 'email'>[]
+  const emails = await emailsOf(rows.map((row) => row.user_id))
+  return rows.map((row) => ({ ...row, email: emails.get(row.user_id) ?? null }))
+}
+
+export async function isTrusted(userId: string): Promise<boolean> {
+  const { data } = await db().from('risk_trusted').select('user_id').eq('user_id', userId).maybeSingle()
+  return Boolean(data)
+}
