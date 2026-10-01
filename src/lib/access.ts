@@ -66,7 +66,14 @@ export async function openSet(setId: string): Promise<OpenResult> {
     return { allowed: false, openedLastHour: 0, openedToday: 0, reason: 'blocked', retryAfter: 3600 }
   }
   const supabase = await createClient()
-  const { data, error } = await supabase.rpc('open_set', { p_set: setId })
+  const request = await headers()
+  const cookie = /(?:^|;\s*)qs_did=([0-9a-f-]{16,64})/i.exec(request.get('cookie') ?? '')?.[1]
+  const { data, error } = await supabase.rpc('open_set', {
+    p_set: setId,
+    p_ip: await requestIp(),
+    p_device: cookie ? `d:${cookie}` : null,
+    p_ua: request.get('user-agent'),
+  })
   if (error) {
     console.error(`open_set failed — ${error.message}`)
     return { allowed: false, openedLastHour: 0, openedToday: 0, reason: 'error', retryAfter: 5 }
@@ -95,14 +102,23 @@ export async function openSet(setId: string): Promise<OpenResult> {
 }
 
 /** Count a search against the signed-in student's limit; false when over it. */
-export async function noteSearch(): Promise<boolean> {
+export async function noteSearch(term?: string): Promise<boolean> {
   const supabase = await createClient()
-  const { data, error } = await supabase.rpc('note_search')
+  const { data, error } = await supabase.rpc('note_search', { p_term: term ?? null })
   if (error) {
     console.error(`note_search failed — ${error.message}`)
     return false
   }
   return data === true
+}
+
+/** Count an explanation read on the paper's record, after the response is sent so it never slows the answer. */
+export function noteExplanation(questionId: string) {
+  after(async () => {
+    const supabase = await createClient()
+    const { error } = await supabase.rpc('note_explanation', { p_question: questionId })
+    if (error) console.error(`note_explanation failed — ${error.message}`)
+  })
 }
 
 /** The sentence a refused student sees, and the HTTP status for an API. */
