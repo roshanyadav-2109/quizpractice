@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSolutionsForQuestion } from '@/lib/queries'
 import { getCurrentProfile } from '@/lib/supabase/server'
-import { mayReadQuestion } from '@/lib/access'
+import { mayReadQuestion, noteExplanation } from '@/lib/access'
 
 /**
  * One question's explanations, asked for only when a signed-in student opens
@@ -28,6 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ que
 
   try {
     const solutions = await getSolutionsForQuestion(questionId)
+    noteExplanation(questionId)
     return NextResponse.json({ solutions }, { headers: { 'Cache-Control': 'private, max-age=60' } })
   } catch {
     return NextResponse.json({ error: 'Could not load the explanation.' }, { status: 502 })
