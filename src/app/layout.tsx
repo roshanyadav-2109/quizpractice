@@ -10,6 +10,7 @@ import { OfflineBanner } from '@/components/site/OfflineBanner'
 import { RouteProgress } from '@/components/site/RouteProgress'
 import { GoogleAnalytics } from '@/components/site/GoogleAnalytics'
 import { ViewerProvider } from '@/components/site/Viewer'
+import { DeviceBeacon } from '@/components/site/DeviceBeacon'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { ORIGIN, SITE } from '@/lib/seo/site'
 import { siteGraph } from '@/lib/seo/jsonld'
@@ -104,6 +105,7 @@ export default function RootLayout({
               <SiteHeader />
             </SiteChrome>
 
+            <DeviceBeacon />
             <main className="flex-1">{children}</main>
 
             <SiteChrome part="footer">
