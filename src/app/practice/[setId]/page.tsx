@@ -10,9 +10,10 @@ import { SetupNotice } from '@/components/site/SetupNotice'
 import { SHELL } from '@/components/site/Page'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { buttonClass } from '@/components/ui/primitives'
-import { leadIn, openSet, recordSignal } from '@/lib/access'
+import { leadIn, openSet, recordSignal, refusal } from '@/lib/access'
 import { watermark } from '@/lib/watermark'
 import { ExamRunner } from '@/components/exam/ExamRunner'
+import { PaperBeacon } from '@/components/exam/PaperBeacon'
 import { blocksToText } from '@/lib/blocks/schema'
 import { formatSession } from '@/lib/format'
 import { termOf } from '@/lib/terms'
@@ -78,7 +79,7 @@ export default async function PracticePage({
     const opened = await openSet(setId)
     if (!opened.allowed) {
       await recordSignal({ kind: 'limit', userId: profile.id, setId, path: `/practice/${setId}` })
-      return <SlowDown />
+      return <SlowDown {...refusal(opened)} />
     }
     questions = watermark(context.questions, profile.id)
   }
@@ -90,6 +91,7 @@ export default async function PracticePage({
 
   return (
     <>
+      {profile ? <PaperBeacon setId={setId} /> : null}
       <ExamRunner
         setId={setId}
         mode={mode}
@@ -122,22 +124,21 @@ export default async function PracticePage({
   )
 }
 
-/** An account over the paper limit: the same screen for a student in a hurry and a copier. */
-function SlowDown() {
+/** An account over the paper limit, opening papers too fast, or on a blocked network: the same screen for a student in a hurry and a copier. */
+function SlowDown({ title, message }: { title: string; message: string }) {
   return (
     <div className={`${SHELL} py-12`}>
       <EmptyState
         art="waiting-for-others"
         size="lg"
-        title="That is a lot of papers in a short time"
+        title={title}
         actions={
           <Link href="/dashboard" className={buttonClass('primary', 'md')}>
             Back to your dashboard
           </Link>
         }
       >
-        To keep the question bank from being copied, each account can open up to 30 new papers an hour and 100 a day.
-        Papers you have already opened today still open. Try this one again in a little while.
+        {message}
       </EmptyState>
     </div>
   )
