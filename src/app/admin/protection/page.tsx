@@ -12,11 +12,13 @@ import {
   loadEvents,
   loadMinutes,
   loadOverview,
+  loadRuleStats,
   loadRules,
   loadTrapHits,
   searchAccounts,
   type RiskEvent,
 } from '@/lib/protection'
+import { GROUPS, GUIDE } from '@/lib/protection-guide'
 import { blockIp, releaseDevice, releaseIp, revertBan, revertRule, setRuleMode, setRuleParams, reviewEvent } from '@/app/admin/protection/actions'
 
 export const dynamic = 'force-dynamic'
@@ -356,25 +358,45 @@ async function Blocks() {
 }
 
 async function Rules() {
-  const rules = await loadRules()
+  const [rules, stats] = await Promise.all([loadRules(), loadRuleStats()])
+  const byKey = new Map(rules.map((rule) => [rule.key, rule]))
   const banning = new Set(['auto_ban', 'linked', 'device_block'])
+  const SIGNALS = ['machine_pace', 'no_use', 'bot_agent', 'subject_spread', 'no_receipts']
+  const signalModes = SIGNALS.map((key) => ({ label: byKey.get(key)?.label.replace('Signal: ', '') ?? key, mode: byKey.get(key)?.mode ?? 'off' }))
+  // Within a group, the order the rules are explained in.
+  const ORDER = ['caps', 'pace', 'search_limit', 'machine_pace', 'no_use', 'bot_agent', 'subject_spread', 'no_receipts', 'auto_ban', 'linked', 'device_block', 'ip_block', 'lockdown']
+  const ordered = [...rules].sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <p className="text-xs text-ink-muted">
         <strong className="text-ink">Off</strong> does nothing. <strong className="text-ink">Watch</strong> logs what the rule would have done and changes nothing.{' '}
-        <strong className="text-ink">Enforce</strong> acts. Change a rule here and it applies within seconds; &quot;Undo its bans&quot; releases everyone the rule banned.
+        <strong className="text-ink">Enforce</strong> acts. A change applies within seconds, and every change is logged. Each card says what the rule measures, how it decides, what it does,
+        the risk to real students, what we measured, and how to undo it.
       </p>
-      <ul className="flex flex-col gap-3">
-        {rules.map((rule) => (
-          <RuleControl
-            key={rule.key}
-            rule={rule}
-            setMode={async (mode) => { 'use server'; return setRuleMode(rule.key, mode) }}
-            setParams={async (params) => { 'use server'; return setRuleParams(rule.key, params) }}
-            undo={banning.has(rule.key) ? async () => { 'use server'; return revertRule(rule.key) } : undefined}
-          />
-        ))}
-      </ul>
+      {GROUPS.map((group) => {
+        const inGroup = ordered.filter((rule) => (GUIDE[rule.key]?.group ?? 'manual') === group.id)
+        if (inGroup.length === 0) return null
+        return (
+          <section key={group.id}>
+            <h3 className="text-sm font-medium text-ink">{group.title}</h3>
+            <p className="mb-2 text-xs text-ink-muted">{group.blurb}</p>
+            <ul className="flex flex-col gap-3">
+              {inGroup.map((rule) => (
+                <RuleControl
+                  key={rule.key}
+                  rule={rule}
+                  guide={GUIDE[rule.key]}
+                  stat={stats.get(rule.key)}
+                  signalModes={rule.key === 'auto_ban' ? signalModes : undefined}
+                  setMode={async (mode) => { 'use server'; return setRuleMode(rule.key, mode) }}
+                  setParams={async (params) => { 'use server'; return setRuleParams(rule.key, params) }}
+                  undo={banning.has(rule.key) ? async () => { 'use server'; return revertRule(rule.key) } : undefined}
+                />
+              ))}
+            </ul>
+          </section>
+        )
+      })}
     </div>
   )
 }
