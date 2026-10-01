@@ -14,13 +14,14 @@ import {
   loadOverview,
   loadRules,
   loadTrapHits,
+  searchAccounts,
   type RiskEvent,
 } from '@/lib/protection'
 import { blockIp, releaseDevice, releaseIp, revertBan, revertRule, setRuleMode, setRuleParams, reviewEvent } from '@/app/admin/protection/actions'
 
 export const dynamic = 'force-dynamic'
 
-type SearchParams = Promise<{ tab?: string; action?: string; rule?: string }>
+type SearchParams = Promise<{ tab?: string; action?: string; rule?: string; q?: string }>
 
 const TABS = [
   ['overview', 'Overview'],
@@ -78,7 +79,8 @@ export default async function ProtectionPage({ searchParams }: { searchParams: S
   const profile = await getCurrentProfile()
   if (profile?.role !== 'admin') redirect('/admin')
 
-  const { tab = 'overview', action, rule: ruleFilter } = await searchParams
+  const { tab: rawTab = 'overview', action, rule: ruleFilter, q = '' } = await searchParams
+  const tab = q.trim() ? 'search' : rawTab
 
   return (
     <div>
@@ -89,6 +91,17 @@ export default async function ProtectionPage({ searchParams }: { searchParams: S
         </div>
         {tab === 'overview' || tab === 'events' || tab === 'accounts' ? <AutoRefresh seconds={tab === 'events' ? 5 : 10} /> : null}
       </div>
+
+      <form action="/admin/protection" className="mb-4 flex flex-wrap items-center gap-2">
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Find an account: e-mail, name, account id, an address (203.0.113.7) or a browser id"
+          className="h-8 min-w-[280px] flex-1 rounded-[3px] border border-rule bg-surface px-3 text-xs text-ink placeholder:text-ink-faint"
+        />
+        <button type="submit" className="h-8 rounded-[3px] bg-accent px-3 text-xs text-accent-ink">Search</button>
+        {q ? <Link href="/admin/protection" className="text-xs text-ink-muted hover:text-ink">Clear</Link> : null}
+      </form>
 
       <nav className="mb-5 flex flex-wrap gap-1.5">
         {TABS.map(([value, label]) => (
@@ -104,6 +117,7 @@ export default async function ProtectionPage({ searchParams }: { searchParams: S
         ))}
       </nav>
 
+      {tab === 'search' ? <SearchResults query={q} /> : null}
       {tab === 'overview' ? <Overview /> : null}
       {tab === 'accounts' ? <Accounts /> : null}
       {tab === 'events' ? <Events action={action} rule={ruleFilter} /> : null}
@@ -385,6 +399,45 @@ async function Trap() {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+async function SearchResults({ query }: { query: string }) {
+  const rows = await searchAccounts(query)
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-ink-muted">{rows.length} account{rows.length === 1 ? '' : 's'} for &quot;{query.trim()}&quot;</p>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-rule bg-surface px-3 py-4 text-sm text-ink-muted">
+          Nothing found. Try part of the e-mail or name, the whole account id, an address such as 203.0.113.7, or a browser id.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-rule">
+          <table className="w-full min-w-[700px] text-left text-xs">
+            <thead className="bg-surface-2 text-ink-muted">
+              <tr>{['Account', 'Matched on', 'Role', 'Joined', 'Last sign-in', 'Papers opened', 'Last opened'].map((head) => <th key={head} className="px-3 py-2 font-medium">{head}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.user_id} className="border-t border-rule">
+                  <td className="px-3 py-2">
+                    <Link href={`/admin/protection/accounts/${row.user_id}`} className="text-accent hover:underline">{row.email}</Link>
+                    {row.name ? <span className="ml-1 text-ink-faint">{row.name}</span> : null}
+                    {row.banned ? <span className="ml-2 rounded-full bg-incorrect-soft px-2 py-0.5 text-[0.6875rem] text-incorrect">banned</span> : null}
+                  </td>
+                  <td className="px-3 py-2 text-ink-muted">{row.matched}</td>
+                  <td className="px-3 py-2">{row.role}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{when(row.joined)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{row.last_sign_in ? when(row.last_sign_in) : '–'}</td>
+                  <td className="px-3 py-2 font-mono">{row.opens_total}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{row.last_open ? when(row.last_open) : '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
