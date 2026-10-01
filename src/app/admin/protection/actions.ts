@@ -151,3 +151,52 @@ export async function reviewEvent(id: number): Promise<ActionState> {
   revalidatePath(PAGE)
   return { ok: true }
 }
+
+export interface RulePreview {
+  days: number
+  considered: number
+  affected_real: number
+  affected_scrapers: number
+  events: number
+  examples: string[]
+  note: string | null
+}
+
+/**
+ * What a rule, with these numbers, would have done to the recorded history: how many real students and
+ * how many already-banned accounts it would have touched (public.risk_preview). Read-only.
+ */
+export async function previewRule(key: string, params: Record<string, number>): Promise<{ ok: true; preview: RulePreview } | { ok: false; error: string }> {
+  const profile = await admin()
+  if (!profile) return { ok: false, error: 'Only an admin can preview a rule.' }
+  const clean: Record<string, number> = {}
+  for (const [name, value] of Object.entries(params)) {
+    if (/^[a-z_0-9]+$/.test(name) && Number.isFinite(value) && value >= 0 && value <= 100000) clean[name] = value
+  }
+  const { data, error } = await contentClient().rpc('risk_preview', { p_rule: key, p_params: clean, p_days: 30 })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, preview: data as RulePreview }
+}
+
+/** Mark an account trusted: the automatic rules will never ban it. Undo with untrustAccount. */
+export async function trustAccount(userId: string, reason?: string): Promise<ActionState> {
+  const profile = await admin()
+  if (!profile) return fail('Only an admin can trust an account.')
+  if (!UUID.test(userId)) return fail('That is not an account.')
+  const { error } = await contentClient().from('risk_trusted').upsert({ user_id: userId, reason: reason ?? null, by_user: profile.id })
+  if (error) return fail(error.message)
+  await contentClient().from('risk_events').insert({ user_id: userId, rule: 'auto_ban', mode: 'n/a', action: 'trusted', detail: { by: profile.id, reason: reason ?? null } })
+  revalidatePath(PAGE)
+  return { ok: true }
+}
+
+export async function untrustAccount(userId: string): Promise<ActionState> {
+  const profile = await admin()
+  if (!profile) return fail('Only an admin can change trusted accounts.')
+  if (!UUID.test(userId)) return fail('That is not an account.')
+  const { error } = await contentClient().from('risk_trusted').delete().eq('user_id', userId)
+  if (error) return fail(error.message)
+  await contentClient().from('risk_events').insert({ user_id: userId, rule: 'auto_ban', mode: 'n/a', action: 'untrusted', detail: { by: profile.id } })
+  revalidatePath(PAGE)
+  return { ok: true }
+}
