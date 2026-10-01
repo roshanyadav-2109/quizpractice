@@ -14,12 +14,13 @@ import {
   loadOverview,
   loadRuleStats,
   loadRules,
+  loadTrusted,
   loadTrapHits,
   searchAccounts,
   type RiskEvent,
 } from '@/lib/protection'
 import { GROUPS, GUIDE } from '@/lib/protection-guide'
-import { blockIp, releaseDevice, releaseIp, revertBan, revertRule, setRuleMode, setRuleParams, reviewEvent } from '@/app/admin/protection/actions'
+import { blockIp, previewRule, releaseDevice, releaseIp, revertBan, revertRule, setRuleMode, setRuleParams, reviewEvent, untrustAccount } from '@/app/admin/protection/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -269,7 +270,7 @@ async function Events({ action, rule }: { action?: string; rule?: string }) {
 }
 
 async function Blocks() {
-  const [bans, blocks] = await Promise.all([loadBans(150), loadBlocks()])
+  const [bans, blocks, trusted] = await Promise.all([loadBans(150), loadBlocks(), loadTrusted()])
   return (
     <div className="flex flex-col gap-6">
       <section>
@@ -334,6 +335,20 @@ async function Blocks() {
       </section>
 
       <section>
+        <h3 className="mb-2 text-sm font-medium text-ink">Trusted accounts (never banned automatically)</h3>
+        {trusted.length === 0 ? <p className="text-sm text-ink-muted">None. Open an account and press &quot;Trust this account&quot; to add one.</p> : (
+          <ul className="rounded-lg border border-rule bg-surface text-xs">
+            {trusted.map((row) => (
+              <li key={row.user_id} className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2 last:border-b-0">
+                <span><Link href={`/admin/protection/accounts/${row.user_id}`} className="text-accent hover:underline">{row.email ?? row.user_id.slice(0, 8)}</Link>{row.reason ? <span className="ml-2 text-ink-faint">{row.reason}</span> : null}</span>
+                <ActionButton label="Stop trusting" action={async () => { 'use server'; return untrustAccount(row.user_id) }} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
         <h3 className="mb-2 text-sm font-medium text-ink">Blocked browsers</h3>
         {blocks.devices.length === 0 ? <p className="text-sm text-ink-muted">None.</p> : (
           <div className="overflow-x-auto rounded-lg border border-rule">
@@ -390,6 +405,7 @@ async function Rules() {
                   signalModes={rule.key === 'auto_ban' ? signalModes : undefined}
                   setMode={async (mode) => { 'use server'; return setRuleMode(rule.key, mode) }}
                   setParams={async (params) => { 'use server'; return setRuleParams(rule.key, params) }}
+                  preview={async (params) => { 'use server'; return previewRule(rule.key, params) }}
                   undo={banning.has(rule.key) ? async () => { 'use server'; return revertRule(rule.key) } : undefined}
                 />
               ))}
