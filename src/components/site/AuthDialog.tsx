@@ -47,6 +47,7 @@ export function useSignIn(): AuthContext {
 const CALLBACK_ERRORS: Record<string, string> = {
   missing_code: 'That sign-in link was incomplete. Ask for a new one.',
   invalid_code: 'That sign-in link has expired or was already used. Ask for a new one.',
+  blocked: 'Sign-in is paused for this network for a while because its activity looked automated. Try again later or from another network.',
 }
 
 /** Only ever send someone to a path on this site. */
