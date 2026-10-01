@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { TAG, refresh } from '@/lib/cache'
 import { getSetContext } from '@/lib/queries'
-import { openSet, recordSignal } from '@/lib/access'
+import { openSet, recordSignal, refusal } from '@/lib/access'
 import { gradeAttempt } from '@/lib/scoring'
 import type { AnswerResponse } from '@/types/db'
 
@@ -64,7 +64,11 @@ export async function POST(request: NextRequest) {
   const opened = await openSet(setId)
   if (!opened.allowed) {
     await recordSignal({ kind: 'limit', userId: user.id, setId, path: '/api/attempts' })
-    return Response.json({ error: 'Too many papers in a short time. Try again in a little while.' }, { status: 429 })
+    const why = refusal(opened)
+    return Response.json(
+      { error: why.message },
+      { status: why.status, headers: opened.retryAfter > 0 ? { 'Retry-After': String(opened.retryAfter) } : undefined },
+    )
   }
 
   const context = await getSetContext(setId, { includeAnswers: true })
