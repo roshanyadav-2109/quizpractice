@@ -12,7 +12,8 @@ const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: '2-di
 
 interface Account {
   profile: { id: string; email: string; display_name: string | null; role: string; created_at: string; last_sign_in_at: string | null; banned_until: string | null } | null
-  opens: { opened_at: string; set_code: string; title: string; gap_s: number | null }[]
+  opens: { opened_at: string; set_code: string; title: string; gap_s: number | null; ip: string | null; device: string | null; ua: string | null; explanations_read: number }[]
+  searches: { at: string; term: string | null }[]
   sessions: { at: string; ip: string; ua: string }[]
   devices: { fingerprint: string; ip: string | null; seen: string }[]
   events: { at: string; rule: string; mode: string; action: string; detail: Record<string, unknown>; ip: string | null }[]
@@ -129,17 +130,34 @@ export default async function ProtectionAccountPage({ params }: { params: Promis
         </div>
       </section>
 
+      {account.searches.length > 0 ? (
+        <section>
+          <h3 className="mb-2 text-sm font-medium text-ink">Searches</h3>
+          <ul className="rounded-lg border border-rule bg-surface text-xs">
+            {account.searches.map((search, index) => (
+              <li key={index} className="flex justify-between gap-3 border-b border-rule px-3 py-2 last:border-b-0">
+                <span className="text-ink">{search.term ?? '(not kept)'}</span>
+                <span className="text-ink-faint">{when(search.at)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section>
         <h3 className="mb-2 text-sm font-medium text-ink">Papers opened (newest first, gap from the one before)</h3>
         <div className="overflow-x-auto rounded-lg border border-rule">
           <table className="w-full min-w-[560px] text-left text-xs">
-            <thead className="bg-surface-2 text-ink-muted"><tr>{['Opened', 'Gap', 'Paper'].map((head) => <th key={head} className="px-3 py-2 font-medium">{head}</th>)}</tr></thead>
+            <thead className="bg-surface-2 text-ink-muted"><tr>{['Opened', 'Gap', 'Paper', 'Explanations read', 'Address', 'Browser'].map((head) => <th key={head} className="px-3 py-2 font-medium">{head}</th>)}</tr></thead>
             <tbody>
               {account.opens.map((open, index) => (
                 <tr key={index} className="border-t border-rule">
                   <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{when(open.opened_at)}</td>
                   <td className={`px-3 py-2 font-mono ${open.gap_s != null && open.gap_s < 10 ? 'text-incorrect' : ''}`}>{open.gap_s != null ? `${open.gap_s}s` : '–'}</td>
                   <td className="px-3 py-2">{open.title} <span className="text-ink-faint">({open.set_code})</span></td>
+                  <td className="px-3 py-2 font-mono">{open.explanations_read}</td>
+                  <td className="px-3 py-2 font-mono">{open.ip ?? '–'}</td>
+                  <td className="max-w-[200px] truncate px-3 py-2 text-ink-faint" title={`${open.device ?? ''} ${open.ua ?? ''}`}>{open.device ? `${open.device.slice(0, 14)}… ` : ''}{open.ua ?? ''}</td>
                 </tr>
               ))}
             </tbody>
