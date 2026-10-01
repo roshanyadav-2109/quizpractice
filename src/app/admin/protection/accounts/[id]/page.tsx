@@ -36,6 +36,32 @@ export default async function ProtectionAccountPage({ params }: { params: Promis
   const gaps = account.opens.map((open) => open.gap_s).filter((gap): gap is number => gap != null)
   const fast = gaps.filter((gap) => gap < 10).length
 
+  const timeline: { at: string; kind: string; tone: string; text: string }[] = [
+    ...account.opens.map((open) => ({
+      at: open.opened_at,
+      kind: 'paper',
+      tone: 'bg-surface-2 text-ink-muted',
+      text: `${open.title} (${open.set_code})${open.gap_s != null ? ` · ${open.gap_s}s after the one before` : ''}${open.ip ? ` · ${open.ip}` : ''}${open.explanations_read ? ` · ${open.explanations_read} explanation${open.explanations_read === 1 ? '' : 's'} read` : ''}`,
+    })),
+    ...account.searches.map((search) => ({ at: search.at, kind: 'search', tone: 'bg-surface-2 text-ink-muted', text: search.term ?? '(words not kept)' })),
+    ...account.attempts.map((attempt) => ({
+      at: attempt.started_at,
+      kind: 'attempt',
+      tone: 'bg-surface-2 text-correct',
+      text: `${attempt.score} / ${attempt.max_score}${attempt.duration_seconds != null ? ` in ${attempt.duration_seconds}s` : ''}`,
+    })),
+    ...account.sessions.map((session) => ({ at: session.at, kind: 'sign-in', tone: 'bg-surface-2 text-ink-muted', text: `${session.ip} · ${session.ua}` })),
+    ...account.events.map((event) => ({
+      at: event.at,
+      kind: event.action.replace('_', ' '),
+      tone: event.action.startsWith('would_') ? 'border border-rule text-ink-muted' : 'bg-incorrect-soft text-incorrect',
+      text: `${event.rule}${event.ip ? ` · ${event.ip}` : ''} ${JSON.stringify(event.detail).slice(0, 120)}`,
+    })),
+    ...account.bans.map((ban) => ({ at: ban.created_at, kind: 'ban', tone: 'bg-incorrect-soft text-incorrect', text: `${ban.reason}${ban.reverted_at ? ` (undone ${when(ban.reverted_at)})` : ''}` })),
+  ]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 250)
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -71,6 +97,39 @@ export default async function ProtectionAccountPage({ params }: { params: Promis
           </div>
         ))}
       </section>
+
+      <section>
+        <h3 className="mb-2 text-sm font-medium text-ink">Everything, in order (newest first)</h3>
+        <ul className="max-h-[480px] overflow-y-auto rounded-lg border border-rule bg-surface text-xs">
+          {timeline.length === 0 ? <li className="px-3 py-3 text-ink-muted">Nothing recorded yet.</li> : timeline.map((item, index) => (
+            <li key={index} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-rule px-3 py-1.5 last:border-b-0">
+              <span className="w-28 shrink-0 text-ink-faint">{when(item.at)}</span>
+              <span className={`w-20 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[0.6875rem] ${item.tone}`}>{item.kind}</span>
+              <span className="min-w-0 flex-1 text-ink">{item.text}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {account.attempts.length > 0 ? (
+        <section>
+          <h3 className="mb-2 text-sm font-medium text-ink">Attempts</h3>
+          <div className="overflow-x-auto rounded-lg border border-rule">
+            <table className="w-full min-w-[420px] text-left text-xs">
+              <thead className="bg-surface-2 text-ink-muted"><tr>{['Started', 'Took', 'Score'].map((head) => <th key={head} className="px-3 py-2 font-medium">{head}</th>)}</tr></thead>
+              <tbody>
+                {account.attempts.map((attempt, index) => (
+                  <tr key={index} className="border-t border-rule">
+                    <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{when(attempt.started_at)}</td>
+                    <td className="px-3 py-2 font-mono">{attempt.duration_seconds != null ? `${attempt.duration_seconds}s` : '–'}</td>
+                    <td className="px-3 py-2 font-mono">{attempt.score} / {attempt.max_score}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       {related.length > 0 ? (
         <section>
