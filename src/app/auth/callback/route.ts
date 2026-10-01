@@ -3,6 +3,7 @@ import { after, NextResponse } from 'next/server'
 import { sendPendingGroupSignups } from '@/lib/group-signup'
 import { contentClient } from '@/lib/supabase/content'
 import { createClient } from '@/lib/supabase/server'
+import { isIpBlocked } from '@/lib/access'
 
 /**
  * Where the magic link lands. Exchanges the one-time code for a session and
@@ -26,6 +27,12 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(`${origin}/?error=invalid_code`)
+  }
+
+  // A network blocked for copying cannot start a session; the block ends by itself.
+  if (await isIpBlocked()) {
+    await supabase.auth.signOut()
+    return NextResponse.redirect(`${origin}/?error=blocked`)
   }
 
   // Hand the new account's email to the announcement groups once the response
