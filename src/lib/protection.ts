@@ -247,3 +247,28 @@ export async function searchAccounts(query: string): Promise<SearchRow[]> {
   if (error) throw new Error(`risk_search: ${error.message}`)
   return (data ?? []) as SearchRow[]
 }
+
+export interface RuleStat {
+  rule: string
+  /** What the rule did in the last 24 hours, by action. */
+  last24h: Record<string, number>
+  /** Everything it did in the last 7 days. */
+  last7d: number
+  lastAt: string | null
+}
+
+/** How often each rule has acted (or would have, in Watch), for the Rules tab. */
+export async function loadRuleStats(): Promise<Map<string, RuleStat>> {
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString()
+  const { data } = await db().from('risk_events').select('rule, action, at').gte('at', since).neq('action', 'rule_changed').limit(20000)
+  const day = Date.now() - 86_400_000
+  const out = new Map<string, RuleStat>()
+  for (const row of (data ?? []) as { rule: string; action: string; at: string }[]) {
+    const stat = out.get(row.rule) ?? { rule: row.rule, last24h: {}, last7d: 0, lastAt: null }
+    stat.last7d += 1
+    if (new Date(row.at).getTime() >= day) stat.last24h[row.action] = (stat.last24h[row.action] ?? 0) + 1
+    if (!stat.lastAt || row.at > stat.lastAt) stat.lastAt = row.at
+    out.set(row.rule, stat)
+  }
+  return out
+}
