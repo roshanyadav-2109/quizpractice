@@ -76,7 +76,7 @@ export default async function PracticePage({
   if (!profile) {
     questions = leadIn(context.questions)
   } else {
-    const opened = await openSet(setId)
+    const opened = await openSet(setId, profile.id)
     if (!opened.allowed) {
       await recordSignal({ kind: 'limit', userId: profile.id, setId, path: `/practice/${setId}` })
       return <SlowDown {...refusal(opened)} />
