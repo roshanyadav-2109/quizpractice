@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import type { ActionState } from '@/app/admin/actions'
-import type { Rule, RuleMode } from '@/lib/protection'
+import type { Rule, RuleMode, RuleStat } from '@/lib/protection'
+import type { RuleGuide } from '@/lib/protection-guide'
 
 const MODES: { value: RuleMode; label: string; help: string }[] = [
   { value: 'off', label: 'Off', help: 'Does nothing' },
@@ -13,11 +14,18 @@ const MODES: { value: RuleMode; label: string; help: string }[] = [
 /** One rule: its mode, its numbers, and the undo for what it did. */
 export function RuleControl({
   rule,
+  guide,
+  stat,
+  signalModes,
   setMode,
   setParams,
   undo,
 }: {
   rule: Rule
+  guide?: RuleGuide
+  stat?: RuleStat
+  /** The signals an automatic ban counts, with their current modes. */
+  signalModes?: { label: string; mode: RuleMode }[]
   setMode: (mode: string) => Promise<ActionState>
   setParams: (params: Record<string, number>) => Promise<ActionState>
   undo?: () => Promise<ActionState>
@@ -68,6 +76,74 @@ export function RuleControl({
           ))}
         </div>
       </div>
+
+      {guide ? (
+        <div className="mt-3 grid gap-x-6 gap-y-3 border-t border-rule pt-3 text-xs sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <p className="font-medium text-ink">What it measures</p>
+            <p className="mt-0.5 text-ink-muted">{guide.measures}</p>
+          </div>
+          <div className="sm:col-span-2">
+            <p className="font-medium text-ink">How it decides</p>
+            <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-ink-muted marker:text-ink-faint">
+              {guide.how.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+          {signalModes ? (
+            <div className="sm:col-span-2">
+              <p className="font-medium text-ink">The signals it counts, and how each is set now</p>
+              <p className="mt-0.5 flex flex-wrap gap-1.5">
+                {signalModes.map((signal) => (
+                  <span
+                    key={signal.label}
+                    className={`rounded-full border px-2 py-0.5 text-[0.6875rem] ${
+                      signal.mode === 'enforce' ? 'border-incorrect text-incorrect' : signal.mode === 'watch' ? 'border-accent text-accent' : 'border-rule text-ink-faint'
+                    }`}
+                  >
+                    {signal.label}: {signal.mode}
+                  </span>
+                ))}
+              </p>
+            </div>
+          ) : null}
+          <div>
+            <p className="font-medium text-ink">When it acts</p>
+            <p className="mt-0.5 text-ink-muted">{guide.whenItActs}</p>
+          </div>
+          <div>
+            <p className="font-medium text-ink">In Watch mode</p>
+            <p className="mt-0.5 text-ink-muted">{guide.inWatch}</p>
+          </div>
+          <div>
+            <p className="font-medium text-ink">Risk to real students</p>
+            <p className="mt-0.5 text-ink-muted">{guide.risk}</p>
+          </div>
+          <div>
+            <p className="font-medium text-ink">Measured on your data</p>
+            <p className="mt-0.5 text-ink-muted">{guide.measured}</p>
+          </div>
+          <div>
+            <p className="font-medium text-ink">How to undo it</p>
+            <p className="mt-0.5 text-ink-muted">{guide.undo}</p>
+          </div>
+          <div>
+            <p className="font-medium text-ink">What it has done</p>
+            {stat && stat.last7d > 0 ? (
+              <p className="mt-0.5 text-ink-muted">
+                Last 24 hours:{' '}
+                {Object.keys(stat.last24h).length
+                  ? Object.entries(stat.last24h).map(([action, count]) => `${count} ${action.replace(/_/g, ' ')}`).join(', ')
+                  : 'nothing'}
+                . Last 7 days: {stat.last7d}. Last at {stat.lastAt ? new Date(stat.lastAt).toLocaleString('en-GB') : '–'}.
+              </p>
+            ) : (
+              <p className="mt-0.5 text-ink-muted">Nothing logged in the last 7 days.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {names.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-rule pt-3">
