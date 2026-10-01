@@ -64,6 +64,19 @@ export interface RiskAccount {
   events_24h: number
 }
 
+export interface SearchRow {
+  user_id: string
+  email: string
+  name: string | null
+  role: string
+  joined: string
+  last_sign_in: string | null
+  opens_total: number
+  last_open: string | null
+  banned: boolean
+  matched: string
+}
+
 export interface BanRow {
   id: number
   created_at: string
@@ -224,4 +237,13 @@ export async function loadRelated(userId: string): Promise<{ email: string | nul
   }
   const emails = await emailsOf([...found.keys()].map((key) => key.split('|')[0]))
   return [...found.entries()].map(([key, info]) => ({ email: emails.get(key.split('|')[0]) ?? null, ...info }))
+}
+
+/** Accounts matching an e-mail or name fragment, an account id, an address or a browser id. */
+export async function searchAccounts(query: string): Promise<SearchRow[]> {
+  const q = query.trim().slice(0, 120)
+  if (q.length < 2) return []
+  const { data, error } = await db().rpc('risk_search', { p_q: q, p_limit: 50 })
+  if (error) throw new Error(`risk_search: ${error.message}`)
+  return (data ?? []) as SearchRow[]
 }
