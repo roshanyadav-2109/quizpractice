@@ -1,0 +1,40 @@
+# Quiz Space's firewall rules, rebuilt from the Vercel ones. A banned address is blocked on ports 80 and 443 of
+# the whole server (the other site there included): only offenders. SSH is not touched.
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 62.72.29.5
+
+# The invisible link only a script that follows every link opens: blocked for one hour (as on Vercel).
+[quizspace-trap]
+enabled  = true
+filter   = quizspace-trap
+logpath  = /var/lib/caddy/logs/quizspace.access.log
+backend  = polling
+maxretry = 1
+findtime = 60
+bantime  = 3600
+banaction = nftables[type=multiport]
+port     = http,https
+
+# More than 120 requests a minute to marking, answers or mistakes from one address (the Vercel limit): blocked 5 minutes.
+[quizspace-api]
+enabled  = true
+filter   = quizspace-api
+logpath  = /var/lib/caddy/logs/quizspace.access.log
+backend  = polling
+maxretry = 120
+findtime = 60
+bantime  = 300
+banaction = nftables[type=multiport]
+port     = http,https
+
+# More than 240 requests a minute to papers from one address (the Vercel limit): blocked 5 minutes.
+[quizspace-papers]
+enabled  = true
+filter   = quizspace-papers
+logpath  = /var/lib/caddy/logs/quizspace.access.log
+backend  = polling
+maxretry = 240
+findtime = 60
+bantime  = 300
+banaction = nftables[type=multiport]
+port     = http,https
