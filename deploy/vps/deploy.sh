@@ -6,7 +6,8 @@
 #
 # The new release is built beside the running one, in a cgroup capped at 1 CPU and 3 GB so the other site on
 # the server is never starved. The site keeps serving the old release until the build has succeeded, then it
-# switches, restarts the service and checks the home page; if that fails it switches straight back.
+# switches, restarts the two copies of the app one after the other (A on 3100, then B on 3101, so one always
+# answers) and checks the home page of each; if that fails it switches straight back.
 # Needs the SSH key ~/.ssh/quizspace_vps (see docs/hosting-vps.md). Uncommitted changes are NOT deployed.
 set -euo pipefail
 
@@ -20,7 +21,7 @@ if [ "${1:-}" = "rollback" ]; then
         prev=$(ls -1t | grep -v "^$cur$" | head -1)
         [ -n "$prev" ] || { echo "no earlier release to go back to"; exit 1; }
         ln -sfn "/srv/quizspace/releases/$prev" /srv/quizspace/current && chown -h quiz:quiz /srv/quizspace/current
-        systemctl restart quizspace && echo "rolled back from $cur to $prev"'
+        systemctl restart quizspace && sleep 8 && systemctl restart quizspace-b && echo "rolled back from $cur to $prev"'
   exit 0
 fi
 
@@ -38,16 +39,20 @@ fi
 ssh_ "set -e
   PREV=\$(readlink -f /srv/quizspace/current || true)
   ln -sfn /srv/quizspace/releases/$SHA /srv/quizspace/current && chown -h quiz:quiz /srv/quizspace/current
-  systemctl restart quizspace
-  for i in \$(seq 1 30); do
-    code=\$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: quizspace.unknowniitians.com' http://127.0.0.1:3100/ || true)
-    [ \"\$code\" = 200 ] && { echo 'home page answers 200: deploy ok'; break; }
-    sleep 2
-    if [ \$i = 30 ]; then
-      echo 'the new release did not come up: going back'
-      [ -n \"\$PREV\" ] && ln -sfn \"\$PREV\" /srv/quizspace/current && chown -h quiz:quiz /srv/quizspace/current && systemctl restart quizspace
-      exit 1
-    fi
+  for unit_port in quizspace:3100 quizspace-b:3101; do
+    unit=\${unit_port%%:*}; port=\${unit_port##*:}
+    systemctl restart \$unit
+    for i in \$(seq 1 30); do
+      code=\$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: quizspace.unknowniitians.com' http://127.0.0.1:\$port/ || true)
+      [ \"\$code\" = 200 ] && { echo \"\$unit (port \$port) answers 200\"; break; }
+      sleep 2
+      if [ \$i = 30 ]; then
+        echo \"the new release did not come up on \$unit: going back\"
+        [ -n \"\$PREV\" ] && ln -sfn \"\$PREV\" /srv/quizspace/current && chown -h quiz:quiz /srv/quizspace/current && systemctl restart quizspace quizspace-b
+        exit 1
+      fi
+    done
   done
+  echo 'both copies answer 200: deploy ok'
   ls -1dt /srv/quizspace/releases/*/ | tail -n +4 | xargs -r rm -rf   # keep the newest three"
 echo "live: https://quizspace.unknowniitians.com (release $SHA)"
