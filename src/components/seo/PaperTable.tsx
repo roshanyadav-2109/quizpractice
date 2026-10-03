@@ -82,7 +82,7 @@ export function PaperTable({
                 {paper.durationMinutes ? `${paper.durationMinutes} min` : '—'}
               </td>
               <td className="px-2 py-2.5 text-right sm:px-4 sm:py-3">
-                <Link href={`/paper/${paper.setId}`} className={buttonClass('outline', 'sm')}>
+                <Link href={`/paper/${paper.setId}`} prefetch={false} className={buttonClass('outline', 'sm')}>
                   Mock test
                   {/* Every row has one: the hidden words say which paper this one starts. */}
                   <span className="sr-only">
@@ -153,7 +153,7 @@ function ArticleTable({
                 {paper.durationMinutes ? `${paper.durationMinutes} min` : '—'}
               </td>
               <td className={cell}>
-                <Link href={`/paper/${paper.setId}`} className="text-accent hover:underline sm:whitespace-nowrap">
+                <Link href={`/paper/${paper.setId}`} prefetch={false} className="text-accent hover:underline sm:whitespace-nowrap">
                   Mock test
                   {/* Every row has one: the hidden words say which paper this one starts. */}
                   <span className="sr-only">
