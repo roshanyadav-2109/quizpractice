@@ -1,0 +1,5 @@
+# Quiz Space daily jobs (they were Vercel crons). Times are UTC, as on Vercel. Installed as /etc/cron.d/quizspace.
+20 3 * * * quiz /srv/quizspace/cron.sh /api/youtube/check
+40 3 * * * quiz /srv/quizspace/cron.sh /api/answers/consensus
+0 4 * * * quiz /srv/quizspace/cron.sh /api/indexnow
+30 4 * * * quiz /srv/quizspace/cron.sh /api/group-signup/sync
