@@ -24,14 +24,10 @@ const hostRedirects =
   process.env.VERCEL_ENV === 'production' && canonical && !canonical.hostname.endsWith('localhost')
     ? [
         {
-          source: '/:path((?!api/).*)',
-          // The server's own address is left alone: the image optimiser fetches /art/... from it, and a
-          // redirect there made every icon fail (self-hosted, where the app listens on 127.0.0.1:3100; a host is matched without its port).
-          missing: [
-            { type: 'host' as const, value: canonical.host },
-            { type: 'host' as const, value: '127.0.0.1' },
-            { type: 'host' as const, value: 'localhost' },
-          ],
+          // The image folders are left alone too: Next's image optimiser fetches /art/... from itself with no Host
+          // header at all, so a host rule can never exempt it, and the redirect made every icon fail when self-hosted.
+          source: '/:path((?!api/|art/|brand/|showcase/).*)',
+          missing: [{ type: 'host' as const, value: canonical.host }],
           destination: `${canonical.origin}/:path`,
           permanent: true,
         },
