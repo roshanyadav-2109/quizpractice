@@ -74,3 +74,13 @@ cron and fail2ban files in `/srv/quizspace/backups` (root only). `deploy/vps/pul
 - Capacity: public pages that are cached answer in about 25 ms (150+ requests/s); pages that render on every request
   (`/subjects`, `/search`, ...) cost about 90 ms of CPU each (about 11 a second on one core). `/subjects` is
   `force-dynamic` although it is the same for everyone: caching it would remove most of the load.
+
+## Cloudflare in front (from 2026-10-03)
+
+- The nameservers of `unknowniitians.com` are Cloudflare's (`kay` and `ridge`). Only `quizspace` is **Proxied**; the main site, `www`, `ssp` and every mail record are **DNS only**. Every record was compared with the Hostinger backup (`~/Downloads/dns-backup-unknowniitians.com-*.json`) before the switch.
+- SSL mode Full (strict); minimum TLS 1.2; Bot Fight Mode on; one rate-limit rule (more than 100 non-static requests in 10 s from one address: blocked for 10 s).
+- Caddy (`quizspace.caddy`) believes `Cf-Connecting-Ip` only when the connection comes from a Cloudflare address (the list in the file; refresh it from https://www.cloudflare.com/ips now and then). Everything else (the app's `X-Real-IP`, the log field `client`, the `@scraper` block) uses the visitor's address.
+- fail2ban matches the log field `client`. Each ban also blocks the address at Cloudflare through `/usr/local/sbin/quizspace-cf-ban` (`deploy/vps/cf-ban.sh`, action `quizspace-cf`), because the server firewall alone cannot stop proxied visitors. The token for it (Account Firewall Access Rules: Write, nothing else) is in `/etc/quizspace-cf.env`, root only. An account-level rule applies to every proxied site in that Cloudflare account.
+- Test: `curl` the trap path through Cloudflare, expect 403 within seconds; lift with `fail2ban-client set quizspace-trap unbanip <ip>` (the unban also lifts the Cloudflare block).
+- Not done yet: lock the server so only Cloudflare reaches the quizspace host (do it only after the nameserver change has fully spread, about 48 hours).
+- The Cashfree webhook (`/api/payments/webhook`) may be challenged by Bot Fight Mode once real payments exist.
