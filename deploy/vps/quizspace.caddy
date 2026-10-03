@@ -8,7 +8,17 @@ quizspace.unknowniitians.com {
 	@scraper remote_ip 122.176.158.89
 	respond @scraper 403
 
-	# Access logs go to the journal (the file writer was refused by the service sandbox): journalctl -u caddy | grep quizspace
+	# Access log for fail2ban (the trap and the rate limits). Static files are left out to keep it small.
+	# (/var/log/caddy was refused by the service sandbox; /var/lib/caddy is Caddy's own writable folder.)
+	@static path /_next/static/* /_next/image* /art/* /brand/* /showcase/* /favicon.ico
+	log_skip @static
+	log {
+		output file /var/lib/caddy/logs/quizspace.access.log {
+			roll_size 50MiB
+			roll_keep 3
+		}
+		format json
+	}
 	# Vercel added HSTS by itself; on the server it has to be said. Only for this host (no subdomains, no preload).
 	header {
 		Strict-Transport-Security "max-age=31536000"
