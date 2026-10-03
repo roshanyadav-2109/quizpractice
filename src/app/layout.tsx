@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Lexend, JetBrains_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteChrome } from '@/components/site/SiteChrome'
@@ -114,8 +113,6 @@ export default function RootLayout({
           </ViewerProvider>
         </AuthProvider>
         <OfflineBanner />
-        {/* Vercel Web Analytics: page views, without cookies. Sends nothing in development. */}
-        <Analytics />
         {/* Google Analytics 4, on production only. */}
         <GoogleAnalytics />
       </body>
