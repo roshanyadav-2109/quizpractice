@@ -26,11 +26,11 @@ const hostRedirects =
         {
           source: '/:path((?!api/).*)',
           // The server's own address is left alone: the image optimiser fetches /art/... from it, and a
-          // redirect there made every icon fail (self-hosted, where the app listens on 127.0.0.1:3100).
+          // redirect there made every icon fail (self-hosted, where the app listens on 127.0.0.1:3100; a host is matched without its port).
           missing: [
             { type: 'host' as const, value: canonical.host },
-            { type: 'host' as const, value: '127.0.0.1:3100' },
-            { type: 'host' as const, value: 'localhost:3100' },
+            { type: 'host' as const, value: '127.0.0.1' },
+            { type: 'host' as const, value: 'localhost' },
           ],
           destination: `${canonical.origin}/:path`,
           permanent: true,
