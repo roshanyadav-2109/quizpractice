@@ -1,0 +1,16 @@
+# Quiz Space (a separate project: /srv/quizspace, service quizspace, port 3100). Added 2026-10-03.
+# Kept in its own file so the other sites in /etc/caddy/Caddyfile are never edited for it:
+# /etc/caddy/Caddyfile has one line, `import /etc/caddy/quizspace.caddy`.
+quizspace.unknowniitians.com {
+	encode zstd gzip
+
+	# A connection that copied the question bank; the app also blocks by address and account.
+	@scraper remote_ip 122.176.158.89
+	respond @scraper 403
+
+	# Access logs go to the journal (the file writer was refused by the service sandbox): journalctl -u caddy | grep quizspace
+	reverse_proxy 127.0.0.1:3100 {
+		# The app reads the visitor address from X-Real-IP (its limits, blocks and the activity record).
+		header_up X-Real-IP {remote_host}
+	}
+}
