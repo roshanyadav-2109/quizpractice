@@ -1,0 +1,9 @@
+[Unit]
+Description=Quiz Space: every copy of the app shares these limits (separate from the other sites on this server)
+
+[Slice]
+# Up to 6.5 GB of the 7.9 GB for all copies together; no swap, so a runaway copy is stopped, not slowed to a crawl.
+MemoryMax=6500M
+MemorySwapMax=0
+# Two copies of the app can use almost both cores; a sliver stays free for the system and the other site.
+CPUQuota=190%
