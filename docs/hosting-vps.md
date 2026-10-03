@@ -1,0 +1,55 @@
+# Hosting on the VPS (from 3 Oct 2026)
+
+Quiz Space moved off Vercel on 3 Oct 2026, when Vercel blocked the "UI Premium" team (Hobby plan, fair-use limit
+on server CPU time: `FAIR_USE_LIMITS_EXCEEDED`, `fluidCpuDuration`), which answered every request with
+`402 DEPLOYMENT_DISABLED`. The Vercel project (`quizdesk`) still exists but is not used.
+
+**Address:** `https://quizspace.unknowniitians.com`. DNS: an `A` record `quizspace` -> `62.72.29.5` (TTL 300) at
+Hostinger. It was a CNAME to Vercel. A backup of the whole zone from before the change is kept by the owner
+(`dns-backup-unknowniitians.com-20261003-1743.json`). `www` and `ssp` are still on Vercel and were not touched.
+
+## The server
+Hostinger VPS `srv2029582` (Ubuntu 26.04, 2 vCPU, 7.7 GB, Mumbai area), shared with **another project** (a news site,
+user `app`, PM2, port 3000). Everything here is separate from it:
+
+| | Quiz Space | the other project |
+|---|---|---|
+| Linux user | `quiz` | `app` |
+| Folder | `/srv/quizspace` | `/srv/tid` |
+| Port (localhost only) | 3100 | 3000 |
+| Service | systemd `quizspace` (capped at 1.5 CPU, 2.8 GB, lower priority) | PM2 |
+| Caddy | `/etc/caddy/quizspace.caddy`, pulled in by one `import` line | its own blocks in `/etc/caddy/Caddyfile` |
+| Node | the system `/usr/bin/node` (read only; nothing installed) | same |
+
+Caddy (already on the server) terminates HTTPS (Let's Encrypt, automatic) and passes the visitor's address as `X-Real-IP`,
+which the app's limits, blocks and activity record read. Never put another proxy in front without passing it on.
+
+## Settings
+`/srv/quizspace/shared/.env.local` (owner `quiz`, mode 600). Present: Supabase URL, anon key and service key, the public
+settings, `CRON_SECRET` and `REVALIDATE_SECRET` (new values), `VERCEL_ENV=production` (the code reads it to decide
+indexing and the redirect to the main domain).
+**Not present** (Vercel kept them write-only, so they could not be copied): `CLOUDINARY_API_KEY/SECRET`,
+`CLOUDINARY_SHEETS_API_KEY/SECRET`, `YOUTUBE_API_KEY`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_TOKEN_KEY`,
+`CASHFREE_SECRET_KEY`, `ANTHROPIC_API_KEY`. Without them: image uploads, YouTube recording upload, the payment test and
+the extraction scripts are off; reading, practising, sign-in and the admin dashboard work. Add them to the file and
+`systemctl restart quizspace`. `YOUTUBE_TOKEN_KEY` must be the original value or the channel has to be connected again.
+
+## Deploy, roll back
+```
+deploy/vps/deploy.sh             # builds the pushed HEAD beside the live one (1 CPU, 3 GB cap), switches, checks, rolls back by itself
+deploy/vps/deploy.sh rollback    # back to the previous release
+```
+Needs the SSH key `~/.ssh/quizspace_vps` (root login by key only). Logs: `journalctl -u quizspace`, Caddy: `journalctl -u caddy`.
+
+## Daily jobs
+`/etc/cron.d/quizspace` runs the four jobs that were Vercel crons, through `/srv/quizspace/cron.sh` (uses `CRON_SECRET`),
+logging to `/srv/quizspace/logs/cron.log`.
+
+## What Vercel did that is not replaced yet
+- Per-address rate limits and the one-hour trap block (Vercel firewall): not on the server yet. The app's own
+  account, address and device blocks, limits and bans (Admin > Protection) work as before. Caddy refuses
+  `122.176.158.89` outright.
+- The CDN and DDoS filtering. Cloudflare in front is the option; it needs the domain's nameservers, so it was left out.
+- Capacity: public pages that are cached answer in about 25 ms (150+ requests/s); pages that render on every request
+  (`/subjects`, `/search`, ...) cost about 90 ms of CPU each (about 11 a second on one core). `/subjects` is
+  `force-dynamic` although it is the same for everyone: caching it would remove most of the load.
