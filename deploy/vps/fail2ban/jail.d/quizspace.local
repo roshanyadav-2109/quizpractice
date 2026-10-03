@@ -32,13 +32,13 @@ port     = http,https
 action   = %(action_)s
            quizspace-cf[name=%(__name__)s]
 
-# More than 240 requests a minute to papers from one address (the Vercel limit): blocked 5 minutes.
+# More than 600 requests a minute to papers from one address: blocked 5 minutes. (240 was too tight: one real student reached 98 a minute because the page prefetches paper links, and several students share a college network.)
 [quizspace-papers]
 enabled  = true
 filter   = quizspace-papers
 logpath  = /var/lib/caddy/logs/quizspace.access.log
 backend  = polling
-maxretry = 240
+maxretry = 600
 findtime = 60
 bantime  = 300
 banaction = nftables[type=multiport]
