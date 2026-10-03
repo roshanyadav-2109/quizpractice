@@ -1,5 +1,6 @@
 # Quiz Space's firewall rules, rebuilt from the Vercel ones. A banned address is blocked on ports 80 and 443 of
 # the whole server (the other site there included): only offenders. SSH is not touched.
+# Behind Cloudflare the same address is also blocked at Cloudflare (action quizspace-cf).
 [DEFAULT]
 ignoreip = 127.0.0.1/8 ::1 62.72.29.5
 
@@ -14,6 +15,8 @@ findtime = 60
 bantime  = 3600
 banaction = nftables[type=multiport]
 port     = http,https
+action   = %(action_)s
+           quizspace-cf[name=%(__name__)s]
 
 # More than 120 requests a minute to marking, answers or mistakes from one address (the Vercel limit): blocked 5 minutes.
 [quizspace-api]
@@ -26,6 +29,8 @@ findtime = 60
 bantime  = 300
 banaction = nftables[type=multiport]
 port     = http,https
+action   = %(action_)s
+           quizspace-cf[name=%(__name__)s]
 
 # More than 240 requests a minute to papers from one address (the Vercel limit): blocked 5 minutes.
 [quizspace-papers]
@@ -38,3 +43,5 @@ findtime = 60
 bantime  = 300
 banaction = nftables[type=multiport]
 port     = http,https
+action   = %(action_)s
+           quizspace-cf[name=%(__name__)s]
