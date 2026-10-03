@@ -55,6 +55,7 @@ export function PaperCarousel({ papers }: { papers: CarouselPaper[] }) {
           <li key={paper.setId} className="w-[236px] shrink-0 snap-start">
             <Link
               href={`/practice/${paper.setId}`}
+              prefetch={false}
               className="group flex h-full flex-col overflow-hidden rounded-[10px] border border-rule bg-surface transition-colors hover:border-rule-strong"
             >
               <p className="truncate px-4 pt-3 pb-2.5 text-meta text-ink">{paper.subject}</p>
