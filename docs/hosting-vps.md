@@ -108,3 +108,10 @@ the system allowed. Changes:
   (the 20-second "address is clear" memory, the one-minute profile cache) is per copy. If a page ever looks stale on one reload and fresh on
   the next, that is the other copy: restart both (`systemctl restart quizspace quizspace-b`, one after the other).
 - **Not done:** moving the database from Sydney to Mumbai (every signed-in page makes about ten database calls of about 270 ms each).
+
+## Hostinger firewall (from 2026-10-03)
+
+- A network firewall in front of the VPS, made through the Hostinger API (`quizspace-vps`, id 371214, attached to VM 2029582). Rules: accept TCP 22, 80 and 443 from anywhere; everything else incoming is dropped. This is the same set as the server's own firewall (ufw), so it is a second wall, not a change in what is reachable. Ping is now dropped too (no ICMP rule); add one in hPanel if an uptime monitor needs it.
+- Not restricted to Cloudflare addresses on 80/443 because the other project shares those ports. SSH stays open to any address (key only); do not narrow it to one address unless that address is fixed.
+- Undo: `POST /api/vps/v1/firewall/371214/deactivate/2029582` (token with VPS access, `HOSTINGER_VPS_TOKEN` in `.env.local`) or detach it in hPanel > VPS > Security > Firewall. The hPanel Web console still reaches the server if SSH is ever blocked.
+- The API field `is_synced` stayed false, but the firewall enforces (checked: ping to the server is now dropped; ufw alone would answer it).
