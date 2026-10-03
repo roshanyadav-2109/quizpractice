@@ -45,11 +45,32 @@ Needs the SSH key `~/.ssh/quizspace_vps` (root login by key only). Logs: `journa
 `/etc/cron.d/quizspace` runs the four jobs that were Vercel crons, through `/srv/quizspace/cron.sh` (uses `CRON_SECRET`),
 logging to `/srv/quizspace/logs/cron.log`.
 
-## What Vercel did that is not replaced yet
-- Per-address rate limits and the one-hour trap block (Vercel firewall): not on the server yet. The app's own
-  account, address and device blocks, limits and bans (Admin > Protection) work as before. Caddy refuses
-  `122.176.158.89` outright.
-- The CDN and DDoS filtering. Cloudflare in front is the option; it needs the domain's nameservers, so it was left out.
+## The firewall rules (rebuilt from the Vercel ones, 3 Oct 2026)
+fail2ban reads Caddy's access log for this site (`/var/lib/caddy/logs/quizspace.access.log`, static files left out) and
+blocks an address on ports 80 and 443 of the whole server (the other site included; only offenders; SSH untouched):
+
+| Rule | Limit | Blocked for | Files |
+|---|---|---|---|
+| The hidden trap link `/all-questions` | 1 request | 1 hour | `deploy/vps/fail2ban/*/quizspace-trap*` |
+| `/api/solutions`, `/api/attempts`, `/api/reviews` | 120 a minute per address | 5 minutes | `quizspace-api` |
+| `/practice/...`, `/paper/...` | 240 a minute per address | 5 minutes | `quizspace-papers` |
+
+Tested end to end on 3 Oct: touching the trap blocked the tester within seconds; 119 requests did not block, 144 did.
+List blocked addresses: `fail2ban-client status quizspace-trap`; unblock: `fail2ban-client set quizspace-trap unbanip <ip>`.
+Caddy also refuses `122.176.158.89` outright, and the app's own account, address and device blocks work as before.
+Gotcha: never run `caddy validate` as root (it creates the log file root-owned and the real Caddy then cannot open it):
+use `sudo -u caddy caddy validate ...`.
+
+Headers: Caddy sends HSTS, `nosniff` and a referrer policy (Vercel used to add HSTS itself).
+
+## Backups
+`/usr/local/sbin/quizspace-backup` (cron, 02:30 UTC) keeps 14 nightly copies of the settings file and the Caddy, service,
+cron and fail2ban files in `/srv/quizspace/backups` (root only). `deploy/vps/pull-backup.sh` copies the newest to
+`~/.quizspace-vps-backups` on the owner's Mac. The code is on GitHub and the data in Supabase.
+
+## Not replaced
+- Vercel's automatic DDoS and bot filtering and its CDN. Cloudflare in front would give them; it needs the domain's
+  nameservers moved (all 19 DNS records, including the mail ones, recreated exactly), so it was left out.
 - Capacity: public pages that are cached answer in about 25 ms (150+ requests/s); pages that render on every request
   (`/subjects`, `/search`, ...) cost about 90 ms of CPU each (about 11 a second on one core). `/subjects` is
   `force-dynamic` although it is the same for everyone: caching it would remove most of the load.
