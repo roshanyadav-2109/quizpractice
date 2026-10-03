@@ -265,11 +265,11 @@ export default async function PaperPage({ params }: { params: Params }) {
           </dl>
 
           <div className="flex flex-col gap-2 p-4">
-            <Link href={`/paper/${paper.setId}`} className={buttonClass('primary', 'lg', 'w-full justify-center')}>
+            <Link href={`/paper/${paper.setId}`} prefetch={false} className={buttonClass('primary', 'lg', 'w-full justify-center')}>
               <Clock size={18} aria-hidden="true" />
               Take as mock test
             </Link>
-            <Link href={paths.practice(paper.setId, 'learning')} className={buttonClass('outline', 'lg', 'w-full justify-center')}>
+            <Link href={paths.practice(paper.setId, 'learning')} prefetch={false} className={buttonClass('outline', 'lg', 'w-full justify-center')}>
               Practise with answers
             </Link>
             <BestScore setId={paper.setId} className="mt-1 self-center" />
