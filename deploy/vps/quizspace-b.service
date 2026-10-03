@@ -1,0 +1,28 @@
+[Unit]
+Description=Quiz Space (Next.js), copy B on port 3101 - separate from the other sites on this server
+After=network.target
+
+[Service]
+User=quiz
+Group=quiz
+WorkingDirectory=/srv/quizspace/current
+Environment=NODE_ENV=production
+Environment=HOME=/srv/quizspace
+# Node's own memory limit was about 1.4 GB and it crashed there under load; 2.75 GB per copy, two copies, 6.5 GB slice.
+Environment=NODE_OPTIONS=--max-old-space-size=2816
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3101 -H 127.0.0.1
+Restart=always
+RestartSec=3
+# Memory and CPU limits are on the slice (quizspace.slice), shared with copy B; lower priority under contention.
+Slice=quizspace.slice
+Nice=5
+LimitNOFILE=65535
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/srv/quizspace
+SyslogIdentifier=quizspace-b
+
+[Install]
+WantedBy=multi-user.target
