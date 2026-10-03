@@ -1,0 +1,2 @@
+# Quiz Space nightly configuration backup (see /usr/local/sbin/quizspace-backup). Installed as /etc/cron.d/quizspace-backup.
+30 2 * * * root /usr/local/sbin/quizspace-backup >> /srv/quizspace/logs/backup.log 2>&1
