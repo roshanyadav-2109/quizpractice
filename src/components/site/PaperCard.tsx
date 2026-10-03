@@ -63,7 +63,7 @@ export function PaperCard({ setId, href, title, tags, date, facts, best }: Paper
         )}
 
         <div className="flex items-center gap-2">
-          <Link href={`/paper/${setId}`} className={buttonClass('primary', 'sm')}>
+          <Link href={`/paper/${setId}`} prefetch={false} className={buttonClass('primary', 'sm')}>
             {best ? 'Re-attempt' : 'Start paper'}
             <ArrowRight size={14} aria-hidden="true" />
           </Link>
