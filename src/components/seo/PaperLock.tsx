@@ -40,7 +40,7 @@ export function PaperLock({ setId, shown, total }: { setId: string; shown: numbe
                 <Link href={learning} className={buttonClass('primary', 'md')}>
                   Open all {total} questions
                 </Link>
-                <Link href={`/paper/${setId}`} className={buttonClass('outline', 'md')}>
+                <Link href={`/paper/${setId}`} prefetch={false} className={buttonClass('outline', 'md')}>
                   <Clock size={16} aria-hidden="true" />
                   Take as mock test
                 </Link>
