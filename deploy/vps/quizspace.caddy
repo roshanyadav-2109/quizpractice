@@ -9,6 +9,14 @@ quizspace.unknowniitians.com {
 	respond @scraper 403
 
 	# Access logs go to the journal (the file writer was refused by the service sandbox): journalctl -u caddy | grep quizspace
+	# Vercel added HSTS by itself; on the server it has to be said. Only for this host (no subdomains, no preload).
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-X-Powered-By
+	}
+
 	reverse_proxy 127.0.0.1:3100 {
 		# The app reads the visitor address from X-Real-IP (its limits, blocks and the activity record).
 		header_up X-Real-IP {remote_host}
