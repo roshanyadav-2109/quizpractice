@@ -85,3 +85,26 @@ cron and fail2ban files in `/srv/quizspace/backups` (root only). `deploy/vps/pul
 - Origin lock (2026-10-03): the quizspace host answers 403 to any connection that is not from Cloudflare, `127.0.0.1` or the server itself (`@bypass` in `quizspace.caddy`); other sites on the server are not touched. To open it again, remove the `@bypass` and its `respond` line and reload Caddy (`sudo -u caddy caddy validate` first). Before the lock, the old Hostinger zone's `quizspace` record was pointed at Cloudflare's addresses so resolvers still asking the old nameservers went through Cloudflare; direct traffic fell to zero before the lock went on.
 - Certificate renewal runs inside Caddy and is not affected by the lock; check `journalctl -u caddy` if a certificate warning ever appears.
 - The Cashfree webhook (`/api/payments/webhook`) may be challenged by Bot Fight Mode once real payments exist.
+
+## Two copies of the app, 6.5 GB (from 2026-10-03)
+
+A load test (4,000 test students, 2026-10-03) showed the app was one Node process: it topped out at about 1.1 cores and about 7.5 papers
+opened a second, and it crashed when Node reached its own heap limit (about 1.4 GB, "JavaScript heap out of memory"), well below the 2.8 GB
+the system allowed. Changes:
+
+- **Memory:** `quizspace.slice` (`deploy/vps/quizspace.slice`) holds both copies: 6.5 GB, 190% CPU, no swap. Each copy runs with
+  `NODE_OPTIONS=--max-old-space-size=2816` (about 2.75 GB heap). Two copies at full heap plus native memory stay under the slice limit.
+- **Two copies:** `quizspace` (copy A, port 3100) and `quizspace-b` (copy B, port 3101), same release, same settings, both on 127.0.0.1.
+  Caddy shares visitors between them (`lb_policy least_conn`, `lb_try_duration 5s`, `fail_duration 5s`): if one restarts the other answers.
+  Restarting copy A during live traffic gave 124 of 124 answers 200. Measured: about 16 to 17 dynamic pages a second (was about 10.5),
+  and 400 requests at once caused no errors and no restart.
+- **Deploys** (`deploy/vps/deploy.sh`) restart A, check it on 3100, then B, check it on 3101, so one always answers. Rollback does the same.
+- **Prefetch:** paper cards, paper table rows, the paper lock panel, the past-paper page buttons and the dashboard carousel no longer
+  prefetch `/paper/<id>` or `/practice/<id>` (`prefetch={false}`): the background requests were 65% of the server's work (about 100 ms
+  each, up to about 96 per list page). Clicking works as before.
+- **Nothing in the protection changed:** the scraper rules, the Caddy origin lock, the Cloudflare rules and the fail2ban bans are as they were;
+  both copies bind 127.0.0.1 only and Caddy still sets the visitor address.
+- **Things to know:** the daily jobs call copy A only (`127.0.0.1:3100`). The two copies share the release's on-disk cache; an in-memory cache
+  (the 20-second "address is clear" memory, the one-minute profile cache) is per copy. If a page ever looks stale on one reload and fresh on
+  the next, that is the other copy: restart both (`systemctl restart quizspace quizspace-b`, one after the other).
+- **Not done:** moving the database from Sydney to Mumbai (every signed-in page makes about ten database calls of about 270 ms each).
