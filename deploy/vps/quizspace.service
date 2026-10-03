@@ -1,0 +1,27 @@
+[Unit]
+Description=Quiz Space (Next.js) - separate from the other sites on this server
+After=network.target
+
+[Service]
+User=quiz
+Group=quiz
+WorkingDirectory=/srv/quizspace/current
+Environment=NODE_ENV=production
+Environment=HOME=/srv/quizspace
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3100 -H 127.0.0.1
+Restart=always
+RestartSec=3
+# Caps, so Quiz Space can never starve the other project: at most 1.5 CPUs and 2.8 GB, and lower priority under contention.
+CPUQuota=150%
+MemoryMax=2800M
+Nice=5
+LimitNOFILE=65535
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/srv/quizspace
+SyslogIdentifier=quizspace
+
+[Install]
+WantedBy=multi-user.target
